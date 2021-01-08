@@ -18,8 +18,7 @@ jobs:
       run: |
         . src/spack/share/spack/setup-env.sh
         spack load -r mochi-thallium
-        spack find -dlv mochi-thallium
-        g++ -Wall -g -std=c++14 `pkg-config --cflags thallium` `pkg-config --libs thallium` -pthread raft.cpp -o raft.out
+        make
     - name: Install assert.sh 
       run: |
         wget https://raw.github.com/lehmannro/assert.sh/v1.1/assert.sh
