@@ -6,7 +6,7 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Setup mochi-margo
+    - name: Setup mochi-thallium
       run: |
         git clone https://github.com/spack/spack.git src/spack
         . src/spack/share/spack/setup-env.sh
@@ -14,6 +14,9 @@ jobs:
         spack repo add src/sds-repo
         . ./setup_packages.sh 
         spack install mochi-thallium
+    - name: check pkg-config
+      run: |
+        pkg-config --libs thallium
     - name: Build
       run: |
         . src/spack/share/spack/setup-env.sh
