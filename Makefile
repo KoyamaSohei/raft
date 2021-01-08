@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS += -Wall -g -std=c++14 `pkg-config --cflags thallium`
-LDFLAGS += `pkg-config --libs thallium`
+LDFLAGS += `pkg-config --libs thallium` -pthread
 
 all:: raft 
 

@@ -1,5 +1,8 @@
 #include <iostream>
 #include <thallium.hpp>
+#include <thread>
+#include <pthread.h>
+#include <chrono>
 
 namespace tl = thallium;
 
@@ -24,7 +27,7 @@ public:
     get_engine().pop_finalize_callback(this);
   }
   void runFollower() {
-    
+
   }
   void runCandidate() {
 
@@ -50,9 +53,23 @@ public:
 };
 
 int main(int argc, char** argv) {
+  static sigset_t ss;
+  sigemptyset(&ss);
+  sigaddset(&ss, SIGINT);
+  sigaddset(&ss, SIGTERM);
+  pthread_sigmask(SIG_BLOCK, &ss, NULL);
+
   tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << myEngine.self() << std::endl;
   RaftProvider provider(myEngine);
+
+  std::thread sig([&]{
+    int num;
+    sigwait(&ss,&num);
+    std::cout << "Signal received " << num << std::endl;
+    exit(1);
+  });
+
   myEngine.wait_for_finalize();
   return 0;
 }
