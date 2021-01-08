@@ -14,17 +14,11 @@ jobs:
         spack repo add src/sds-repo
         . ./setup_packages.sh 
         spack install mochi-thallium
-    - name: check pkg-config
-      run: |
-        . src/spack/share/spack/setup-env.sh
-        spack load -r mochi-thallium
-        pkg-config --libs thallium
-        pkg-config --cflags thallium
     - name: Build
       run: |
         . src/spack/share/spack/setup-env.sh
         spack load -r mochi-thallium
-        make
+        g++ -Wall -g -std=c++14 `pkg-config --cflags thallium` `pkg-config --libs thallium` -pthread raft.cpp -o raft.out
     - name: Install assert.sh 
       run: |
         wget https://raw.github.com/lehmannro/assert.sh/v1.1/assert.sh
