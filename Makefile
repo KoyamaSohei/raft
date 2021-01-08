@@ -5,4 +5,4 @@ LDFLAGS += `pkg-config --libs thallium`
 all:: raft 
 
 raft: raft.cpp
-	$(CC) $(CFLAGS) raft.cpp -o raft.out
+	$(CC) $(CFLAGS) $(LDFLAGS) raft.cpp -o raft.out
