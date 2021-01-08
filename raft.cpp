@@ -3,71 +3,62 @@
 #include <thread>
 #include <pthread.h>
 #include <chrono>
+#include "raft.hpp"
 
 namespace tl = thallium;
 
-enum class State {
-  Follower,
-  Candidate,
-  Leader,
-};
-
-class RaftProvider : public tl::provider<RaftProvider> {
-private:
-  // 現在の状態(Follower/Candidate/Leader)
-  State state;
-  tl::mutex mu;
-  tl::condition_variable cond;
-  const int TIMEOUT = 3;
-public:
-  RaftProvider(tl::engine& e,uint16_t provider_id=1)
+RaftProvider::RaftProvider(tl::engine& e,uint16_t provider_id)
   : tl::provider<RaftProvider>(e, provider_id),
     state(State::Follower)
-  {
-    get_engine().push_finalize_callback(this,[p=this]() {delete p;});
-  }
-  ~RaftProvider() {
-    get_engine().pop_finalize_callback(this);
-  }
-  void runFollower() {
-    std::cout << "[follower] become" << std::endl;
-    std::unique_lock<tl::mutex> lock(mu);
-    while(1) {
-      timespec deadline;
-      timespec_get(&deadline,TIME_UTC);
-      deadline.tv_sec += TIMEOUT;
-      bool acquired = cond.wait_until(lock,&deadline);
-      if(!acquired) { // timeout
-        state = State::Candidate;
-        break;
-      }
-    }
-  }
-  void runCandidate() {
-    std::cout << "[candidate] become" << std::endl;
-    while(1) {
-      
-    }
-  }
-  void runLeader() {
+{
+  get_engine().push_finalize_callback(this,[p=this]() {delete p;});
+}
 
-  }
-  void run() {
-    while(1) {
-      switch (state) {
-      case State::Follower:
-        runFollower();
-        break;
-      case State::Candidate:
-        runCandidate();
-        break;
-      case State::Leader:
-        runLeader();
-        break;
-      }
+RaftProvider::~RaftProvider() {
+  get_engine().pop_finalize_callback(this);
+}
+
+void RaftProvider::runFollower() {
+  std::cout << "[follower] become" << std::endl;
+  std::unique_lock<tl::mutex> lock(mu);
+  while(1) {
+    timespec deadline;
+    timespec_get(&deadline,TIME_UTC);
+    deadline.tv_sec += TIMEOUT;
+    bool acquired = cond.wait_until(lock,&deadline);
+    if(!acquired) { // timeout
+      state = State::Candidate;
+      break;
     }
   }
-};
+}
+
+void RaftProvider::runCandidate() {
+  std::cout << "[candidate] become" << std::endl;
+  while(1) {
+    
+  }
+}
+
+void RaftProvider::runLeader() {
+
+}
+
+void RaftProvider::run() {
+  while(1) {
+    switch (state) {
+    case State::Follower:
+      runFollower();
+      break;
+    case State::Candidate:
+      runCandidate();
+      break;
+    case State::Leader:
+      runLeader();
+      break;
+    }
+  }
+}
 
 int main(int argc, char** argv) {
   static sigset_t ss;
