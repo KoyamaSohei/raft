@@ -19,6 +19,7 @@ jobs:
         . src/spack/share/spack/setup-env.sh
         spack load -r mochi-thallium
         pkg-config --libs thallium
+        pkg-config --cflags thallium
     - name: Build
       run: |
         . src/spack/share/spack/setup-env.sh
