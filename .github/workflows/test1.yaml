@@ -16,6 +16,8 @@ jobs:
         spack install mochi-thallium
     - name: check pkg-config
       run: |
+        . src/spack/share/spack/setup-env.sh
+        spack load -r mochi-thallium
         pkg-config --libs thallium
     - name: Build
       run: |
