@@ -30,7 +30,7 @@ public:
     get_engine().pop_finalize_callback(this);
   }
   void runFollower() {
-    std::cout << "become follower" << std::endl;
+    std::cout << "[follower] become" << std::endl;
     std::unique_lock<tl::mutex> lock(mu);
     while(1) {
       timespec deadline;
@@ -44,7 +44,7 @@ public:
     }
   }
   void runCandidate() {
-    std::cout << "become candidate" << std::endl;
+    std::cout << "[candidate] become" << std::endl;
     while(1) {
       
     }
