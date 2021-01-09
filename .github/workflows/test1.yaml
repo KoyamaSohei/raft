@@ -20,7 +20,8 @@ jobs:
         spack load -r mochi-thallium
         spack find -dlv mochi-thallium
         pkg-config --print-requires thallium
-        pkg-config --path thallium  | xargs -I {} cat {} 
+        pkg-config --version
+        pkg-config --help
         make
     - name: Install assert.sh 
       run: |
