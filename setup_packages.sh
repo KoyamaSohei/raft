@@ -37,7 +37,12 @@ packages:
       prefix: /usr
       buildable: False
   mercury:
-    variants: +ofi+bmi
+    variants: ~boostsys+ofi+bmi
   libfabric:
-    variants: fabrics=tcp,verbs,rxm,sockets
+    variants: fabrics=tcp,rxm,sockets
+  rdma-core:
+    externals:
+      - spec: rdma-core
+        prefix: /usr
+    buildable: False
 EOF
