@@ -37,7 +37,7 @@ packages:
       prefix: /usr
       buildable: False
   mercury:
-    variants: ~boostsys+ofi
+    variants: +ofi+bmi
   libfabric:
-    variants: fabrics=tcp,rxm,sockets
+    variants: fabrics=tcp,verbs,rxm,sockets
 EOF
