@@ -36,6 +36,11 @@ packages:
     - spec: cmake
       prefix: /usr
       buildable: False
+  pkg-config:
+    externals:
+    - spec: pkg-config
+      prefix: /usr
+      buildable: False
   mercury:
     variants: ~boostsys+ofi+bmi
   libfabric:
