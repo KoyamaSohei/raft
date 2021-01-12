@@ -10,40 +10,40 @@
 #define INTERVAL 1
 #define TIMEOUT  3
 
-RaftProvider::RaftProvider(tl::engine& e,uint16_t provider_id)
-  : tl::provider<RaftProvider>(e, provider_id),
-    state(State::Follower)
+raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
+  : tl::provider<raft_provider>(e, provider_id),
+    state(raft_state::follower)
 {
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
 }
 
-RaftProvider::~RaftProvider() {
+raft_provider::~raft_provider() {
   get_engine().pop_finalize_callback(this);
 }
 
-void RaftProvider::runFollower() {
+void raft_provider::run_follower() {
 
 }
 
-void RaftProvider::runCandidate() {
+void raft_provider::run_candidate() {
 
 }
 
-void RaftProvider::runLeader() {
+void raft_provider::run_leader() {
 
 }
 
-void RaftProvider::run() {
+void raft_provider::run() {
   while(1) {
     switch (state) {
-    case State::Follower:
-      runFollower();
+    case raft_state::follower:
+      run_follower();
       break;
-    case State::Candidate:
-      runCandidate();
+    case raft_state::candidate:
+      run_candidate();
       break;
-    case State::Leader:
-      runLeader();
+    case raft_state::leader:
+      run_leader();
       break;
     }
   }
@@ -80,9 +80,9 @@ int main(int argc, char** argv) {
   ABT_xstream_create(ABT_SCHED_NULL,&sigstream);
   ABT_thread_create_on_xstream(sigstream,signal_handler,&ss,ABT_THREAD_ATTR_NULL,&sigthread);
 
-  tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
-  std::cout << "Server running at address " << myEngine.self() << std::endl;
-  RaftProvider provider(myEngine);
+  tl::engine my_engine("tcp", THALLIUM_SERVER_MODE);
+  std::cout << "Server running at address " << my_engine.self() << std::endl;
+  raft_provider provider(my_engine);
   
   ABT_xstream_create(ABT_SCHED_NULL,&tickstream);
 
@@ -91,6 +91,6 @@ int main(int argc, char** argv) {
     ABT_thread_create_on_xstream(tickstream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tickthread);
   }
 
-  myEngine.wait_for_finalize();
+  my_engine.wait_for_finalize();
   return 0;
 }
