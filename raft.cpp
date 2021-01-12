@@ -10,8 +10,6 @@
 #define INTERVAL 1
 #define TIMEOUT  3
 
-namespace tl = thallium;
-
 RaftProvider::RaftProvider(tl::engine& e,uint16_t provider_id)
   : tl::provider<RaftProvider>(e, provider_id),
     state(State::Follower)
