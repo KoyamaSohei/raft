@@ -3,6 +3,7 @@
 #include <thread>
 #include <pthread.h>
 #include <chrono>
+#include <abt.h>
 #include "raft.hpp"
 
 namespace tl = thallium;
@@ -60,24 +61,37 @@ void RaftProvider::run() {
   }
 }
 
+void signal_handler(void *arg) {
+  int num;
+  sigwait((sigset_t *)arg,&num);
+  std::cout << "Signal received " << num << std::endl;
+  exit(1);
+}
+
+void setup_segset(sigset_t *ss) {
+  sigemptyset(ss);
+  sigaddset(ss, SIGINT);
+  sigaddset(ss, SIGTERM);
+  pthread_sigmask(SIG_BLOCK, ss, NULL);
+}
+
 int main(int argc, char** argv) {
+
+  ABT_xstream sigstream;
+  ABT_thread thread;
   static sigset_t ss;
-  sigemptyset(&ss);
-  sigaddset(&ss, SIGINT);
-  sigaddset(&ss, SIGTERM);
-  pthread_sigmask(SIG_BLOCK, &ss, NULL);
+  
+  setup_segset(&ss);
+
+  ABT_init(argc,argv);
+  
+  ABT_xstream_create(ABT_SCHED_NULL,&sigstream);
+  ABT_thread_create_on_xstream(sigstream,signal_handler,&ss,ABT_THREAD_ATTR_NULL,&thread);
 
   tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << myEngine.self() << std::endl;
   RaftProvider provider(myEngine);
 
-  std::thread sig([&]{
-    int num;
-    sigwait(&ss,&num);
-    std::cout << "Signal received " << num << std::endl;
-    exit(1);
-  });
-  provider.run();
   myEngine.wait_for_finalize();
   return 0;
 }
