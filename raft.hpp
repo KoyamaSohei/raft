@@ -15,9 +15,6 @@ class RaftProvider : public tl::provider<RaftProvider> {
 private:
   // 現在の状態(Follower/Candidate/Leader)
   State state;
-  tl::mutex mu;
-  tl::condition_variable cond;
-  const int TIMEOUT = 3;
   void runFollower();
   void runCandidate();
   void runLeader();

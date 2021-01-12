@@ -8,6 +8,7 @@
 #include "raft.hpp"
 
 #define INTERVAL 1
+#define TIMEOUT  3
 
 namespace tl = thallium;
 
@@ -23,25 +24,11 @@ RaftProvider::~RaftProvider() {
 }
 
 void RaftProvider::runFollower() {
-  std::cout << "[follower] become" << std::endl;
-  std::unique_lock<tl::mutex> lock(mu);
-  while(1) {
-    timespec deadline;
-    timespec_get(&deadline,TIME_UTC);
-    deadline.tv_sec += TIMEOUT;
-    bool acquired = cond.wait_until(lock,&deadline);
-    if(!acquired) { // timeout
-      state = State::Candidate;
-      break;
-    }
-  }
+
 }
 
 void RaftProvider::runCandidate() {
-  std::cout << "[candidate] become" << std::endl;
-  while(1) {
-    
-  }
+
 }
 
 void RaftProvider::runLeader() {
