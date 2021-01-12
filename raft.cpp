@@ -4,7 +4,10 @@
 #include <pthread.h>
 #include <chrono>
 #include <abt.h>
+#include <unistd.h>
 #include "raft.hpp"
+
+#define INTERVAL 1
 
 namespace tl = thallium;
 
@@ -68,6 +71,13 @@ void signal_handler(void *arg) {
   exit(1);
 }
 
+void tick_loop(void *provider) {
+  while(1) {
+    sleep(INTERVAL);
+    printf("tick!\n");
+  }
+}
+
 void setup_segset(sigset_t *ss) {
   sigemptyset(ss);
   sigaddset(ss, SIGINT);
@@ -77,8 +87,8 @@ void setup_segset(sigset_t *ss) {
 
 int main(int argc, char** argv) {
 
-  ABT_xstream sigstream;
-  ABT_thread thread;
+  ABT_xstream sigstream,tickstream;
+  ABT_thread sigthread,tickthread;
   static sigset_t ss;
   
   setup_segset(&ss);
@@ -86,11 +96,14 @@ int main(int argc, char** argv) {
   ABT_init(argc,argv);
   
   ABT_xstream_create(ABT_SCHED_NULL,&sigstream);
-  ABT_thread_create_on_xstream(sigstream,signal_handler,&ss,ABT_THREAD_ATTR_NULL,&thread);
+  ABT_thread_create_on_xstream(sigstream,signal_handler,&ss,ABT_THREAD_ATTR_NULL,&sigthread);
 
   tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << myEngine.self() << std::endl;
   RaftProvider provider(myEngine);
+  
+  ABT_xstream_create(ABT_SCHED_NULL,&tickstream);
+  ABT_thread_create_on_xstream(tickstream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tickthread);
 
   myEngine.wait_for_finalize();
   return 0;
