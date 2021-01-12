@@ -72,10 +72,7 @@ void signal_handler(void *arg) {
 }
 
 void tick_loop(void *provider) {
-  while(1) {
-    sleep(INTERVAL);
-    printf("tick!\n");
-  }
+  printf("tick!\n");
 }
 
 void setup_segset(sigset_t *ss) {
@@ -103,7 +100,11 @@ int main(int argc, char** argv) {
   RaftProvider provider(myEngine);
   
   ABT_xstream_create(ABT_SCHED_NULL,&tickstream);
-  ABT_thread_create_on_xstream(tickstream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tickthread);
+
+  while(1) {
+    sleep(INTERVAL);
+    ABT_thread_create_on_xstream(tickstream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tickthread);
+  }
 
   myEngine.wait_for_finalize();
   return 0;
