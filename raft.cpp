@@ -12,7 +12,9 @@
 
 raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id),
-    state(raft_state::follower)
+    state(raft_state::follower),
+    last_entry_recerived(clock::now()),
+    m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc))
 {
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
 }
@@ -21,8 +23,20 @@ raft_provider::~raft_provider() {
   get_engine().pop_finalize_callback(this);
 }
 
-void raft_provider::run_follower() {
+void raft_provider::append_entries_rpc(tl::request req) {
+  last_entry_recerived = clock::now();
+}
 
+void raft_provider::run_follower() {
+  auto duration = clock::now() - last_entry_recerived;
+  if(duration > std::chrono::seconds(TIMEOUT)) {
+    become_candidate();
+  }
+}
+
+void raft_provider::become_candidate() {
+  printf("become candidate\n");
+  state = raft_state::candidate;
 }
 
 void raft_provider::run_candidate() {
