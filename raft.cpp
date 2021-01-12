@@ -69,26 +69,26 @@ void setup_segset(sigset_t *ss) {
 
 int main(int argc, char** argv) {
 
-  ABT_xstream sigstream,tickstream;
-  ABT_thread sigthread,tickthread;
+  ABT_xstream sig_stream,tick_stream;
+  ABT_thread sig_thread,tick_thread;
   static sigset_t ss;
   
   setup_segset(&ss);
 
   ABT_init(argc,argv);
   
-  ABT_xstream_create(ABT_SCHED_NULL,&sigstream);
-  ABT_thread_create_on_xstream(sigstream,signal_handler,&ss,ABT_THREAD_ATTR_NULL,&sigthread);
+  ABT_xstream_create(ABT_SCHED_NULL,&sig_stream);
+  ABT_thread_create_on_xstream(sig_stream,signal_handler,&ss,ABT_THREAD_ATTR_NULL,&sig_thread);
 
   tl::engine my_engine("tcp", THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
   raft_provider provider(my_engine);
   
-  ABT_xstream_create(ABT_SCHED_NULL,&tickstream);
+  ABT_xstream_create(ABT_SCHED_NULL,&tick_stream);
 
   while(1) {
     sleep(INTERVAL);
-    ABT_thread_create_on_xstream(tickstream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tickthread);
+    ABT_thread_create_on_xstream(tick_stream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tick_thread);
   }
 
   my_engine.wait_for_finalize();
