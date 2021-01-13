@@ -77,6 +77,7 @@ void raft_provider::become_follower() {
 
 void raft_provider::run_follower() {
   if(system_clock::now() > timeout_limit) {
+    update_timeout_limit();
     become_candidate();
     return;
   }
@@ -100,7 +101,10 @@ void raft_provider::become_candidate() {
 }
 
 void raft_provider::run_candidate() {
-
+  if(system_clock::now() > timeout_limit) {
+    update_timeout_limit();
+    become_candidate();
+  }
 }
 
 void raft_provider::become_leader() {
