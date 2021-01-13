@@ -21,12 +21,15 @@ private:
   // Node ID
   tl::endpoint id;
   // 現在の状態(follower/candidate/leader)
-  raft_state state;
+  raft_state _state;
   // 最後に append_entries_rpc を受け取った時刻
   system_clock::time_point last_entry_recerived;
   // peers;
   std::vector<tl::endpoint> peers;
-
+  // Mutex
+  tl::mutex mu;
+  raft_state get_state();
+  void set_state(raft_state new_state);
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;

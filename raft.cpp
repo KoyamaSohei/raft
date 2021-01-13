@@ -14,7 +14,7 @@
 raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id),
     id(get_engine().self()),
-    state(raft_state::follower),
+    _state(raft_state::follower),
     last_entry_recerived(system_clock::now()),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc))
 {
@@ -23,6 +23,19 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
 
 raft_provider::~raft_provider() {
   get_engine().pop_finalize_callback(this);
+}
+
+raft_state raft_provider::get_state() {
+  mu.lock();
+  raft_state s = _state;
+  mu.unlock();
+  return s;
+}
+
+void raft_provider::set_state(raft_state new_state) {
+  mu.lock();
+  _state = new_state;
+  mu.unlock();
 }
 
 append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
@@ -39,7 +52,7 @@ void raft_provider::run_follower() {
 
 void raft_provider::become_candidate() {
   printf("become candidate\n");
-  state = raft_state::candidate;
+  set_state(raft_state::candidate);
 }
 
 void raft_provider::run_candidate() {
@@ -52,7 +65,7 @@ void raft_provider::run_leader() {
 
 void raft_provider::run() {
   while(1) {
-    switch (state) {
+    switch (get_state()) {
     case raft_state::follower:
       run_follower();
       break;
