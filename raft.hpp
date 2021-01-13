@@ -31,6 +31,12 @@ private:
   tl::mutex mu;
   raft_state get_state();
   void set_state(raft_state new_state);
+  // current Term
+  int _current_term;
+  int get_current_term();
+  void increment_current_term();
+  // Voted endpoint on this term
+  tl::endpoint voted_for;
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;

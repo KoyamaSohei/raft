@@ -15,6 +15,7 @@
 raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id),
     id(get_engine().self()),
+    _current_term(0),
     _state(raft_state::follower),
     num_nodes(1),
     last_entry_recerived(system_clock::now()),
@@ -37,6 +38,19 @@ raft_state raft_provider::get_state() {
 void raft_provider::set_state(raft_state new_state) {
   mu.lock();
   _state = new_state;
+  mu.unlock();
+}
+
+int raft_provider::get_current_term() {
+  mu.lock();
+  int t = _current_term;
+  mu.unlock();
+  return t;
+}
+
+void raft_provider::increment_current_term() {
+  mu.lock();
+  _current_term++;
   mu.unlock();
 }
 
