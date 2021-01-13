@@ -2,6 +2,7 @@
 #define RAFT_HPP
 
 #include <thallium.hpp>
+#include "types.hpp"
 
 namespace tl = thallium;
 using system_clock = std::chrono::system_clock;
@@ -20,7 +21,7 @@ private:
   system_clock::time_point last_entry_recerived;
 
   // append_entries_rpc
-  void append_entries_rpc(tl::request req);
+  append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;
 
   // ---- rpc def end   ---

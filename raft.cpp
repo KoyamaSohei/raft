@@ -6,6 +6,7 @@
 #include <abt.h>
 #include <unistd.h>
 #include "raft.hpp"
+#include "types.hpp"
 
 #define INTERVAL 1
 #define TIMEOUT  3
@@ -23,8 +24,9 @@ raft_provider::~raft_provider() {
   get_engine().pop_finalize_callback(this);
 }
 
-void raft_provider::append_entries_rpc(tl::request req) {
+append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
   last_entry_recerived = system_clock::now();
+  return append_entries_response(0,false);
 }
 
 void raft_provider::run_follower() {
