@@ -2,6 +2,7 @@
 #include <thallium.hpp>
 #include <abt.h>
 #include <unistd.h>
+#include <cassert>
 #include "provider.hpp"
 
 void signal_handler(void *arg) {
@@ -26,7 +27,8 @@ void setup_segset(sigset_t *ss) {
 int main(int argc, char** argv) {
 
   ABT_xstream sig_stream,tick_stream;
-  ABT_thread sig_thread;
+  ABT_thread sig_thread,tick_thread;
+  ABT_thread_state tick_state;
   static sigset_t ss;
   
   setup_segset(&ss);
@@ -47,11 +49,13 @@ int main(int argc, char** argv) {
   }
   
   ABT_xstream_create(ABT_SCHED_NULL,&tick_stream);
-  
+  ABT_thread_create_on_xstream(tick_stream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tick_thread);
+
   while(1) {
     sleep(INTERVAL);
-    ABT_thread *tick_thread = (ABT_thread *)malloc(sizeof(ABT_thread));
-    ABT_thread_create_on_xstream(tick_stream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,tick_thread);
+    ABT_thread_get_state(tick_thread,&tick_state);
+    assert(tick_state==ABT_THREAD_STATE_TERMINATED);
+    ABT_thread_create_on_xstream(tick_stream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tick_thread);
   }
 
   my_engine.wait_for_finalize();
