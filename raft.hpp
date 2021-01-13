@@ -4,7 +4,7 @@
 #include <thallium.hpp>
 
 namespace tl = thallium;
-using clock = std::chrono::system_clock;
+using system_clock = std::chrono::system_clock;
 
 enum class raft_state {
   follower,
@@ -17,7 +17,7 @@ private:
   // 現在の状態(follower/candidate/leader)
   raft_state state;
   // 最後に append_entries_rpc を受け取った時刻
-  clock::time_point last_entry_recerived;
+  system_clock::time_point last_entry_recerived;
 
   // append_entries_rpc
   void append_entries_rpc(tl::request req);
