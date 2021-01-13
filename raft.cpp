@@ -125,7 +125,7 @@ void raft_provider::run() {
 void raft_provider::append_node(std::string addr) {
   nodes.push_back(get_engine().lookup(addr));
   num_nodes++;
-  assert(num_nodes==nodes.size()+1);
+  assert(num_nodes==(int)nodes.size()+1);
 }
 
 void signal_handler(void *arg) {
