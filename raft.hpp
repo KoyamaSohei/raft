@@ -25,6 +25,7 @@ private:
   // 最後に append_entries_rpc を受け取った時刻
   system_clock::time_point last_entry_recerived;
   // nodes;
+  int num_nodes;
   std::vector<tl::endpoint> nodes;
   // Mutex
   tl::mutex mu;

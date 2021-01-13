@@ -5,6 +5,7 @@
 #include <chrono>
 #include <abt.h>
 #include <unistd.h>
+#include <cassert>
 #include "raft.hpp"
 #include "types.hpp"
 
@@ -15,6 +16,7 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id),
     id(get_engine().self()),
     _state(raft_state::follower),
+    num_nodes(1),
     last_entry_recerived(system_clock::now()),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc))
 {
@@ -82,6 +84,8 @@ void raft_provider::run() {
 
 void raft_provider::append_node(std::string addr) {
   nodes.push_back(get_engine().lookup(addr));
+  num_nodes++;
+  assert(num_nodes==nodes.size()+1);
 }
 
 void signal_handler(void *arg) {
