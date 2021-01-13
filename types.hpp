@@ -1,6 +1,8 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
+#include <thallium.hpp>
+#include <thallium/serialization/stl/string.hpp>
 #include <string>
 
 class append_entries_request {
@@ -45,8 +47,13 @@ private:
   int term;
   std::string candidate_id;
 public:
-  request_vote_request(int _term=1,std::string _candidate_id="")
-  : term(_term), candidate_id(_candidate_id) {}
+  request_vote_request(int _term=1,tl::endpoint _candidate_id=tl::endpoint())
+  : term(_term), candidate_id(std::string(_candidate_id)) {}
+
+  int get_term() {
+    return term;
+  }
+
 
   template<typename A>
   void serialize(A& ar) {
