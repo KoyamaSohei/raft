@@ -93,7 +93,7 @@ void raft_provider::become_candidate() {
       vote++;
     }
   }
-  if(vote * 2 > num_nodes) {
+  if(vote * 2 > num_nodes && get_state() == raft_state::candidate) {
     become_leader();
     return;
   }
