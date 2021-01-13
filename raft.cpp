@@ -60,6 +60,14 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
   return append_entries_response(0,false);
 }
 
+request_vote_response raft_provider::request_vote_rpc(request_vote_request &req) {
+  int current_term = get_current_term();
+  if(req.get_term() < current_term) {
+    return request_vote_response(current_term,false);
+  }
+  return request_vote_response(current_term,true);
+}
+
 void raft_provider::run_follower() {
   auto duration = system_clock::now() - last_entry_recerived;
   if(duration > std::chrono::seconds(TIMEOUT)) {
