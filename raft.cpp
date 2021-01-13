@@ -55,9 +55,17 @@ int main(int argc, char** argv) {
     sleep(INTERVAL);
     ABT_thread_get_state(tick_thread,&tick_state);
     assert(tick_state==ABT_THREAD_STATE_TERMINATED);
+    ABT_thread_free(&tick_thread);
     ABT_thread_create_on_xstream(tick_stream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tick_thread);
   }
 
   my_engine.wait_for_finalize();
+
+  ABT_thread_free(&sig_thread);
+  ABT_thread_free(&tick_thread);
+
+  ABT_xstream_free(&sig_stream);
+  ABT_xstream_free(&tick_stream);
+
   return 0;
 }
