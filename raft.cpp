@@ -19,7 +19,8 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
     _state(raft_state::follower),
     num_nodes(1),
     last_entry_recerived(system_clock::now()),
-    m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc))
+    m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
+    m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc))
 {
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
 }
@@ -69,7 +70,7 @@ void raft_provider::run_follower() {
 void raft_provider::become_candidate() {
   printf("become candidate\n");
   set_state(raft_state::candidate);
-  
+
 }
 
 void raft_provider::run_candidate() {

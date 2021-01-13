@@ -1,6 +1,8 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
+#include <string>
+
 class append_entries_request {
 private:
   int term;
@@ -37,4 +39,43 @@ public:
     ar & success;
   }
 };
+
+class request_vote_request {
+private:
+  int term;
+  std::string candidate_id;
+public:
+  request_vote_request(int _term=1,std::string _candidate_id="")
+  : term(_term), candidate_id(_candidate_id) {}
+
+  template<typename A>
+  void serialize(A& ar) {
+    ar & term;
+    ar & candidate_id;
+  }
+};
+
+class request_vote_response {
+private:
+  int term;
+  bool vote_granted;
+public:
+  request_vote_response(int _term=1,bool _vote_granted=false)
+  : term(_term), vote_granted(_vote_granted) {}
+
+  int get_term() {
+    return term;
+  }
+
+  bool is_vote_granted() {
+    return vote_granted;
+  }
+
+  template<typename A>
+  void serialize(A& ar) {
+    ar & term;
+    ar & vote_granted;
+  }
+};
+
 #endif

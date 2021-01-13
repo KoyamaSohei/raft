@@ -40,7 +40,9 @@ private:
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;
-
+  // request_vote rpc
+  request_vote_response request_vote_rpc(request_vote_request &req);
+  tl::remote_procedure m_request_vote_rpc;
   // ---- rpc def end   ---
   void run_follower();
 
