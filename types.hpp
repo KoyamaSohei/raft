@@ -5,6 +5,8 @@
 #include <thallium/serialization/stl/string.hpp>
 #include <string>
 
+namespace tl = thallium;
+
 class append_entries_request {
 private:
   int term;
