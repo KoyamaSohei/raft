@@ -13,6 +13,7 @@
 
 raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id),
+    id(get_engine().self()),
     state(raft_state::follower),
     last_entry_recerived(system_clock::now()),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc))
@@ -65,6 +66,10 @@ void raft_provider::run() {
   }
 }
 
+void raft_provider::append_peer(std::string addr) {
+  peers.push_back(get_engine().lookup(addr));
+}
+
 void signal_handler(void *arg) {
   int num;
   sigwait((sigset_t *)arg,&num);
@@ -74,6 +79,7 @@ void signal_handler(void *arg) {
 
 void tick_loop(void *provider) {
   printf("tick!\n");
+  ((raft_provider *)provider)->run();
 }
 
 void setup_segset(sigset_t *ss) {
@@ -99,6 +105,12 @@ int main(int argc, char** argv) {
   tl::engine my_engine("tcp", THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
   raft_provider provider(my_engine);
+
+  if(argc > 1) {
+    for(int i=1;i < argc;i++) {
+      provider.append_peer(argv[i]);
+    }
+  }
   
   ABT_xstream_create(ABT_SCHED_NULL,&tick_stream);
 
