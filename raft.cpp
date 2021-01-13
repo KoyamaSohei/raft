@@ -64,16 +64,33 @@ void raft_provider::run_follower() {
   auto duration = system_clock::now() - last_entry_recerived;
   if(duration > std::chrono::seconds(TIMEOUT)) {
     become_candidate();
+    return;
   }
 }
 
 void raft_provider::become_candidate() {
   printf("become candidate\n");
   set_state(raft_state::candidate);
-
+  request_vote_request req(get_current_term(),id);
+  int vote = 1;
+  for(tl::endpoint node: nodes) {
+    request_vote_response resp = m_request_vote_rpc.on(node)(req);
+    if(resp.is_vote_granted()) {
+      vote++;
+    }
+  }
+  if(vote * 2 > num_nodes) {
+    become_leader();
+    return;
+  }
 }
 
 void raft_provider::run_candidate() {
+
+}
+
+void raft_provider::become_leader() {
+  printf("become leader\n");
 
 }
 

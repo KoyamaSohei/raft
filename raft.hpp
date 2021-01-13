@@ -49,6 +49,7 @@ private:
   void become_candidate();
   void run_candidate();
 
+  void become_leader();
   void run_leader();
 public:
   raft_provider(tl::engine& e,uint16_t provider_id=1);
