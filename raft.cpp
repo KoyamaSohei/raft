@@ -99,7 +99,7 @@ void raft_provider::run_candidate() {
 
 void raft_provider::become_leader() {
   printf("become leader\n");
-
+  set_state(raft_state::leader);
 }
 
 void raft_provider::run_leader() {
