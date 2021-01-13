@@ -16,7 +16,6 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id),
     id(get_engine().self()),
     _state(raft_state::follower),
-    last_entry_recerived(system_clock::now()),
     num_nodes(1),
     _current_term(0),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
@@ -63,8 +62,12 @@ int raft_provider::get_current_term() {
   return t;
 }
 
+void raft_provider::update_timeout_limit() {
+  timeout_limit = system_clock::now() + std::chrono::seconds(TIMEOUT + rand() % TIMEOUT);
+}
+
 append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
-  last_entry_recerived = system_clock::now();
+  update_timeout_limit();
   return append_entries_response(0,false);
 }
 
@@ -76,9 +79,13 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   return request_vote_response(current_term,true);
 }
 
+void raft_provider::become_follower() {
+  update_timeout_limit();
+
+}
+
 void raft_provider::run_follower() {
-  auto duration = system_clock::now() - last_entry_recerived;
-  if(duration > std::chrono::seconds(TIMEOUT)) {
+  if(system_clock::now() > timeout_limit) {
     become_candidate();
     return;
   }

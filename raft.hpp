@@ -22,8 +22,9 @@ private:
   tl::endpoint id;
   // 現在の状態(follower/candidate/leader)
   raft_state _state;
-  // 最後に append_entries_rpc を受け取った時刻
-  system_clock::time_point last_entry_recerived;
+  // timeout_limit < 現在の時刻 であれば followerからcandidateへ遷移
+  system_clock::time_point timeout_limit;
+  void update_timeout_limit();
   // nodes;
   int num_nodes;
   std::vector<tl::endpoint> nodes;
@@ -43,6 +44,7 @@ private:
   request_vote_response request_vote_rpc(request_vote_request &req);
   tl::remote_procedure m_request_vote_rpc;
   // ---- rpc def end   ---
+  void become_follower();
   void run_follower();
 
   void become_candidate();
