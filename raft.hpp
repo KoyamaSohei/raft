@@ -34,7 +34,6 @@ private:
   // current Term
   int _current_term;
   int get_current_term();
-  void increment_current_term();
   // Voted endpoint on this term
   tl::endpoint voted_for;
   // append_entries_rpc

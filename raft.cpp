@@ -38,6 +38,20 @@ raft_state raft_provider::get_state() {
 
 void raft_provider::set_state(raft_state new_state) {
   mu.lock();
+  switch(new_state) {
+  case raft_state::follower:
+    assert(_state==raft_state::candidate||_state==raft_state::leader);
+    break;
+  case raft_state::candidate:
+    assert(_state==raft_state::follower);
+    _current_term++;
+    break;
+  case raft_state::leader:
+    assert(_state==raft_state::candidate);
+    break;
+  default:
+    abort();
+  }
   _state = new_state;
   mu.unlock();
 }
@@ -47,12 +61,6 @@ int raft_provider::get_current_term() {
   int t = _current_term;
   mu.unlock();
   return t;
-}
-
-void raft_provider::increment_current_term() {
-  mu.lock();
-  _current_term++;
-  mu.unlock();
 }
 
 append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
