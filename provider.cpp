@@ -32,8 +32,9 @@ void raft_provider::set_state(raft_state new_state) {
     assert(_state==raft_state::candidate||_state==raft_state::leader);
     break;
   case raft_state::candidate:
-    assert(_state==raft_state::follower);
+    assert(_state==raft_state::follower||_state==raft_state::candidate);
     _current_term++;
+    voted_for=id;
     break;
   case raft_state::leader:
     assert(_state==raft_state::candidate);
