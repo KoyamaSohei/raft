@@ -34,7 +34,7 @@ void raft_provider::set_state(raft_state new_state) {
   case raft_state::candidate:
     assert(_state==raft_state::follower||_state==raft_state::candidate);
     _current_term++;
-    voted_for=id;
+    _voted_for=id;
     break;
   case raft_state::leader:
     assert(_state==raft_state::candidate);
@@ -67,7 +67,15 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   if(req.get_term() < current_term) {
     return request_vote_response(current_term,false);
   }
-  return request_vote_response(current_term,true);
+  mu.lock();
+  if(_voted_for.is_null() ||
+    std::string(_voted_for)==req.get_candidate_id()) {
+    _voted_for = get_engine().lookup(req.get_candidate_id());
+    mu.unlock();
+    return request_vote_response(current_term,true);
+  }
+  mu.unlock();
+  return request_vote_response(current_term,false);
 }
 
 void raft_provider::become_follower() {

@@ -56,6 +56,9 @@ public:
     return term;
   }
 
+  std::string get_candidate_id() {
+    return candidate_id;
+  }
 
   template<typename A>
   void serialize(A& ar) {
