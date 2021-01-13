@@ -1,11 +1,14 @@
-#ifndef RAFT_HPP
-#define RAFT_HPP
+#ifndef PROVIDER_HPP
+#define PROVIDER_HPP
 
 #include <thallium.hpp>
 #include <chrono>
 #include <vector>
 #include <string>
 #include "types.hpp"
+
+#define INTERVAL 1
+#define TIMEOUT  3
 
 namespace tl = thallium;
 using system_clock = std::chrono::system_clock;
