@@ -112,18 +112,16 @@ void raft_provider::run_leader() {
 }
 
 void raft_provider::run() {
-  while(1) {
-    switch (get_state()) {
-    case raft_state::follower:
-      run_follower();
-      break;
-    case raft_state::candidate:
-      run_candidate();
-      break;
-    case raft_state::leader:
-      run_leader();
-      break;
-    }
+  switch (get_state()) {
+  case raft_state::follower:
+    run_follower();
+    break;
+  case raft_state::candidate:
+    run_candidate();
+    break;
+  case raft_state::leader:
+    run_leader();
+    break;
   }
 }
 
