@@ -24,8 +24,8 @@ private:
   raft_state _state;
   // 最後に append_entries_rpc を受け取った時刻
   system_clock::time_point last_entry_recerived;
-  // peers;
-  std::vector<tl::endpoint> peers;
+  // nodes;
+  std::vector<tl::endpoint> nodes;
   // Mutex
   tl::mutex mu;
   raft_state get_state();
@@ -45,7 +45,7 @@ public:
   raft_provider(tl::engine& e,uint16_t provider_id=1);
   ~raft_provider();
   void run();
-  void append_peer(std::string addr);
+  void append_node(std::string addr);
 };
 
 #endif

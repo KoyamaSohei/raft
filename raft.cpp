@@ -53,6 +53,7 @@ void raft_provider::run_follower() {
 void raft_provider::become_candidate() {
   printf("become candidate\n");
   set_state(raft_state::candidate);
+  
 }
 
 void raft_provider::run_candidate() {
@@ -79,8 +80,8 @@ void raft_provider::run() {
   }
 }
 
-void raft_provider::append_peer(std::string addr) {
-  peers.push_back(get_engine().lookup(addr));
+void raft_provider::append_node(std::string addr) {
+  nodes.push_back(get_engine().lookup(addr));
 }
 
 void signal_handler(void *arg) {
