@@ -22,6 +22,15 @@ private:
 public:
   append_entries_response(int _term=1,bool _success=false)
   : term(_term), success(_success) {}
+
+  int get_term() {
+    return term;
+  }
+
+  bool is_success() {
+    return success;
+  }
+
   template<typename A>
   void serialize(A& ar) {
     ar & term;
