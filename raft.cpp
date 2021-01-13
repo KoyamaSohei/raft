@@ -21,6 +21,7 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
     m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc))
 {
+  become_follower();
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
 }
 
@@ -80,8 +81,8 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
 }
 
 void raft_provider::become_follower() {
+  printf("become follower\n");
   update_timeout_limit();
-
 }
 
 void raft_provider::run_follower() {
