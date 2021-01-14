@@ -30,6 +30,9 @@ int main(int argc, char** argv) {
   ABT_thread sig_thread,tick_thread;
   ABT_thread_state tick_state;
   static sigset_t ss;
+
+  std::string self_addr = "tcp";
+  std::vector<std::string> nodes;
   
   setup_segset(&ss);
 
@@ -38,14 +41,29 @@ int main(int argc, char** argv) {
   ABT_xstream_create(ABT_SCHED_NULL,&sig_stream);
   ABT_thread_create_on_xstream(sig_stream,signal_handler,&ss,ABT_THREAD_ATTR_NULL,&sig_thread);
 
+  while(1) {
+    int opt = getopt(argc,argv, "s:n:h");
+    if(opt==-1) break;
+    switch(opt) {
+    case 's':
+      self_addr = optarg;
+      break;
+    case 'n':
+      nodes.push_back(optarg);
+      break;
+    case 'h':
+      printf("Usage: \n %s [-s self_addr] [-n other_node1_addr] [-n other_node2_addr]\n",argv[0]);
+      return -1;
+      break;
+    }
+  }
+
   tl::engine my_engine("tcp", THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
   raft_provider provider(my_engine);
 
-  if(argc > 1) {
-    for(int i=1;i < argc;i++) {
-      provider.append_node(argv[i]);
-    }
+  for(std::string addr:nodes) {
+    provider.append_node(addr);
   }
   
   ABT_xstream_create(ABT_SCHED_NULL,&tick_stream);
