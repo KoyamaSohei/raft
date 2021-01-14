@@ -62,7 +62,9 @@ void raft_provider::update_timeout_limit() {
 
 void raft_provider::set_force_current_term(int term) {
   mu.lock();
+  assert(_current_term<term);
   _current_term = term;
+  _voted_for.clear();
   switch(_state) {
     case raft_state::ready:
     case raft_state::follower:
@@ -110,6 +112,14 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   if(req.get_term() < current_term) {
     return request_vote_response(current_term,false);
   }
+  if(req.get_term() > current_term) {
+    set_force_current_term(req.get_term());
+    mu.lock();
+    _voted_for = req.get_candidate_id();
+    mu.unlock();
+    return request_vote_response(req.get_term(),true);
+  }
+
   mu.lock();
   if(_voted_for.empty() ||
     _voted_for==req.get_candidate_id()) {
