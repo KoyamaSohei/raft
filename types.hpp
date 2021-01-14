@@ -7,6 +7,12 @@
 
 namespace tl = thallium;
 
+enum class raft_state {
+  follower,
+  candidate,
+  leader,
+};
+
 class append_entries_request {
 private:
   int term;
