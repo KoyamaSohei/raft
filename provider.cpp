@@ -9,9 +9,12 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
     num_nodes(1),
     _current_term(0),
     _commit_index(0),
+    logger(id),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
     m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc))
 {
+  // bootstrap state from (already exist) log
+  logger.bootstrap_state_from_log(_current_term,_voted_for);
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
 }
 
@@ -37,7 +40,9 @@ void raft_provider::set_state(raft_state new_state) {
   case raft_state::candidate:
     assert(_state==raft_state::follower ||
            _state==raft_state::candidate);
+    logger.save_current_term(_current_term+1);
     _current_term++;
+    logger.save_voted_for(id);
     _voted_for=id;
     break;
   case raft_state::leader:
@@ -64,7 +69,9 @@ void raft_provider::update_timeout_limit() {
 void raft_provider::set_force_current_term(int term) {
   mu.lock();
   assert(_current_term<term);
+  logger.save_current_term(term);
   _current_term = term;
+  logger.save_voted_for("");
   _voted_for.clear();
   switch(_state) {
     case raft_state::ready:
@@ -116,6 +123,7 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   if(req.get_term() > current_term) {
     set_force_current_term(req.get_term());
     mu.lock();
+    logger.save_voted_for(req.get_candidate_id());
     _voted_for = req.get_candidate_id();
     mu.unlock();
     return request_vote_response(req.get_term(),true);
@@ -124,6 +132,7 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   mu.lock();
   if(_voted_for.empty() ||
     _voted_for==req.get_candidate_id()) {
+    logger.save_voted_for(req.get_candidate_id());
     _voted_for = req.get_candidate_id();
     mu.unlock();
     return request_vote_response(current_term,true);

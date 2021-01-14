@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include "types.hpp"
+#include "logger.hpp"
 
 class raft_provider : public tl::provider<raft_provider> {
 private:
@@ -25,6 +26,7 @@ private:
   raft_state get_state();
   void set_state(raft_state new_state);
   // current Term
+  // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
   int _current_term;
   int get_current_term();
   // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower
@@ -32,7 +34,11 @@ private:
   // Voted endpoint on this term
   std::string _voted_for;
   // index of highest log entry known to be committed
+  // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
   int _commit_index;
+  // logger
+  raft_logger logger;
+  
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;
