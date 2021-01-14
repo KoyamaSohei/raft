@@ -163,10 +163,8 @@ void raft_logger::save_voted_for(std::string voted_for) {
 }
 
 void raft_logger::save_log(int index,std::string log_str) {
-  if(stored_log_num +1 < index) {
-    printf("savelog error: index %d is invalid because stored_log_num is %d\n",index,stored_log_num);
-    abort();
-  }
+  assert(0<index);
+  assert(index<=stored_log_num+1);
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_val save_log_key,save_log_value;
