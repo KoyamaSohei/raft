@@ -4,7 +4,7 @@
 raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id),
     id(get_engine().self()),
-    _state(raft_state::follower),
+    _state(raft_state::ready),
     num_nodes(1),
     _current_term(0),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
@@ -29,10 +29,13 @@ void raft_provider::set_state(raft_state new_state) {
   mu.lock();
   switch(new_state) {
   case raft_state::follower:
-    assert(_state==raft_state::candidate||_state==raft_state::leader);
+    assert(_state==raft_state::ready     ||
+           _state==raft_state::candidate ||
+           _state==raft_state::leader);
     break;
   case raft_state::candidate:
-    assert(_state==raft_state::follower||_state==raft_state::candidate);
+    assert(_state==raft_state::follower ||
+           _state==raft_state::candidate);
     _current_term++;
     _voted_for=id;
     break;
@@ -80,6 +83,7 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
 
 void raft_provider::become_follower() {
   printf("become follower\n");
+  set_state(raft_state::follower);
   update_timeout_limit();
 }
 
@@ -98,6 +102,10 @@ void raft_provider::become_candidate() {
   int vote = 1;
   for(tl::endpoint node: nodes) {
     request_vote_response resp = m_request_vote_rpc.on(node)(req);
+    if(resp.get_term()>get_current_term()) {
+      become_follower();
+      return;
+    }
     if(resp.is_vote_granted()) {
       vote++;
     }

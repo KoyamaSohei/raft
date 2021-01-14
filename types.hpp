@@ -8,6 +8,7 @@
 namespace tl = thallium;
 
 enum class raft_state {
+  ready,
   follower,
   candidate,
   leader,
