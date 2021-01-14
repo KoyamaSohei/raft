@@ -166,9 +166,10 @@ void raft_logger::save_log(int index,std::string log_str) {
   assert(0<index);
   assert(index<=stored_log_num+1);
   MDB_txn *txn;
+  MDB_stat *stat;
   MDB_dbi dbi;
   MDB_val save_log_key,save_log_value;
-  char save_log_key_buf[10];
+  char save_log_key_buf[11];
   int err;
 
   err = mdb_txn_begin(env,NULL,0,&txn);
@@ -194,10 +195,59 @@ void raft_logger::save_log(int index,std::string log_str) {
     abort();
   }
 
+  err = mdb_stat(txn,dbi,stat);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  stored_log_num = stat->ms_entries;
+
   err = mdb_txn_commit(txn);
   if(err) {
     mdb_txn_abort(txn);
     abort();
   }
 
+}
+
+std::string raft_logger::get_log(int index) {
+  assert(0<index);
+  if(index>stored_log_num) {
+    // not found
+    return "";
+  }
+  MDB_txn *txn;
+  MDB_stat *stat;
+  MDB_dbi dbi;
+  MDB_val get_log_key,get_log_value;
+  char get_log_key_buf[11];
+  int err;
+
+  err = mdb_txn_begin(env,NULL,0,&txn);
+  assert(err==0);
+
+  err = mdb_dbi_open(txn,log_db,0,&dbi);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  get_log_key.mv_size = 11;
+  sprintf(get_log_key_buf,"%010d",index);
+  get_log_key.mv_data = get_log_key_buf;
+
+  err = mdb_get(txn,dbi,&get_log_key,&get_log_value);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  err = mdb_txn_commit(txn);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  return std::string((char *)get_log_value.mv_data);
 }
