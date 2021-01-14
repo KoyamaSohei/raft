@@ -24,7 +24,7 @@ public:
   void bootstrap_state_from_log(int &current_term,std::string &voted_for);
   void save_current_term(int current_term);
   void save_voted_for(std::string voted_for);
-  void save_log(int index,std::string log_str);
+  void save_log(int index,std::string json_str);
   std::string get_log(int index);
 };
 
