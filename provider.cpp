@@ -134,6 +134,8 @@ void raft_provider::run_leader() {
 
 void raft_provider::run() {
   switch (get_state()) {
+  case raft_state::ready:
+    break;
   case raft_state::follower:
     run_follower();
     break;
