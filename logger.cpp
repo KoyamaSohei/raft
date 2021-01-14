@@ -161,3 +161,45 @@ void raft_logger::save_voted_for(std::string voted_for) {
     abort();
   }
 }
+
+void raft_logger::save_log(int index,std::string log_str) {
+  if(stored_log_num +1 < index) {
+    printf("savelog error: index %d is invalid because stored_log_num is %d\n",index,stored_log_num);
+    abort();
+  }
+  MDB_txn *txn;
+  MDB_dbi dbi;
+  MDB_val save_log_key,save_log_value;
+  char save_log_key_buf[10];
+  int err;
+
+  err = mdb_txn_begin(env,NULL,0,&txn);
+  assert(err==0);
+
+  err = mdb_dbi_open(txn,log_db,0,&dbi);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  save_log_key.mv_size = 11;
+  sprintf(save_log_key_buf,"%010d",index);
+  save_log_key.mv_data = save_log_key_buf;
+
+  // log_str.size() is not include '\0' so +1
+  save_log_value.mv_size = sizeof(char) * (log_str.size()+1);
+  save_log_key.mv_data = (void *)log_str.c_str();
+
+  err = mdb_put(txn,dbi,&save_log_key,&save_log_key,0);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  err = mdb_txn_commit(txn);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+}
