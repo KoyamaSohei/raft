@@ -68,9 +68,9 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
     return request_vote_response(current_term,false);
   }
   mu.lock();
-  if(_voted_for.is_null() ||
-    std::string(_voted_for)==req.get_candidate_id()) {
-    _voted_for = get_engine().lookup(req.get_candidate_id());
+  if(_voted_for.empty() ||
+    _voted_for==req.get_candidate_id()) {
+    _voted_for = req.get_candidate_id();
     mu.unlock();
     return request_vote_response(current_term,true);
   }
