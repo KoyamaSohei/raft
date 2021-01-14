@@ -61,12 +61,8 @@ int main(int argc, char** argv) {
   tl::engine my_engine(self_addr, THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
   raft_provider provider(my_engine);
-
-  for(std::string addr:nodes) {
-    provider.append_node(addr);
-  }
   
-  provider.start();
+  provider.start(nodes);
   
   ABT_xstream_create(ABT_SCHED_NULL,&tick_stream);
   ABT_thread_create_on_xstream(tick_stream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tick_thread);

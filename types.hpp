@@ -5,8 +5,8 @@
 #include <thallium/serialization/stl/string.hpp>
 #include <string>
 
-#define INTERVAL 1
-#define TIMEOUT  3
+#define INTERVAL 5
+#define TIMEOUT  10
 
 namespace tl = thallium;
 using system_clock = std::chrono::system_clock;

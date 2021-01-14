@@ -47,14 +47,15 @@ private:
 
   void become_leader();
   void run_leader();
+
+  // ノードを追加 ready時にのみ呼び出し可能
+  void append_node(std::string addr);
 public:
   raft_provider(tl::engine& e,uint16_t provider_id=1);
   ~raft_provider();
   void run();
-  // ノードを追加 ready時にのみ呼び出し可能
-  void append_node(std::string addr);
   // readyからfollowerに遷移
-  void start();
+  void start(std::vector<std::string> &addrs);
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include <cassert>
+#include <unistd.h>
 #include "provider.hpp"
 
 raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
@@ -205,6 +206,11 @@ void raft_provider::append_node(std::string addr) {
   assert(num_nodes==(int)nodes.size()+1);
 }
 
-void raft_provider::start() {
+void raft_provider::start(std::vector<std::string> &addrs) {
+  // append_node(addr)時に名前解決するために、他のサーバーが起動するのを待つ
+  sleep(INTERVAL);
+  for(std::string addr:addrs) {
+    append_node(addr);
+  }
   become_follower();
 }
