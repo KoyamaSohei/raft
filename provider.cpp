@@ -117,16 +117,18 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
 
 request_vote_response raft_provider::request_vote_rpc(request_vote_request &req) {
   int current_term = get_current_term();
-  if(req.get_term() < current_term) {
+  std::string candidate_id = req.get_candidate_id();
+  int request_term = req.get_term();
+  if(request_term  < current_term) {
     return request_vote_response(current_term,false);
   }
-  if(req.get_term() > current_term) {
-    set_force_current_term(req.get_term());
+  if(request_term  > current_term) {
+    set_force_current_term(request_term );
     mu.lock();
     logger.save_voted_for(req.get_candidate_id());
     _voted_for = req.get_candidate_id();
     mu.unlock();
-    return request_vote_response(req.get_term(),true);
+    return request_vote_response(request_term ,true);
   }
 
   mu.lock();
