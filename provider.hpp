@@ -19,7 +19,8 @@ private:
   tl::endpoint id;
   // 現在の状態(follower/candidate/leader)
   raft_state _state;
-  // timeout_limit < 現在の時刻 であれば followerからcandidateへ遷移
+  // follower時タイムアウト -> canditateに遷移、election開始
+  // candidate時タイムアウト -> candidateに遷移、election再トライ
   system_clock::time_point timeout_limit;
   void update_timeout_limit();
   // nodes;
@@ -34,6 +35,8 @@ private:
   int get_current_term();
   // Voted endpoint on this term
   std::string _voted_for;
+  // index of highest log entry known to be committed
+  int _commit_index;
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;

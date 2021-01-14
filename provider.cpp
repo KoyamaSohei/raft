@@ -7,6 +7,7 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
     _state(raft_state::ready),
     num_nodes(1),
     _current_term(0),
+    _commit_index(0),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
     m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc))
 {
