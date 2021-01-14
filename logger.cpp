@@ -146,8 +146,8 @@ void raft_logger::save_voted_for(std::string voted_for) {
   }
 
   // voted_for.size() is not include '\0' so +1
-  int data_size = sizeof(char) * (voted_for.size()+1);
-  voted_for_value = { data_size, (void *)voted_for.c_str() };
+  voted_for_value.mv_size = sizeof(char) * (voted_for.size()+1);
+  voted_for_value.mv_data = (void *)voted_for.c_str();
 
   err = mdb_put(txn,dbi,&voted_for_key,&voted_for_value,0);
   if(err) {
