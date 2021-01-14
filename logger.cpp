@@ -5,12 +5,40 @@
 #include <cassert>
 
 raft_logger::raft_logger(tl::endpoint id) {
+  MDB_txn *txn;
+  MDB_dbi dbi;
+  MDB_stat *stat;
   std::string path = id;
   int err;
+
   err = mkdir(path.c_str(),0664);
   assert(err==0||err==EEXIST);
+
   err = mdb_env_open(env,path.c_str(),0,0664);
   assert(err==0);
+
+  err = mdb_txn_begin(env,NULL,0,&txn);
+  assert(err==0);
+
+  err = mdb_dbi_open(txn,log_db,MDB_CREATE,&dbi);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  err = mdb_stat(txn,dbi,stat);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  stored_log_num = stat->ms_entries;
+
+  err = mdb_txn_commit(txn);
+  if(err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
 }
 
 raft_logger::~raft_logger() {
