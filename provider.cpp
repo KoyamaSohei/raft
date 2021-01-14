@@ -96,7 +96,7 @@ void raft_provider::run_follower() {
 }
 
 void raft_provider::become_candidate() {
-  printf("become candidate\n");
+  printf("become candidate, and starting election...\n");
   set_state(raft_state::candidate);
   request_vote_request req(get_current_term(),id);
   int vote = 1;
