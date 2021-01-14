@@ -5,7 +5,11 @@
 #include <thallium/serialization/stl/string.hpp>
 #include <string>
 
+#define INTERVAL 1
+#define TIMEOUT  3
+
 namespace tl = thallium;
+using system_clock = std::chrono::system_clock;
 
 enum class raft_state {
   ready,

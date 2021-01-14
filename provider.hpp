@@ -7,12 +7,6 @@
 #include <string>
 #include "types.hpp"
 
-#define INTERVAL 1
-#define TIMEOUT  3
-
-namespace tl = thallium;
-using system_clock = std::chrono::system_clock;
-
 class raft_provider : public tl::provider<raft_provider> {
 private:
   // Node ID

@@ -4,8 +4,8 @@
 #include <lmdb.h>
 #include <string>
 #include <thallium.hpp>
+#include "types.hpp"
 
-namespace tl = thallium;
 
 class raft_logger {
 private:
