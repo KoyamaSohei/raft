@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  tl::engine my_engine("tcp", THALLIUM_SERVER_MODE);
+  tl::engine my_engine(self_addr, THALLIUM_SERVER_MODE);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
   raft_provider provider(my_engine);
 
