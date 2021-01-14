@@ -97,7 +97,7 @@ void raft_logger::bootstrap_state_from_log(int &current_term,std::string &voted_
   }
 
   printf("bootstrap: current_term is %d\n",current_term);
-  printf("bootstrap: voted_for is %s\n",voted_for);
+  printf("bootstrap: voted_for is %s\n",voted_for.c_str());
 }
 
 void raft_logger::save_current_term(int current_term) {
@@ -187,9 +187,9 @@ void raft_logger::save_log(int index,std::string log_str) {
 
   // log_str.size() is not include '\0' so +1
   save_log_value.mv_size = sizeof(char) * (log_str.size()+1);
-  save_log_key.mv_data = (void *)log_str.c_str();
+  save_log_value.mv_data = (void *)log_str.c_str();
 
-  err = mdb_put(txn,dbi,&save_log_key,&save_log_key,0);
+  err = mdb_put(txn,dbi,&save_log_key,&save_log_value,0);
   if(err) {
     mdb_txn_abort(txn);
     abort();
@@ -218,7 +218,6 @@ std::string raft_logger::get_log(int index) {
     return "";
   }
   MDB_txn *txn;
-  MDB_stat *stat;
   MDB_dbi dbi;
   MDB_val get_log_key,get_log_value;
   char get_log_key_buf[11];
