@@ -61,8 +61,48 @@ void raft_provider::update_timeout_limit() {
   timeout_limit = system_clock::now() + std::chrono::seconds(TIMEOUT + rand() % TIMEOUT);
 }
 
+void raft_provider::set_force_current_term(int term) {
+  mu.lock();
+  _current_term = term;
+  switch(_state) {
+    case raft_state::ready:
+    case raft_state::follower:
+      break;
+    case raft_state::candidate:
+    case raft_state::leader:
+      _state = raft_state::follower;
+      break;
+  }
+  mu.unlock();
+}
+
 append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
-  update_timeout_limit();
+  int current_term = get_current_term();
+  if(req.get_term() < current_term) {
+    return append_entries_response(current_term,false);
+  }
+
+  if(req.get_term() > current_term) {
+    set_force_current_term(req.get_term());
+    return append_entries_response(current_term,true);
+  }
+
+  switch(get_state()) {
+    case raft_state::ready:
+      return append_entries_response(0,false);
+    case raft_state::follower:
+      update_timeout_limit();
+      return append_entries_response(get_current_term(),true);
+    case raft_state::candidate:
+      become_follower();
+      return append_entries_response(get_current_term(),true);
+    case raft_state::leader:
+      printf("there are 2 leader in same term\n");
+      abort();
+      return append_entries_response(get_current_term(),false);
+  }
+
+  abort();
   return append_entries_response(0,false);
 }
 

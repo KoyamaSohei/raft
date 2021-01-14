@@ -22,6 +22,10 @@ public:
   append_entries_request(int _term=1)
   : term(_term) {}
 
+  int get_term() {
+    return term;
+  }
+
   template<typename A>
   void serialize(A& ar) {
     ar & term;

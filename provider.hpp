@@ -33,6 +33,8 @@ private:
   // current Term
   int _current_term;
   int get_current_term();
+  // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower
+  void set_force_current_term(int term);
   // Voted endpoint on this term
   std::string _voted_for;
   // index of highest log entry known to be committed
