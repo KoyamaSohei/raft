@@ -66,6 +66,8 @@ int main(int argc, char** argv) {
     provider.append_node(addr);
   }
   
+  provider.start();
+  
   ABT_xstream_create(ABT_SCHED_NULL,&tick_stream);
   ABT_thread_create_on_xstream(tick_stream,tick_loop,&provider,ABT_THREAD_ATTR_NULL,&tick_thread);
 

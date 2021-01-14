@@ -11,7 +11,6 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
     m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc))
 {
-  become_follower();
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
 }
 
@@ -89,17 +88,17 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
 
   switch(get_state()) {
     case raft_state::ready:
-      return append_entries_response(0,false);
+      return append_entries_response(current_term,true);
     case raft_state::follower:
       update_timeout_limit();
-      return append_entries_response(get_current_term(),true);
+      return append_entries_response(current_term,true);
     case raft_state::candidate:
       become_follower();
-      return append_entries_response(get_current_term(),true);
+      return append_entries_response(current_term,true);
     case raft_state::leader:
       printf("there are 2 leader in same term\n");
       abort();
-      return append_entries_response(get_current_term(),false);
+      return append_entries_response(current_term,false);
   }
 
   abort();
@@ -190,7 +189,12 @@ void raft_provider::run() {
 }
 
 void raft_provider::append_node(std::string addr) {
+  assert(get_state()==raft_state::ready);
   nodes.push_back(get_engine().lookup(addr));
   num_nodes++;
   assert(num_nodes==(int)nodes.size()+1);
+}
+
+void raft_provider::start() {
+  become_follower();
 }
