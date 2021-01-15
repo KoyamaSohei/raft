@@ -183,6 +183,8 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
     }
     logger.save_voted_for(candidate_id);
     _voted_for = candidate_id;
+
+    update_timeout_limit();
     mu.unlock();
     return request_vote_response(current_term,true);
   }
@@ -212,6 +214,7 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   logger.save_voted_for(candidate_id);
   _voted_for = candidate_id;
 
+  update_timeout_limit();
   mu.unlock();
   return request_vote_response(current_term,true);
 }
