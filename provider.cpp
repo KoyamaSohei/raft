@@ -13,6 +13,9 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
     m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc))
 {
+  define(CLIENT_PUT_RPC_NAME,&raft_provider::client_put_rpc);
+  define(CLIENT_GET_RPC_NAME,&raft_provider::client_get_rpc);
+  define(ECHO_STATE_RPC_NAME,&raft_provider::echo_state_rpc);
   // bootstrap state from (already exist) log
   logger.bootstrap_state_from_log(_current_term,_voted_for);
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
@@ -141,6 +144,21 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   }
   mu.unlock();
   return request_vote_response(current_term,false);
+}
+
+void raft_provider::client_put_rpc(std::string key,std::string value) {
+
+}
+
+std::string raft_provider::client_get_rpc(std::string key) {
+  return "";
+}
+
+int raft_provider::echo_state_rpc() {
+  mu.lock();
+  int r = (int)get_state();
+  mu.unlock();
+  return r;
 }
 
 void raft_provider::become_follower() {

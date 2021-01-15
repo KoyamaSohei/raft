@@ -45,6 +45,12 @@ private:
   // request_vote rpc
   request_vote_response request_vote_rpc(request_vote_request &req);
   tl::remote_procedure m_request_vote_rpc;
+  // client put rpc
+  void client_put_rpc(std::string key,std::string value);
+  // client get rpc
+  std::string client_get_rpc(std::string key);
+  // echo state rpc
+  int echo_state_rpc();
   void become_follower();
   void run_follower();
 

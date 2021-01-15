@@ -105,4 +105,9 @@ public:
   }
 };
 
+#define CLIENT_PUT_RPC_NAME "client_put"
+#define CLIENT_GET_RPC_NAME "client_get"
+
+#define ECHO_STATE_RPC_NAME "echo_state"
+
 #endif
