@@ -5,6 +5,7 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <map>
 #include "types.hpp"
 #include "logger.hpp"
 #include "kvs.hpp"
@@ -35,12 +36,16 @@ private:
   // Voted endpoint on this term
   // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
   std::string _voted_for;
-  // index of highest log entry known to be committed
-  int _commit_index;
   // logger
   raft_logger logger;
   // kvs
   raft_kvs kvs;
+  // for each server, index of the next log entryto send to that server
+  std::map<tl::endpoint*,int> next_index;
+  // for each server, index of highest log entryknown to be replicated on server
+  std::map<tl::endpoint*,int> match_index;
+  // index of highest log entry known to be committed
+  int _commit_index;
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;

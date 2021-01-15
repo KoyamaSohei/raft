@@ -215,6 +215,19 @@ void raft_provider::run_candidate() {
 
 void raft_provider::become_leader() {
   printf("become leader\n");
+  int last_index;
+  int last_term;
+  logger.get_last_log(last_index,last_term);
+  next_index.clear();
+  // next_index initialized to leader last log index + 1
+  for(tl::endpoint node:nodes) {
+    next_index[&node]=last_index+1;
+  }
+  match_index.clear();
+  // matchIndex initialized to 0
+  for(tl::endpoint node:nodes) {
+    match_index[&node]=0;
+  }
   set_state(raft_state::leader);
 }
 
