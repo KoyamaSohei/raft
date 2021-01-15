@@ -55,16 +55,17 @@ void raft_provider::set_state(raft_state new_state) {
 }
 
 int raft_provider::get_current_term() {
-  int t = _current_term;
-  return t;
+  assert(0<=_current_term);
+  return _current_term;
 }
 
 int raft_provider::get_commit_index() {
-  int c = _commit_index;
-  return c;
+  assert(0<=_commit_index);
+  return _commit_index;
 }
 
 void raft_provider::set_commit_index(int index) {
+  assert(_commit_index < index);
   _commit_index = index;
 }
 

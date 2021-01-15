@@ -125,6 +125,7 @@ void raft_logger::bootstrap_state_from_log(int &current_term,std::string &voted_
 }
 
 void raft_logger::save_current_term(int current_term) {
+  assert(0<=current_term);
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_val current_term_value;
@@ -276,6 +277,7 @@ std::string raft_logger::get_log_str(int index) {
 }
 
 int raft_logger::append_log(int term,std::string key,std::string value) {
+  assert(0<=term);
   int index = stored_log_num;
   save_log(index,term,key,value);
   return index;
@@ -326,6 +328,8 @@ void raft_logger::get_last_log(int &index,int &term) {
   index = stored_log_num;
   std::string key,value;
   get_log(index,term,key,value);
+  assert(0<=index);
+  assert(0<=term);
 }
 
 bool raft_logger::match_log(int index,int term) {
