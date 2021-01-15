@@ -22,7 +22,7 @@ private:
   void update_timeout_limit();
   // nodes;
   int num_nodes;
-  std::vector<tl::endpoint> nodes;
+  std::vector<tl::provider_handle> nodes;
   // Mutex
   tl::mutex mu;
   raft_state get_state();

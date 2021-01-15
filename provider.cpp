@@ -220,7 +220,7 @@ void raft_provider::become_candidate() {
   set_state(raft_state::candidate);
   request_vote_request req(get_current_term(),id);
   int vote = 1;
-  for(tl::endpoint node: nodes) {
+  for(tl::provider_handle node: nodes) {
     request_vote_response resp = m_request_vote_rpc.on(node)(req);
     if(resp.get_term()>get_current_term()) {
       become_follower();
@@ -250,12 +250,12 @@ void raft_provider::become_leader() {
   logger.get_last_log(last_index,last_term);
   next_index.clear();
   // next_index initialized to leader last log index + 1
-  for(tl::endpoint node:nodes) {
+  for(tl::provider_handle node:nodes) {
     next_index[&node]=last_index+1;
   }
   match_index.clear();
   // matchIndex initialized to 0
-  for(tl::endpoint node:nodes) {
+  for(tl::provider_handle node:nodes) {
     match_index[&node]=0;
   }
   set_state(raft_state::leader);
@@ -267,7 +267,7 @@ void raft_provider::run_leader() {
   int last_index,last_term;
   logger.get_last_log(last_index,last_term);
 
-  for(tl::endpoint node:nodes) {
+  for(tl::provider_handle node:nodes) {
     int prev_index = next_index[&node]-1;
     int prev_term = logger.get_term(prev_index);
     std::vector<raft_entry> entries;
@@ -318,7 +318,8 @@ void raft_provider::run() {
 
 void raft_provider::append_node(std::string addr) {
   assert(get_state()==raft_state::ready);
-  nodes.push_back(get_engine().lookup(addr));
+  tl::endpoint p = get_engine().lookup(addr);
+  nodes.push_back(tl::provider_handle(p,RAFT_PROVIDER_ID));
   num_nodes++;
   assert(num_nodes==(int)nodes.size()+1);
 }
