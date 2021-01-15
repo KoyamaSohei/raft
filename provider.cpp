@@ -338,7 +338,7 @@ void raft_provider::run_leader() {
     if(get_state() == raft_state::follower) {
       return;
     }
-    assert(get_state() == raft_state::candidate);
+    assert(get_state() == raft_state::leader);
     if(resp.get_term()>get_current_term()) {
       become_follower();
       return;
