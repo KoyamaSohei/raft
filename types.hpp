@@ -122,9 +122,18 @@ class request_vote_request {
 private:
   int term;
   std::string candidate_id;
+  int last_log_index;
+  int last_log_term;
 public:
-  request_vote_request(int _term=1,tl::endpoint _candidate_id=tl::endpoint())
-  : term(_term), candidate_id(std::string(_candidate_id)) {}
+  request_vote_request(
+    int _term=1,
+    tl::endpoint _candidate_id=tl::endpoint(),
+    int _last_log_index=0,
+    int _last_log_term=1)
+  : term(_term), 
+    candidate_id(std::string(_candidate_id)),
+    last_log_index(_last_log_index),
+    last_log_term(_last_log_term) {}
 
   int get_term() {
     return term;
@@ -132,6 +141,14 @@ public:
 
   std::string get_candidate_id() {
     return candidate_id;
+  }
+
+  int get_last_log_index() {
+    return last_log_index;
+  }
+
+  int get_last_log_term() {
+    return last_log_term;
   }
 
   template<typename A>

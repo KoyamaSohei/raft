@@ -170,9 +170,24 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
     mu.unlock();
     return request_vote_response(current_term,false);
   }
+
+  int last_log_index,last_log_term;
+  logger.get_last_log(last_log_index,last_log_term);
+
+  if(last_log_index != req.get_last_log_index()) {
+    mu.unlock();
+    return request_vote_response(current_term,false);
+  }
+
+  if(last_log_term != req.get_last_log_term()) {
+    mu.unlock();
+    return request_vote_response(current_term,false);
+  }
+
   logger.save_voted_for(candidate_id);
   _voted_for = candidate_id;
   mu.unlock();
+
   return request_vote_response(current_term,true);
 }
 
@@ -215,8 +230,14 @@ void raft_provider::run_follower() {
 void raft_provider::become_candidate() {
   printf("become candidate, and starting election...\n");
   set_state(raft_state::candidate);
-  request_vote_request req(get_current_term(),id);
+
+  int last_log_index,last_log_term;
+  logger.get_last_log(last_log_index,last_log_term);
+
+  request_vote_request req(get_current_term(),id,last_log_index,last_log_term);
   int vote = 1;
+
+
   for(tl::provider_handle node: nodes) {
     request_vote_response resp = m_request_vote_rpc.on(node)(req);
     if(resp.get_term()>get_current_term()) {
