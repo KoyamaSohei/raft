@@ -255,6 +255,7 @@ void raft_provider::become_candidate() {
 
   for(tl::provider_handle node: nodes) {
     mu.unlock();
+    printf("request_vote to %s\n",node.get_addr());
     request_vote_response resp = m_request_vote_rpc.on(node)(req);
     mu.lock();
     if(get_state() == raft_state::follower) {
