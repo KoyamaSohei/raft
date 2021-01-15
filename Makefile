@@ -9,3 +9,7 @@ raft.out: provider.cpp raft.cpp logger.cpp
 
 raft_client.out: raft_client.cpp 
 	$(CC) $(CFLAGS) $(LDFLAGS) raft_client.cpp -o raft_client.out
+
+clean:
+	rm -r log-* && \
+	rm *.out
