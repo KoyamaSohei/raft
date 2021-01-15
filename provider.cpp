@@ -162,11 +162,7 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
 
   if(request_term  > current_term) {
     set_force_current_term(request_term);
-    mu.lock();
-    logger.save_voted_for(candidate_id);
-    _voted_for = candidate_id;
-    mu.unlock();
-    return request_vote_response(request_term ,true);
+    return request_vote_response(request_term,false);
   }
 
   mu.lock();
