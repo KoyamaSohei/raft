@@ -181,6 +181,7 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
       mu.unlock();
       return request_vote_response(current_term,false);
     }
+    _voted_for = candidate_id;
     mu.unlock();
     return request_vote_response(current_term,true);
   }
@@ -270,7 +271,7 @@ void raft_provider::become_candidate() {
       vote++;
     }
   }
-  if(vote * 2 > num_nodes && get_state() == raft_state::candidate) {
+  if(vote * 2 > num_nodes) {
     become_leader();
     return;
   }
