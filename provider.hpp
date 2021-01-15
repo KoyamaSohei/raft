@@ -33,9 +33,9 @@ private:
   // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower
   void set_force_current_term(int term);
   // Voted endpoint on this term
+  // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
   std::string _voted_for;
   // index of highest log entry known to be committed
-  // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
   int _commit_index;
   // logger
   raft_logger logger;
