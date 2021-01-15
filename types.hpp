@@ -7,6 +7,7 @@
 
 #define INTERVAL 5
 #define TIMEOUT  10
+#define RAFT_PROVIDER_ID 999
 
 namespace tl = thallium;
 using system_clock = std::chrono::system_clock;

@@ -198,10 +198,7 @@ client_get_response raft_provider::client_get_rpc(std::string key) {
 }
 
 int raft_provider::echo_state_rpc() {
-  mu.lock();
-  int r = (int)get_state();
-  mu.unlock();
-  return r;
+  return (int)get_state();
 }
 
 void raft_provider::become_follower() {

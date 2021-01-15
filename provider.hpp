@@ -72,7 +72,7 @@ private:
   // ノードを追加 ready時にのみ呼び出し可能
   void append_node(std::string addr);
 public:
-  raft_provider(tl::engine& e,uint16_t provider_id=1);
+  raft_provider(tl::engine& e,uint16_t provider_id=RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
   // readyからfollowerに遷移

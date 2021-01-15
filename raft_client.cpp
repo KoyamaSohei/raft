@@ -58,28 +58,34 @@ int main(int argc,char **argv) {
       std::cin >> value_buf;
     }
 
-    tl::endpoint leader;
-    while (leader.is_null()) {
+    tl::provider_handle leader_handle;
+    while (leader_handle.is_null()) {
       printf("search leader node...\n");
       for(std::string node:nodes) {
+        printf("check if node %s is leader\n",node.c_str());
         tl::endpoint p = my_engine.lookup(node);
-        raft_state s = echo_state.on(p)();
+        // https://mochi.readthedocs.io/en/latest/thallium/12_rpc_pool.html
+        // This feature requires to provide a non-zero provider id (passed to the define call) when defining the RPC (here 1). 
+        // Hence you also need to use provider handles on clients, even if you do not define a provider class.
+        tl::provider_handle handle(p,RAFT_PROVIDER_ID);
+        int num = echo_state.on(handle)();;
+        raft_state s = raft_state(num);
         printf("node %s's state is %s\n",node.c_str(),raft_state_to_string(s).c_str());
         if(s==raft_state::leader) {
-          leader = p;
+          leader_handle = handle;
           break;
         }
       }
-      if(leader.is_null()) {
+      if(leader_handle.is_null()) {
         sleep(3);
       };
     }
     
     if(cmd_buf=="put") {
-      client_put.on(leader)(key_buf,value_buf);
+      client_put.on(leader_handle)(key_buf,value_buf);
       printf("put key: %s value: %s\n",key_buf.c_str(),value_buf.c_str());
     } else {
-      client_get_response resp = client_get.on(leader)(key_buf);
+      client_get_response resp = client_get.on(leader_handle)(key_buf);
       printf("get %s is %s\n",key_buf.c_str(),resp.get_value().c_str());
     }
     
