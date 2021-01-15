@@ -147,10 +147,16 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
 }
 
 int raft_provider::client_put_rpc(std::string key,std::string value) {
+  if(get_state()!=raft_state::leader) {
+    return RAFT_NODE_IS_NOT_LEADER;
+  }
   return false;
 }
 
 client_get_response raft_provider::client_get_rpc(std::string key) {
+  if(get_state()!=raft_state::leader) {
+    return client_get_response(RAFT_NODE_IS_NOT_LEADER,"");
+  }
   return client_get_response();
 }
 
