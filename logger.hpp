@@ -18,16 +18,18 @@ private:
   const char *log_db = "log_db";
   // 保存されているlogの要素数
   int stored_log_num;
+  std::string get_log_str(int index);
+  void save_log_str(int index,std::string log_str,MDB_txn *ptxn=NULL);
 public:
   raft_logger(tl::endpoint id);
   ~raft_logger();
   void bootstrap_state_from_log(int &current_term,std::string &voted_for);
   void save_current_term(int current_term);
   void save_voted_for(std::string voted_for);
-  void save_log(int index,std::string json_str);
-  std::string get_log(int index);
+  void get_log(int index,int &term,std::string &key,std::string &value);
   // append_log returns index
   int append_log(int term,std::string key,std::string value);
+  void get_last_log(int &index,int &term);
 };
 
 #endif

@@ -47,7 +47,16 @@ raft_logger::raft_logger(tl::endpoint id) {
     abort();
   }
 
-  stored_log_num = stat.ms_entries;
+  
+
+  if(stat.ms_entries==0) {
+    // set dummy log, this make implimentation easily
+    // index:0 ,term: -1
+    stored_log_num = 0;
+    save_log_str(0,"{\"index\":0,\"term\":-1,\"key\":\"hello\",\"value\":\"world\"}",txn);
+  } else {
+    stored_log_num = stat.ms_entries-1;
+  }
 
   err = mdb_txn_commit(txn);
   if(err) {
@@ -177,8 +186,8 @@ void raft_logger::save_voted_for(std::string voted_for) {
   }
 }
 
-void raft_logger::save_log(int index,std::string log_str) {
-  assert(0<index);
+void raft_logger::save_log_str(int index,std::string log_str,MDB_txn *ptxn) {
+  assert(0<=index);
   assert(index<=stored_log_num+1);
   MDB_txn *txn;
   MDB_stat *stat;
@@ -187,7 +196,7 @@ void raft_logger::save_log(int index,std::string log_str) {
   char save_log_key_buf[11];
   int err;
 
-  err = mdb_txn_begin(env,NULL,0,&txn);
+  err = mdb_txn_begin(env,ptxn,0,&txn);
   assert(err==0);
 
   err = mdb_dbi_open(txn,log_db,0,&dbi);
@@ -216,7 +225,7 @@ void raft_logger::save_log(int index,std::string log_str) {
     abort();
   }
 
-  stored_log_num = stat->ms_entries;
+  stored_log_num = stat->ms_entries-1;
 
   err = mdb_txn_commit(txn);
   if(err) {
@@ -226,8 +235,8 @@ void raft_logger::save_log(int index,std::string log_str) {
 
 }
 
-std::string raft_logger::get_log(int index) {
-  assert(0<index);
+std::string raft_logger::get_log_str(int index) {
+  assert(0<=index);
   if(index>stored_log_num) {
     // not found
     return "";
@@ -274,6 +283,12 @@ int raft_logger::append_log(int term,std::string key,std::string value) {
   Json::StreamWriterBuilder builder;
   std::string log_str = Json::writeString(builder, root);
   int index = stored_log_num;
-  save_log(index,log_str);
+  save_log_str(index,log_str);
   return index;
+}
+
+void raft_logger::get_last_log(int &index,int &term) {
+  index = stored_log_num;
+  std::string key,value;
+  get_log(index,term,key,value);
 }

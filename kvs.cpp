@@ -4,7 +4,7 @@
 raft_kvs::raft_kvs()
   : last_applied(0)
 {
-
+  data["hello"]="world";
 }
 
 raft_kvs::~raft_kvs() {
