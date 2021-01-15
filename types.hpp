@@ -18,16 +18,74 @@ enum class raft_state {
   leader,
 };
 
+class raft_entry {
+private:
+  int index;
+  std::string key;
+  std::string value;
+public:
+  raft_entry(int _index=0,std::string _key="",std::string _value="")
+  : index(_index),key(_key),value(_value) {}
+
+  int get_index() {
+    return index;
+  }
+
+  std::string get_key() {
+    return key;
+  }
+
+  std::string get_value() {
+    return value;
+  }
+
+  template<typename A>
+  void serialize(A& ar) {
+    ar & index;
+    ar & key;
+    ar & term;
+  }
+};
+
 class append_entries_request {
 private:
   int term;
-
+  int prev_log_index;
+  int prev_log_term;
+  std::vector<raft_entry> entries;
+  int leader_commit;
 public:
-  append_entries_request(int _term=1)
-  : term(_term) {}
+  append_entries_request(
+    int _term=1,
+    int _prev_log_index=0,
+    int _prev_log_term=0,
+    std::vector<raft_entry> _entries=std::vector<raft_entry>(),
+    int _leader_commit=0)
+  : term(_term),
+    prev_log_index(_prev_log_index),
+    prev_log_term(_prev_log_term),
+    entries(_entries),
+    leader_commit(_leader_commit)
+  {}
 
   int get_term() {
     return term;
+  }
+
+  int get_prev_log_index() {
+    return prev_log_index;
+  }
+
+  int get_prev_log_term() {
+    return prev_log_term;
+  }
+
+  std::vector<raft_entry> get_entries() {
+    return entries;
+  }
+
+  int get_leader_commit() {
+    return leader_commit;
   }
 
   template<typename A>
