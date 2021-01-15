@@ -150,7 +150,7 @@ int raft_provider::client_put_rpc(std::string key,std::string value) {
   if(get_state()!=raft_state::leader) {
     return RAFT_NODE_IS_NOT_LEADER;
   }
-  return false;
+  return RAFT_NOT_IMPLEMENTED;
 }
 
 client_get_response raft_provider::client_get_rpc(std::string key) {
