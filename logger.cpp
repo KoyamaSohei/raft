@@ -329,6 +329,8 @@ void raft_logger::get_last_log(int &index,int &term) {
 }
 
 bool raft_logger::match_log(int index,int term) {
+  assert(0<=index);
+  assert(index <= stored_log_num);
   int t = get_term(index);
   return t == term;
 } 

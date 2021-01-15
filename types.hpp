@@ -4,6 +4,7 @@
 #include <thallium.hpp>
 #include <thallium/serialization/stl/string.hpp>
 #include <string>
+#include <cassert>
 
 #define INTERVAL 5
 #define RAFT_PROVIDER_ID 999
@@ -25,7 +26,9 @@ private:
   std::string value;
 public:
   raft_entry(int _index=0,std::string _key="",std::string _value="")
-  : index(_index),key(_key),value(_value) {}
+  : index(_index),key(_key),value(_value) {
+    assert(0<=index);
+  }
 
   int get_index() {
     return index;
@@ -66,7 +69,14 @@ public:
     prev_term(_prev_term),
     entries(_entries),
     leader_commit(_leader_commit)
-  {}
+  {
+    assert(0<=prev_index);
+    assert(0<=prev_term);
+    assert(0<=leader_commit);
+    for(raft_entry ent:entries) {
+      assert(0<=ent.get_index());
+    }
+  }
 
   int get_term() {
     return term;
@@ -100,7 +110,9 @@ private:
   bool success;
 public:
   append_entries_response(int _term=1,bool _success=false)
-  : term(_term), success(_success) {}
+  : term(_term), success(_success) {
+    assert(0<=term);
+  }
 
   int get_term() {
     return term;
@@ -128,11 +140,16 @@ public:
     int _term=1,
     tl::endpoint _candidate_id=tl::endpoint(),
     int _last_log_index=0,
-    int _last_log_term=1)
+    int _last_log_term=0)
   : term(_term), 
     candidate_id(std::string(_candidate_id)),
     last_log_index(_last_log_index),
-    last_log_term(_last_log_term) {}
+    last_log_term(_last_log_term) 
+  {
+    assert(0<=term);
+    assert(0<=last_log_index);
+    assert(0<=last_log_term);
+  }
 
   int get_term() {
     return term;
@@ -163,7 +180,9 @@ private:
   bool vote_granted;
 public:
   request_vote_response(int _term=1,bool _vote_granted=false)
-  : term(_term), vote_granted(_vote_granted) {}
+  : term(_term), vote_granted(_vote_granted) {
+    assert(0<=term);
+  }
 
   int get_term() {
     return term;
