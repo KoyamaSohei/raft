@@ -51,9 +51,9 @@ raft_logger::raft_logger(tl::endpoint id) {
 
   if(stat.ms_entries==0) {
     // set dummy log, this make implimentation easily
-    // index:0 ,term: -1
+    // index:0 ,term: 0
     stored_log_num = 0;
-    save_log_str(0,"{\"index\":0,\"term\":-1,\"key\":\"hello\",\"value\":\"world\"}",txn);
+    save_log_str(0,"{\"index\":0,\"term\":0,\"key\":\"hello\",\"value\":\"world\"}",txn);
   } else {
     stored_log_num = stat.ms_entries-1;
   }
