@@ -163,19 +163,24 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
     return request_vote_response(current_term,false);
   }
 
-  if(request_term  > current_term) {
-    set_force_current_term(request_term);
-    return request_vote_response(request_term,true);
-  }
-
   mu.lock();
+  int last_log_index,last_log_term;
+  logger.get_last_log(last_log_index,last_log_term);
+
+  if(request_term  > current_term) {
+    mu.unlock();
+    set_force_current_term(request_term);
+    
+    if(last_log_index != req.get_last_log_index()) {
+      return request_vote_response(current_term,false);
+    }
+    return request_vote_response(current_term,true);
+  }
+  
   if(!_voted_for.empty() && _voted_for != candidate_id) {
     mu.unlock();
     return request_vote_response(current_term,false);
   }
-
-  int last_log_index,last_log_term;
-  logger.get_last_log(last_log_index,last_log_term);
 
   if(last_log_index != req.get_last_log_index()) {
     mu.unlock();
