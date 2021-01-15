@@ -102,24 +102,30 @@ void raft_provider::set_force_current_term(int term) {
 }
 
 append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
+  mu.lock();
   int current_term = get_current_term();
   if(req.get_term() < current_term) {
+    mu.unlock();
     return append_entries_response(current_term,false);
   }
 
   if(req.get_term() > current_term) {
     set_force_current_term(req.get_term());
+    mu.unlock();
     return append_entries_response(current_term,false);
   }
 
   switch(get_state()) {
     case raft_state::ready:
+      mu.unlock();
       return append_entries_response(current_term,false);
     case raft_state::candidate:
       become_follower();
+      mu.unlock();
       return append_entries_response(current_term,false);
     case raft_state::leader:
       printf("there are 2 leader in same term\n");
+      mu.unlock();
       abort();
       return append_entries_response(current_term,false);
     case raft_state::follower:
@@ -132,6 +138,7 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
 
   bool is_match = logger.match_log(req.get_prev_index(),req.get_prev_term());
   if(!is_match) {
+    mu.unlock();
     return append_entries_response(current_term,false);
   }
   std::vector<raft_entry> entries(req.get_entries());
@@ -147,11 +154,12 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
     }
     set_commit_index(next_index);
   }
-  
+  mu.unlock();
   return append_entries_response(current_term,true);
 }
 
 request_vote_response raft_provider::request_vote_rpc(request_vote_request &req) {
+  mu.lock();
   int current_term = get_current_term();
   std::string candidate_id = req.get_candidate_id();
   int request_term = req.get_term();
@@ -159,6 +167,7 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   printf("request_vote_rpc from %s in term %d\n",candidate_id.c_str(),request_term);
 
   if(request_term  < current_term) {
+    mu.unlock();
     return request_vote_response(current_term,false);
   }
 
@@ -169,26 +178,32 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
     set_force_current_term(request_term);
     
     if(last_log_index != req.get_last_log_index()) {
+      mu.unlock();
       return request_vote_response(current_term,false);
     }
+    mu.unlock();
     return request_vote_response(current_term,true);
   }
   
   if(!_voted_for.empty() && _voted_for != candidate_id) {
+    mu.unlock();
     return request_vote_response(current_term,false);
   }
 
   if(last_log_index != req.get_last_log_index()) {
+    mu.unlock();
     return request_vote_response(current_term,false);
   }
 
   if(last_log_term != req.get_last_log_term()) {
+    mu.unlock();
     return request_vote_response(current_term,false);
   }
 
   logger.save_voted_for(candidate_id);
   _voted_for = candidate_id;
 
+  mu.unlock();
   return request_vote_response(current_term,true);
 }
 
@@ -239,12 +254,10 @@ void raft_provider::become_candidate() {
 
 
   for(tl::provider_handle node: nodes) {
-    if(get_state() != raft_state::candidate) {
-      become_follower();
-      return;
-    }
+    mu.unlock();
     request_vote_response resp = m_request_vote_rpc.on(node)(req);
-    if(resp.get_term()>current_term) {
+    mu.lock();
+    if(get_state() != raft_state::candidate || resp.get_term()>current_term) {
       become_follower();
       return;
     }
@@ -300,8 +313,10 @@ void raft_provider::run_leader() {
       entries.emplace_back(idx,k,v);
     }
     append_entries_request req(term,prev_index,prev_term,entries,commit_index);
+    mu.unlock();
     append_entries_response resp = m_append_entries_rpc.on(node)(req);
-    if(resp.get_term()>term) {
+    mu.lock();
+    if(resp.get_term()>get_current_term()) {
       become_follower();
       return;
     }
@@ -327,6 +342,7 @@ void raft_provider::run_leader() {
 }
 
 void raft_provider::run() {
+  mu.lock();
   int last_applied = kvs.get_last_applied();
   if(last_applied<get_commit_index()) {
     int t;
@@ -348,6 +364,7 @@ void raft_provider::run() {
     break;
   }
   printf("current_term: %d, voted_for: %s\n",get_current_term(),_voted_for.c_str());
+  mu.unlock();
 }
 
 void raft_provider::append_node(std::string addr) {
