@@ -346,6 +346,7 @@ void raft_provider::run_leader() {
       next_index[&node]=last_index+1;
     } else {
       next_index[&node]--;
+      assert(next_index[&node]>0);
     }
   }
   // check if leader can commit `commit_index+1`
