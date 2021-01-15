@@ -271,6 +271,8 @@ void raft_provider::run_leader() {
     if(resp.is_success()) {
       match_index[&node]=last_index;
       next_index[&node]=last_index+1;
+    } else {
+      next_index[&node]--;
     }
   }
 }
