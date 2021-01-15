@@ -26,14 +26,11 @@ raft_provider::~raft_provider() {
 }
 
 raft_state raft_provider::get_state() {
-  mu.lock();
   raft_state s = _state;
-  mu.unlock();
   return s;
 }
 
 void raft_provider::set_state(raft_state new_state) {
-  mu.lock();
   switch(new_state) {
   case raft_state::follower:
     assert(_state==raft_state::ready     ||
@@ -55,27 +52,20 @@ void raft_provider::set_state(raft_state new_state) {
     abort();
   }
   _state = new_state;
-  mu.unlock();
 }
 
 int raft_provider::get_current_term() {
-  mu.lock();
   int t = _current_term;
-  mu.unlock();
   return t;
 }
 
 int raft_provider::get_commit_index() {
-  mu.lock();
   int c = _commit_index;
-  mu.unlock();
   return c;
 }
 
 void raft_provider::set_commit_index(int index) {
-  mu.lock();
   _commit_index = index;
-  mu.unlock();
 }
 
 void raft_provider::update_timeout_limit() {
@@ -83,7 +73,6 @@ void raft_provider::update_timeout_limit() {
 }
 
 void raft_provider::set_force_current_term(int term) {
-  mu.lock();
   assert(_current_term<term);
   logger.save_current_term(term);
   _current_term = term;
@@ -99,7 +88,6 @@ void raft_provider::set_force_current_term(int term) {
       update_timeout_limit();
       break;
   }
-  mu.unlock();
 }
 
 append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
@@ -163,12 +151,10 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
     return request_vote_response(current_term,false);
   }
 
-  mu.lock();
   int last_log_index,last_log_term;
   logger.get_last_log(last_log_index,last_log_term);
 
   if(request_term  > current_term) {
-    mu.unlock();
     set_force_current_term(request_term);
     
     if(last_log_index != req.get_last_log_index()) {
@@ -178,23 +164,19 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   }
   
   if(!_voted_for.empty() && _voted_for != candidate_id) {
-    mu.unlock();
     return request_vote_response(current_term,false);
   }
 
   if(last_log_index != req.get_last_log_index()) {
-    mu.unlock();
     return request_vote_response(current_term,false);
   }
 
   if(last_log_term != req.get_last_log_term()) {
-    mu.unlock();
     return request_vote_response(current_term,false);
   }
 
   logger.save_voted_for(candidate_id);
   _voted_for = candidate_id;
-  mu.unlock();
 
   return request_vote_response(current_term,true);
 }
@@ -204,9 +186,7 @@ int raft_provider::client_put_rpc(std::string key,std::string value) {
     return RAFT_NODE_IS_NOT_LEADER;
   }
   int term = get_current_term();
-  mu.lock();
   logger.append_log(term,key,value);
-  mu.unlock();
   return RAFT_NOT_IMPLEMENTED;
 }
 
