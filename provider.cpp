@@ -103,18 +103,18 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
 
   if(req.get_term() > current_term) {
     set_force_current_term(req.get_term());
-    return append_entries_response(current_term,true);
+    return append_entries_response(current_term,false);
   }
 
   switch(get_state()) {
     case raft_state::ready:
-      return append_entries_response(current_term,true);
+      return append_entries_response(current_term,false);
     case raft_state::follower:
       update_timeout_limit();
       return append_entries_response(current_term,true);
     case raft_state::candidate:
       become_follower();
-      return append_entries_response(current_term,true);
+      return append_entries_response(current_term,false);
     case raft_state::leader:
       printf("there are 2 leader in same term\n");
       abort();
@@ -262,7 +262,7 @@ void raft_provider::run_leader() {
       return;
     }
     if(resp.is_success()) {
-      match_index[&node]=prev_index;
+      match_index[&node]=last_index;
       next_index[&node]=last_index+1;
     }
   }
