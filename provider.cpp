@@ -352,6 +352,7 @@ void raft_provider::run() {
     run_leader();
     break;
   }
+  printf("current_term: %d, voted_for: %s\n",get_current_term(),_voted_for);
 }
 
 void raft_provider::append_node(std::string addr) {

@@ -13,7 +13,6 @@ void signal_handler(void *arg) {
 }
 
 void tick_loop(void *provider) {
-  printf("tick!\n");
   ((raft_provider *)provider)->run();
 }
 
