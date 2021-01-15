@@ -69,7 +69,18 @@ void raft_provider::set_commit_index(int index) {
 }
 
 void raft_provider::update_timeout_limit() {
-  timeout_limit = system_clock::now() + std::chrono::seconds(TIMEOUT + rand() % TIMEOUT);
+  int span = 0;
+  switch(_state) {
+  case raft_state::follower:
+    span = 2;
+    break;
+  case raft_state::candidate:
+    span = 2 + rand() % 10;
+    break;
+  default:
+    abort();
+  }
+  timeout_limit = system_clock::now() + std::chrono::seconds(span*INTERVAL);
 }
 
 void raft_provider::set_force_current_term(int term) {
