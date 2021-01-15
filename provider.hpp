@@ -47,6 +47,7 @@ private:
   // index of highest log entry known to be committed
   int _commit_index;
   int get_commit_index();
+  void set_commit_index(int index);
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;

@@ -72,6 +72,12 @@ int raft_provider::get_commit_index() {
   return c;
 }
 
+void raft_provider::set_commit_index(int index) {
+  mu.lock();
+  _commit_index = index;
+  mu.unlock();
+}
+
 void raft_provider::update_timeout_limit() {
   timeout_limit = system_clock::now() + std::chrono::seconds(TIMEOUT + rand() % TIMEOUT);
 }
@@ -127,6 +133,19 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
   bool is_match = logger.match_log(req.get_prev_index(),req.get_prev_term());
   if(!is_match) {
     return append_entries_response(current_term,false);
+  }
+  std::vector<raft_entry> entries(req.get_entries());
+
+  for(raft_entry ent:entries) {
+    logger.save_log(ent.get_index(),req.get_term(),ent.get_key(),ent.get_value());
+  }
+
+  if(req.get_leader_commit() > get_commit_index()) {
+    int next_index = req.get_leader_commit();
+    if(!entries.empty()) {
+      next_index = std::max(next_index,entries.back().get_index());
+    }
+    set_commit_index(next_index);
   }
   
   return append_entries_response(current_term,true);
