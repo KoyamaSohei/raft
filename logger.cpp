@@ -297,6 +297,8 @@ int raft_logger::get_term(int index) {
 }
 
 void raft_logger::get_log(int index,int &term,std::string &key,std::string &value) {
+  assert(0<=index);
+  assert(index <= stored_log_num);
   Json::CharReaderBuilder builder;
   Json::Value root;
   JSONCPP_STRING err_str;
