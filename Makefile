@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS += -Wall -g -std=c++14 `pkg-config --cflags thallium lmdb jsoncpp`
+CFLAGS += -Wall -g -std=c++14 `pkg-config --cflags thallium lmdb jsoncpp` -pthread
 LDFLAGS += `pkg-config --libs thallium lmdb jsoncpp`
 
 all:: raft.out raft_client.out
