@@ -52,7 +52,7 @@ int main(int argc,char **argv) {
 
     printf("enter key name \n>");
     std::cin >> key_buf;
-    
+
     if(cmd_buf=="put") {
       printf("enter value \n>");
       std::cin >> value_buf;
@@ -79,8 +79,8 @@ int main(int argc,char **argv) {
       client_put.on(leader)(key_buf,value_buf);
       printf("put key: %s value: %s\n",key_buf.c_str(),value_buf.c_str());
     } else {
-      std::string value = client_get.on(leader)(key_buf);
-      printf("get %s is %s\n",key_buf.c_str(),value.c_str());
+      client_get_response resp = client_get.on(leader)(key_buf);
+      printf("get %s is %s\n",key_buf.c_str(),resp.get_value().c_str());
     }
     
   }

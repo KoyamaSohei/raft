@@ -146,12 +146,12 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   return request_vote_response(current_term,false);
 }
 
-void raft_provider::client_put_rpc(std::string key,std::string value) {
-
+int raft_provider::client_put_rpc(std::string key,std::string value) {
+  return false;
 }
 
-std::string raft_provider::client_get_rpc(std::string key) {
-  return "";
+client_get_response raft_provider::client_get_rpc(std::string key) {
+  return client_get_response();
 }
 
 int raft_provider::echo_state_rpc() {

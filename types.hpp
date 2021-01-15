@@ -110,4 +110,30 @@ public:
 
 #define ECHO_STATE_RPC_NAME "echo_state"
 
+#define RAFT_NODE_IS_NOT_LEADER -9999
+#define RAFT_NOT_IMPLEMENTED    -10000
+
+class client_get_response {
+private:
+  int error;
+  std::string value;
+public:
+  client_get_response(int _error=RAFT_NOT_IMPLEMENTED,std::string _value="")
+  : error(_error), value(_value) {}
+
+  int get_error() {
+    return error;
+  }
+
+  std::string get_value() {
+    return value;
+  }
+
+  template<typename A>
+  void serialize(A& ar) {
+    ar & error;
+    ar & value;
+  }
+};
+
 #endif
