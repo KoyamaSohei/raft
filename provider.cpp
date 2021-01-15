@@ -236,8 +236,9 @@ void raft_provider::become_candidate() {
 
   int last_log_index,last_log_term;
   logger.get_last_log(last_log_index,last_log_term);
+  int current_term = get_current_term();
 
-  request_vote_request req(get_current_term(),id,last_log_index,last_log_term);
+  request_vote_request req(current_term,id,last_log_index,last_log_term);
   int vote = 1;
 
 
@@ -247,7 +248,7 @@ void raft_provider::become_candidate() {
       return;
     }
     request_vote_response resp = m_request_vote_rpc.on(node)(req);
-    if(resp.get_term()>get_current_term()) {
+    if(resp.get_term()>current_term) {
       become_follower();
       return;
     }
