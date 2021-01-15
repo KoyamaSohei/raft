@@ -156,6 +156,8 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   std::string candidate_id = req.get_candidate_id();
   int request_term = req.get_term();
 
+  printf("request_vote_rpc from %s in term %d\n",candidate_id.c_str(),request_term);
+
   if(request_term  < current_term) {
     return request_vote_response(current_term,false);
   }
