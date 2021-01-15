@@ -202,6 +202,13 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
     return request_vote_response(current_term,false);
   }
 
+  if(_voted_for == candidate_id) {
+    mu.unlock();
+    return request_vote_response(current_term,false);
+  }
+
+  assert(_voted_for.empty());
+
   logger.save_voted_for(candidate_id);
   _voted_for = candidate_id;
 
