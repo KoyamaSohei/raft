@@ -242,6 +242,10 @@ void raft_provider::become_candidate() {
 
 
   for(tl::provider_handle node: nodes) {
+    if(get_state() != raft_state::candidate) {
+      become_follower();
+      return;
+    }
     request_vote_response resp = m_request_vote_rpc.on(node)(req);
     if(resp.get_term()>get_current_term()) {
       become_follower();
