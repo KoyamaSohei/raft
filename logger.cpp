@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <cassert>
+#include <json/json.h>
 
 std::string generate_path(tl::endpoint id) {
   std::string id_addr = id;
@@ -263,4 +264,16 @@ std::string raft_logger::get_log(int index) {
   }
 
   return std::string((char *)get_log_value.mv_data);
+}
+
+int raft_logger::append_log(int term,std::string key,std::string value) {
+  Json::Value root;
+  root["term"]=term;
+  root["key"]=key;
+  root["value"]=value;
+  Json::StreamWriterBuilder builder;
+  std::string log_str = Json::writeString(builder, root);
+  int index = stored_log_num;
+  save_log(index,log_str);
+  return index;
 }

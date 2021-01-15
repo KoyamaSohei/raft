@@ -150,6 +150,10 @@ int raft_provider::client_put_rpc(std::string key,std::string value) {
   if(get_state()!=raft_state::leader) {
     return RAFT_NODE_IS_NOT_LEADER;
   }
+  int term = get_current_term();
+  mu.lock();
+  int index = logger.append_log(term,key,value);
+  mu.unlock();
   return RAFT_NOT_IMPLEMENTED;
 }
 
@@ -215,7 +219,10 @@ void raft_provider::become_leader() {
 }
 
 void raft_provider::run_leader() {
+  // emit heartbeat or append Entry
+  for(tl::endpoint node:nodes) {
 
+  }
 }
 
 void raft_provider::run() {

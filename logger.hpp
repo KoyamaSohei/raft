@@ -26,6 +26,8 @@ public:
   void save_voted_for(std::string voted_for);
   void save_log(int index,std::string json_str);
   std::string get_log(int index);
+  // append_log returns index
+  int append_log(int term,std::string key,std::string value);
 };
 
 #endif
