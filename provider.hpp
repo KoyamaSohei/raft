@@ -7,6 +7,7 @@
 #include <string>
 #include "types.hpp"
 #include "logger.hpp"
+#include "kvs.hpp"
 
 class raft_provider : public tl::provider<raft_provider> {
 private:
@@ -38,7 +39,8 @@ private:
   int _commit_index;
   // logger
   raft_logger logger;
-  
+  // kvs
+  raft_kvs kvs;
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;
