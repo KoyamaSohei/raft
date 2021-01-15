@@ -50,20 +50,20 @@ public:
 class append_entries_request {
 private:
   int term;
-  int prev_log_index;
-  int prev_log_term;
+  int prev_index;
+  int prev_term;
   std::vector<raft_entry> entries;
   int leader_commit;
 public:
   append_entries_request(
     int _term=1,
-    int _prev_log_index=0,
-    int _prev_log_term=0,
+    int _prev_index=0,
+    int _prev_term=0,
     std::vector<raft_entry> _entries=std::vector<raft_entry>(),
     int _leader_commit=0)
   : term(_term),
-    prev_log_index(_prev_log_index),
-    prev_log_term(_prev_log_term),
+    prev_index(_prev_index),
+    prev_term(_prev_term),
     entries(_entries),
     leader_commit(_leader_commit)
   {}
@@ -72,12 +72,12 @@ public:
     return term;
   }
 
-  int get_prev_log_index() {
-    return prev_log_index;
+  int get_prev_index() {
+    return prev_index;
   }
 
-  int get_prev_log_term() {
-    return prev_log_term;
+  int get_prev_term() {
+    return prev_term;
   }
 
   std::vector<raft_entry> get_entries() {
