@@ -4,17 +4,31 @@
 #include <errno.h>
 #include <cassert>
 
+std::string generate_path(tl::endpoint id) {
+  std::string id_addr = id;
+  std::string slash = "//";
+  int slash_pos = id_addr.find(slash);
+  std::string path = "log-" + id_addr.substr(slash_pos+slash.length(),id_addr.length()-slash_pos-slash.length());
+  return path;
+}
+
 raft_logger::raft_logger(tl::endpoint id) {
   MDB_txn *txn;
   MDB_dbi dbi;
-  MDB_stat *stat;
-  std::string path = id;
+  MDB_stat stat;
+  std::string path = generate_path(id);
   int err;
 
-  err = mkdir(path.c_str(),0664);
+  err = mkdir(path.c_str(),0755);
   assert(err==0||err==EEXIST);
 
-  err = mdb_env_open(env,path.c_str(),0,0664);
+  err = mdb_env_create(&env);
+  assert(err==0);
+
+  err = mdb_env_set_maxdbs(env,100);
+  assert(err==0);
+
+  err = mdb_env_open(env,path.c_str(),0,0755);
   assert(err==0);
 
   err = mdb_txn_begin(env,NULL,0,&txn);
@@ -26,13 +40,13 @@ raft_logger::raft_logger(tl::endpoint id) {
     abort();
   }
 
-  err = mdb_stat(txn,dbi,stat);
+  err = mdb_stat(txn,dbi,&stat);
   if(err) {
     mdb_txn_abort(txn);
     abort();
   }
 
-  stored_log_num = stat->ms_entries;
+  stored_log_num = stat.ms_entries;
 
   err = mdb_txn_commit(txn);
   if(err) {
