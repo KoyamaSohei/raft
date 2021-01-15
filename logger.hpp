@@ -27,6 +27,7 @@ public:
   void save_current_term(int current_term);
   void save_voted_for(std::string voted_for);
   void get_log(int index,int &term,std::string &key,std::string &value);
+  void save_log(int index,int term,std::string key,std::string value);
   // append_log returns index
   int append_log(int term,std::string key,std::string value);
   int get_term(int index);

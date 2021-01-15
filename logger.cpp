@@ -225,7 +225,7 @@ void raft_logger::save_log_str(int index,std::string log_str,MDB_txn *ptxn) {
     abort();
   }
 
-  stored_log_num = stat.ms_entries-1;
+  assert(stored_log_num==(int)stat.ms_entries-1);
 
   err = mdb_txn_commit(txn);
   if(err) {
@@ -276,15 +276,25 @@ std::string raft_logger::get_log_str(int index) {
 }
 
 int raft_logger::append_log(int term,std::string key,std::string value) {
+  int index = stored_log_num;
+  save_log(index,term,key,value);
+  return index;
+}
+
+void raft_logger::save_log(int index,int term,std::string key,std::string value) {
+  assert(0<=index);
+  assert(index <= stored_log_num+1);
+  if(index==stored_log_num+1) {
+    // append log
+    stored_log_num++;
+  }
   Json::Value root;
   root["term"]=term;
   root["key"]=key;
   root["value"]=value;
   Json::StreamWriterBuilder builder;
   std::string log_str = Json::writeString(builder, root);
-  int index = stored_log_num;
   save_log_str(index,log_str);
-  return index;
 }
 
 int raft_logger::get_term(int index) {

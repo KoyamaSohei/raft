@@ -109,9 +109,6 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
   switch(get_state()) {
     case raft_state::ready:
       return append_entries_response(current_term,false);
-    case raft_state::follower:
-      update_timeout_limit();
-      return append_entries_response(current_term,true);
     case raft_state::candidate:
       become_follower();
       return append_entries_response(current_term,false);
@@ -119,10 +116,20 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
       printf("there are 2 leader in same term\n");
       abort();
       return append_entries_response(current_term,false);
+    case raft_state::follower:
+      // run below
+      break;
   }
 
-  abort();
-  return append_entries_response(0,false);
+  assert(get_state()==raft_state::follower);
+  update_timeout_limit();
+
+  bool is_match = logger.match_log(req.get_prev_index(),req.get_prev_term());
+  if(!is_match) {
+    return append_entries_response(current_term,false);
+  }
+  
+  return append_entries_response(current_term,true);
 }
 
 request_vote_response raft_provider::request_vote_rpc(request_vote_request &req) {
