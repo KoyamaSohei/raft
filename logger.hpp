@@ -31,6 +31,7 @@ public:
   int append_log(int term,std::string key,std::string value);
   int get_term(int index);
   void get_last_log(int &index,int &term);
+  bool match_log(int index,int term);
 };
 
 #endif

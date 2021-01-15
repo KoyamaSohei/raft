@@ -317,3 +317,8 @@ void raft_logger::get_last_log(int &index,int &term) {
   std::string key,value;
   get_log(index,term,key,value);
 }
+
+bool raft_logger::match_log(int index,int term) {
+  int t = get_term(index);
+  return t == term;
+} 
