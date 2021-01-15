@@ -278,6 +278,13 @@ void raft_provider::run_leader() {
 }
 
 void raft_provider::run() {
+  int last_applied = kvs.get_last_applied();
+  if(last_applied<get_commit_index()) {
+    int t;
+    std::string k,v;
+    logger.get_log(last_applied+1,t,k,v);
+    kvs.apply(last_applied+1,k,v);
+  }
   switch (get_state()) {
   case raft_state::ready:
     break;
