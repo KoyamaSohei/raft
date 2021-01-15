@@ -43,7 +43,7 @@ public:
   void serialize(A& ar) {
     ar & index;
     ar & key;
-    ar & term;
+    ar & value;
   }
 };
 
