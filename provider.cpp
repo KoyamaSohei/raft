@@ -309,6 +309,18 @@ void raft_provider::run_leader() {
       next_index[&node]--;
     }
   }
+  // check if leader can commit `commit_index+1`
+  if(last_index > commit_index) {
+    int count = 1;
+    for(tl::provider_handle node:nodes) {
+      if(match_index[&node]>=commit_index+1) {
+        count++;
+      }
+    }
+    if(count*2 > num_nodes && logger.get_term(commit_index+1)==term) {
+      set_commit_index(commit_index+1);
+    }
+  }
 }
 
 void raft_provider::run() {
