@@ -88,7 +88,7 @@ void raft_logger::bootstrap_state_from_log(int &current_term,std::string &voted_
   if(err) {
     switch(err) {
       case MDB_NOTFOUND:
-        current_term = 1;
+        current_term = 0;
         break;
       default:
         mdb_txn_abort(txn);
