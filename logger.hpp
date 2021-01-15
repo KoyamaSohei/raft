@@ -29,6 +29,7 @@ public:
   void get_log(int index,int &term,std::string &key,std::string &value);
   // append_log returns index
   int append_log(int term,std::string key,std::string value);
+  int get_term(int index);
   void get_last_log(int &index,int &term);
 };
 

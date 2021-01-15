@@ -287,6 +287,15 @@ int raft_logger::append_log(int term,std::string key,std::string value) {
   return index;
 }
 
+int raft_logger::get_term(int index) {
+  assert(0<=index);
+  assert(index <= stored_log_num);
+  int term;
+  std::string key,value;
+  get_log(index,term,key,value);
+  return term;
+}
+
 void raft_logger::get_log(int index,int &term,std::string &key,std::string &value) {
   Json::CharReaderBuilder builder;
   Json::Value root;
