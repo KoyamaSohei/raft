@@ -316,7 +316,7 @@ void raft_provider::run_leader() {
     mu.unlock();
     append_entries_response resp = m_append_entries_rpc.on(node)(req);
     mu.lock();
-    if(resp.get_term()>get_current_term()) {
+    if(get_state() != raft_state::leader || resp.get_term()>get_current_term()) {
       become_follower();
       return;
     }
