@@ -266,10 +266,10 @@ void raft_provider::become_candidate() {
   int vote = 1;
 
 
-  for(tl::provider_handle node: nodes) {
+  for(std::string node: nodes) {
     mu.unlock();
-    printf("request_vote to %s\n",std::string(node).c_str());
-    request_vote_response resp = m_request_vote_rpc.on(node)(req);
+    printf("request_vote to %s\n",node.c_str());
+    request_vote_response resp = m_request_vote_rpc.on(node_to_handle[node])(req);
     mu.lock();
     if(get_state() == raft_state::follower) {
       return;
@@ -302,13 +302,13 @@ void raft_provider::become_leader() {
   logger.get_last_log(last_index,last_term);
   next_index.clear();
   // next_index initialized to leader last log index + 1
-  for(tl::provider_handle node:nodes) {
-    next_index[&node]=last_index+1;
+  for(std::string node:nodes) {
+    next_index[node]=last_index+1;
   }
   match_index.clear();
   // matchIndex initialized to 0
-  for(tl::provider_handle node:nodes) {
-    match_index[&node]=0;
+  for(std::string node:nodes) {
+    match_index[node]=0;
   }
   set_state(raft_state::leader);
 }
@@ -319,8 +319,9 @@ void raft_provider::run_leader() {
   int last_index,last_term;
   logger.get_last_log(last_index,last_term);
 
-  for(tl::provider_handle node:nodes) {
-    int prev_index = next_index[&node]-1;
+  for(std::string node:nodes) {
+    int prev_index = next_index[node]-1;
+    assert(0<=prev_index);
     int prev_term = logger.get_term(prev_index);
     std::vector<raft_entry> entries;
     for(int idx=prev_index+1;idx <= last_index;idx++) {
@@ -332,7 +333,7 @@ void raft_provider::run_leader() {
     }
     append_entries_request req(term,prev_index,prev_term,entries,commit_index);
     mu.unlock();
-    append_entries_response resp = m_append_entries_rpc.on(node)(req);
+    append_entries_response resp = m_append_entries_rpc.on(node_to_handle[node])(req);
     mu.lock();
     if(get_state() == raft_state::follower) {
       return;
@@ -343,18 +344,18 @@ void raft_provider::run_leader() {
       return;
     }
     if(resp.is_success()) {
-      match_index[&node]=last_index;
-      next_index[&node]=last_index+1;
+      match_index[node]=last_index;
+      next_index[node]=last_index+1;
     } else {
-      next_index[&node]--;
-      assert(next_index[&node]>0);
+      next_index[node]--;
+      assert(next_index[node]>0);
     }
   }
   // check if leader can commit `commit_index+1`
   if(last_index > commit_index) {
     int count = 1;
-    for(tl::provider_handle node:nodes) {
-      if(match_index[&node]>=commit_index+1) {
+    for(std::string node:nodes) {
+      if(match_index[node]>=commit_index+1) {
         count++;
       }
     }
@@ -393,7 +394,8 @@ void raft_provider::run() {
 void raft_provider::append_node(std::string addr) {
   assert(get_state()==raft_state::ready);
   tl::endpoint p = get_engine().lookup(addr);
-  nodes.push_back(tl::provider_handle(p,RAFT_PROVIDER_ID));
+  nodes.push_back(addr);
+  node_to_handle[addr]=tl::provider_handle(p,RAFT_PROVIDER_ID);
   num_nodes++;
   assert(num_nodes==(int)nodes.size()+1);
 }

@@ -22,7 +22,8 @@ private:
   void update_timeout_limit();
   // nodes;
   int num_nodes;
-  std::vector<tl::provider_handle> nodes;
+  std::vector<std::string> nodes;
+  std::map<std::string,tl::provider_handle> node_to_handle;
   // Mutex
   tl::mutex mu;
   // THIS MUST BE CALLED BY CRITICAL SECTION
@@ -45,9 +46,9 @@ private:
   // kvs
   raft_kvs kvs;
   // for each server, index of the next log entryto send to that server
-  std::map<tl::endpoint*,int> next_index;
+  std::map<std::string,int> next_index;
   // for each server, index of highest log entryknown to be replicated on server
-  std::map<tl::endpoint*,int> match_index;
+  std::map<std::string,int> match_index;
   // index of highest log entry known to be committed
   int _commit_index;
   int get_commit_index();
