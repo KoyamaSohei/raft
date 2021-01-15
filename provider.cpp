@@ -239,9 +239,32 @@ void raft_provider::become_leader() {
 }
 
 void raft_provider::run_leader() {
-  // emit heartbeat or append Entry
-  for(tl::endpoint node:nodes) {
+  int term = get_current_term();
+  int commit_index = get_commit_index();
+  int last_index,last_term;
+  logger.get_last_log(last_index,last_term);
 
+  for(tl::endpoint node:nodes) {
+    int prev_index = next_index[&node]-1;
+    int prev_term = logger.get_term(prev_index);
+    std::vector<raft_entry> entries;
+    for(int idx=prev_index+1;idx <= last_index;idx++) {
+      int t;
+      std::string k,v;
+      logger.get_log(idx,t,k,v);
+      assert(t==term);
+      entries.emplace_back(idx,k,v);
+    }
+    append_entries_request req(term,prev_index,prev_term,entries,commit_index);
+    append_entries_response resp = m_append_entries_rpc.on(node)(req);
+    if(resp.get_term()>term) {
+      become_follower();
+      return;
+    }
+    if(resp.is_success()) {
+      match_index[&node]=prev_index;
+      next_index[&node]=last_index+1;
+    }
   }
 }
 
