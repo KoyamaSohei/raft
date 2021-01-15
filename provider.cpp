@@ -155,28 +155,29 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
   int current_term = get_current_term();
   std::string candidate_id = req.get_candidate_id();
   int request_term = req.get_term();
+
   if(request_term  < current_term) {
     return request_vote_response(current_term,false);
   }
+
   if(request_term  > current_term) {
-    set_force_current_term(request_term );
+    set_force_current_term(request_term);
     mu.lock();
-    logger.save_voted_for(req.get_candidate_id());
-    _voted_for = req.get_candidate_id();
+    logger.save_voted_for(candidate_id);
+    _voted_for = candidate_id;
     mu.unlock();
     return request_vote_response(request_term ,true);
   }
 
   mu.lock();
-  if(_voted_for.empty() ||
-    _voted_for==req.get_candidate_id()) {
-    logger.save_voted_for(req.get_candidate_id());
-    _voted_for = req.get_candidate_id();
+  if(!_voted_for.empty() && _voted_for != candidate_id) {
     mu.unlock();
-    return request_vote_response(current_term,true);
+    return request_vote_response(current_term,false);
   }
+  logger.save_voted_for(candidate_id);
+  _voted_for = candidate_id;
   mu.unlock();
-  return request_vote_response(current_term,false);
+  return request_vote_response(current_term,true);
 }
 
 int raft_provider::client_put_rpc(std::string key,std::string value) {
