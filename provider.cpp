@@ -194,7 +194,7 @@ client_get_response raft_provider::client_get_rpc(std::string key) {
   if(get_state()!=raft_state::leader) {
     return client_get_response(RAFT_NODE_IS_NOT_LEADER,"");
   }
-  return client_get_response();
+  return client_get_response(RAFT_SUCCESS,kvs.get(key));
 }
 
 int raft_provider::echo_state_rpc() {

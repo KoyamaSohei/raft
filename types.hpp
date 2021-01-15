@@ -170,6 +170,7 @@ public:
 
 #define RAFT_NODE_IS_NOT_LEADER -9999
 #define RAFT_NOT_IMPLEMENTED    -10000
+#define RAFT_SUCCESS            0
 
 class client_get_response {
 private:
