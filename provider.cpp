@@ -143,7 +143,7 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
   if(req.get_leader_commit() > get_commit_index()) {
     int next_index = req.get_leader_commit();
     if(!entries.empty()) {
-      next_index = std::max(next_index,entries.back().get_index());
+      next_index = std::min(next_index,entries.back().get_index());
     }
     set_commit_index(next_index);
   }
