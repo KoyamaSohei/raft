@@ -294,8 +294,8 @@ void raft_logger::get_log(int index,int &term,std::string &key,std::string &valu
   const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
 
   std::string str = get_log_str(index);
-  int err = reader->parse(str.c_str(),str.c_str() + str.length(),&root,&err_str);
-  assert(err==0);
+  int ok = reader->parse(str.c_str(),str.c_str() + str.length(),&root,&err_str);
+  assert(ok);
   term = root["term"].asInt();
   key  = root["key"].asString();
   value= root["value"].asString();
