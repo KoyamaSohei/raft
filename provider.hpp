@@ -46,6 +46,7 @@ private:
   std::map<tl::endpoint*,int> match_index;
   // index of highest log entry known to be committed
   int _commit_index;
+  int get_commit_index();
   // append_entries_rpc
   append_entries_response append_entries_rpc(append_entries_request &req);
   tl::remote_procedure m_append_entries_rpc;

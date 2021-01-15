@@ -65,6 +65,13 @@ int raft_provider::get_current_term() {
   return t;
 }
 
+int raft_provider::get_commit_index() {
+  mu.lock();
+  int c = _commit_index;
+  mu.unlock();
+  return c;
+}
+
 void raft_provider::update_timeout_limit() {
   timeout_limit = system_clock::now() + std::chrono::seconds(TIMEOUT + rand() % TIMEOUT);
 }
