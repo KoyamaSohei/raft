@@ -190,7 +190,7 @@ void raft_logger::save_log_str(int index,std::string log_str,MDB_txn *ptxn) {
   assert(0<=index);
   assert(index<=stored_log_num+1);
   MDB_txn *txn;
-  MDB_stat *stat;
+  MDB_stat stat;
   MDB_dbi dbi;
   MDB_val save_log_key,save_log_value;
   char save_log_key_buf[11];
@@ -219,13 +219,13 @@ void raft_logger::save_log_str(int index,std::string log_str,MDB_txn *ptxn) {
     abort();
   }
 
-  err = mdb_stat(txn,dbi,stat);
+  err = mdb_stat(txn,dbi,&stat);
   if(err) {
     mdb_txn_abort(txn);
     abort();
   }
 
-  stored_log_num = stat->ms_entries-1;
+  stored_log_num = stat.ms_entries-1;
 
   err = mdb_txn_commit(txn);
   if(err) {
