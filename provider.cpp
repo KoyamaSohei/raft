@@ -11,10 +11,10 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
     logger(id),
     _commit_index(0),
     m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
-    m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc))
+    m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc)),
+    m_client_put_rpc(define(CLIENT_PUT_RPC_NAME,&raft_provider::client_put_rpc)),
+    m_client_get_rpc(define(CLIENT_GET_RPC_NAME,&raft_provider::client_get_rpc))
 {
-  define(CLIENT_PUT_RPC_NAME,&raft_provider::client_put_rpc);
-  define(CLIENT_GET_RPC_NAME,&raft_provider::client_get_rpc);
   define(ECHO_STATE_RPC_NAME,&raft_provider::echo_state_rpc);
   // bootstrap state from (already exist) log
   logger.bootstrap_state_from_log(_current_term,_voted_for);
@@ -52,6 +52,7 @@ void raft_provider::set_state(raft_state new_state) {
     abort();
   }
   _state = new_state;
+  leader_id = tl::provider_handle();
 }
 
 int raft_provider::get_current_term() {
@@ -109,6 +110,8 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
     mu.unlock();
     return append_entries_response(current_term,false);
   }
+
+  leader_id = tl::provider_handle(get_engine().lookup(req.get_leader_id()),RAFT_PROVIDER_ID);
 
   if(req.get_term() > current_term) {
     set_force_current_term(req.get_term());
@@ -223,18 +226,34 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
 }
 
 int raft_provider::client_put_rpc(std::string key,std::string value) {
+  mu.lock();
   if(get_state()!=raft_state::leader) {
-    return RAFT_NODE_IS_NOT_LEADER;
+    if(leader_id.is_null()) {
+      return RAFT_LEADER_NOT_FOUND;
+    }
+    mu.unlock();
+    int resp = m_client_put_rpc.on(leader_id)(key,value);
+    mu.lock();
+    return resp;
   }
   int term = get_current_term();
   logger.append_log(term,key,value);
+  mu.unlock();
   return RAFT_SUCCESS;
 }
 
 client_get_response raft_provider::client_get_rpc(std::string key) {
+  mu.lock();
   if(get_state()!=raft_state::leader) {
-    return client_get_response(RAFT_NODE_IS_NOT_LEADER,"");
+    if(leader_id.is_null()) {
+      mu.unlock();
+      return client_get_response(RAFT_LEADER_NOT_FOUND,"");
+    }
+    mu.unlock();
+    client_get_response resp = m_client_get_rpc.on(leader_id)(key);
+    return resp;
   }
+  mu.unlock();
   return client_get_response(RAFT_SUCCESS,kvs.get(key));
 }
 
@@ -345,7 +364,7 @@ void raft_provider::run_leader() {
       assert(t==term);
       entries.emplace_back(idx,k,v);
     }
-    append_entries_request req(term,prev_index,prev_term,entries,commit_index);
+    append_entries_request req(term,prev_index,prev_term,entries,commit_index,id);
     mu.unlock();
     try {
       append_entries_response resp = m_append_entries_rpc.on(node_to_handle[node])(req);

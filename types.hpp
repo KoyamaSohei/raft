@@ -59,18 +59,21 @@ private:
   int prev_term;
   std::vector<raft_entry> entries;
   int leader_commit;
+  std::string leader_id;
 public:
   append_entries_request(
     int _term=1,
     int _prev_index=0,
     int _prev_term=0,
     std::vector<raft_entry> _entries=std::vector<raft_entry>(),
-    int _leader_commit=0)
+    int _leader_commit=0,
+    tl::endpoint _leader_id=tl::endpoint())
   : term(_term),
     prev_index(_prev_index),
     prev_term(_prev_term),
     entries(_entries),
-    leader_commit(_leader_commit)
+    leader_commit(_leader_commit),
+    leader_id(std::string(_leader_id))
   {
     assert(0<=prev_index);
     assert(0<=prev_term);
@@ -100,6 +103,10 @@ public:
     return leader_commit;
   }
 
+  std::string get_leader_id() {
+    return leader_id;
+  }
+
   template<typename A>
   void serialize(A& ar) {
     ar & term;
@@ -107,6 +114,7 @@ public:
     ar & prev_term;
     ar & entries;
     ar & leader_commit;
+    ar & leader_id;
   }
 };
 
@@ -214,6 +222,7 @@ public:
 
 #define RAFT_NODE_IS_NOT_LEADER -9999
 #define RAFT_NOT_IMPLEMENTED    -10000
+#define RAFT_LEADER_NOT_FOUND   -10001
 #define RAFT_SUCCESS            0
 
 class client_get_response {

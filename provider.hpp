@@ -14,6 +14,8 @@ class raft_provider : public tl::provider<raft_provider> {
 private:
   // Node ID
   tl::endpoint id;
+  // Leader ID
+  tl::provider_handle leader_id;
   // 現在の状態(follower/candidate/leader)
   raft_state _state;
   // follower時タイムアウト -> canditateに遷移、election開始
@@ -61,8 +63,10 @@ private:
   tl::remote_procedure m_request_vote_rpc;
   // client put rpc
   int client_put_rpc(std::string key,std::string value);
+  tl::remote_procedure m_client_put_rpc;
   // client get rpc
   client_get_response client_get_rpc(std::string key);
+  tl::remote_procedure m_client_get_rpc;
   // echo state rpc
   int echo_state_rpc();
   void become_follower();
