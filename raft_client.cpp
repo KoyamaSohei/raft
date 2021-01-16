@@ -82,11 +82,24 @@ int main(int argc,char **argv) {
     }
     
     if(cmd_buf=="put") {
-      client_put.on(leader_handle)(key_buf,value_buf);
-      printf("put key: %s value: %s\n",key_buf.c_str(),value_buf.c_str());
+      int resp = client_put.on(leader_handle)(key_buf,value_buf);
+      if(resp==RAFT_SUCCESS) {
+        printf("put SUCCESS key: %s value: %s\n",key_buf.c_str(),value_buf.c_str());
+      } else if(resp==RAFT_NODE_IS_NOT_LEADER) {
+        printf("put error because raft is not leader\n");
+      } else {
+        printf("put error\n");
+      }
+      
     } else {
       client_get_response resp = client_get.on(leader_handle)(key_buf);
-      printf("get %s is %s\n",key_buf.c_str(),resp.get_value().c_str());
+      if(resp.get_error()==RAFT_SUCCESS) {
+        printf("get SUCCESS key: %s value: %s\n",key_buf.c_str(),resp.get_value().c_str());
+      } else if(resp.get_error()==RAFT_NODE_IS_NOT_LEADER) {
+        printf("get error because raft is not leader\n");
+      } else {
+        printf("get error\n");
+      }
     }
     
   }

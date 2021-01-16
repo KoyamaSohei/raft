@@ -226,7 +226,7 @@ int raft_provider::client_put_rpc(std::string key,std::string value) {
   }
   int term = get_current_term();
   logger.append_log(term,key,value);
-  return RAFT_NOT_IMPLEMENTED;
+  return RAFT_SUCCESS;
 }
 
 client_get_response raft_provider::client_get_rpc(std::string key) {
