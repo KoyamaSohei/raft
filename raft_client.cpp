@@ -26,7 +26,7 @@ void usage(int argc,char **argv) {
   printf("enter cmd (put or get)\n");
   printf(">get\n");
   printf("enter key name\n");
-  printf(">hello");
+  printf(">hello\n");
   printf("search leader node...\n");
   printf("check if node ofi+tcp;ofi_rxm://127.0.0.1:30000 is leader\n");
   printf("node ofi+tcp;ofi_rxm://127.0.0.1:30000's state is leader\n");
