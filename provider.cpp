@@ -145,6 +145,8 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
   std::vector<raft_entry> entries(req.get_entries());
 
   for(raft_entry ent:entries) {
+    printf("entry received, idx: %d, term: %d, key: %s, value: %s\n",
+      ent.get_index(),req.get_term(),ent.get_key().c_str(),ent.get_value().c_str());
     logger.save_log(ent.get_index(),req.get_term(),ent.get_key(),ent.get_value());
   }
 
