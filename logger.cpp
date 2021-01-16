@@ -278,7 +278,7 @@ std::string raft_logger::get_log_str(int index) {
 
 int raft_logger::append_log(int term,std::string key,std::string value) {
   assert(0<=term);
-  int index = stored_log_num;
+  int index = stored_log_num+1;
   save_log(index,term,key,value);
   return index;
 }
