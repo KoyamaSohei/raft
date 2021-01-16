@@ -13,6 +13,7 @@ raft_kvs::~raft_kvs() {
 
 void raft_kvs::apply(int index,std::string key,std::string value) {
   assert(index==last_applied+1);
+  last_applied++;
   data[key]=value;
 }
 
