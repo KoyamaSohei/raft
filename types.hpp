@@ -2,6 +2,7 @@
 #define TYPES_HPP
 
 #include <thallium.hpp>
+#include <thallium/serialization/stl/vector.hpp>
 #include <thallium/serialization/stl/string.hpp>
 #include <string>
 #include <cassert>
@@ -102,6 +103,10 @@ public:
   template<typename A>
   void serialize(A& ar) {
     ar & term;
+    ar & prev_index;
+    ar & prev_term;
+    ar & entries;
+    ar & leader_commit;
   }
 };
 
@@ -172,6 +177,8 @@ public:
   void serialize(A& ar) {
     ar & term;
     ar & candidate_id;
+    ar & last_log_index;
+    ar & last_log_term;
   }
 };
 
