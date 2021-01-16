@@ -17,6 +17,8 @@ std::string raft_state_to_string(raft_state s) {
   return "";
 }
 
+std::string cmd_buf,key_buf,value_buf;
+
 
 int main(int argc,char **argv) {
   tl::engine my_engine("tcp", THALLIUM_CLIENT_MODE);
@@ -26,11 +28,23 @@ int main(int argc,char **argv) {
   std::vector<std::string> nodes;
 
   while(1) {
-    int opt = getopt(argc,argv,"n:h");
+    int opt = getopt(argc,argv,"n:pgk:v:h");
     if(opt==-1) break;
     switch(opt) {
     case 'n':
       nodes.push_back(optarg);
+      break;
+    case 'p':
+      cmd_buf = "put";
+      break;
+    case 'g':
+      cmd_buf = "get";
+      break;
+    case 'k':
+      key_buf = optarg;
+      break;
+    case 'v':
+      value_buf = optarg;
       break;
     case 'h':
       printf("Usage: \n %s [-n other_node1_addr] [-n other_node2_addr]\n",argv[0]);
@@ -38,22 +52,20 @@ int main(int argc,char **argv) {
       break;
     }
   }
-  std::string cmd_buf,key_buf,value_buf;
   while(1) {
-
-    cmd_buf.clear();
-    key_buf.clear();
-    value_buf.clear();
 
     while(!(cmd_buf=="put"||cmd_buf=="get")) {
       printf("enter cmd (put or get) \n>");
       std::cin >> cmd_buf;
     }
 
-    printf("enter key name \n>");
-    std::cin >> key_buf;
+    if(key_buf.empty()) {
+      printf("enter key name \n>");
+      std::cin >> key_buf;
+    }
+    
 
-    if(cmd_buf=="put") {
+    if(cmd_buf=="put" && value_buf.empty()) {
       printf("enter value \n>");
       std::cin >> value_buf;
     }
@@ -101,6 +113,9 @@ int main(int argc,char **argv) {
         printf("get error\n");
       }
     }
-    
+
+    cmd_buf.clear();
+    key_buf.clear();
+    value_buf.clear();
   }
 }
