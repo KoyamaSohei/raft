@@ -1,9 +1,9 @@
-#include "logger.hpp"
 #include <string>
 #include <sys/stat.h>
 #include <errno.h>
 #include <cassert>
 #include <json/json.h>
+#include "logger.hpp"
 
 std::string generate_path(tl::endpoint id) {
   std::string id_addr = id;
