@@ -19,7 +19,7 @@ std::string raft_state_to_string(raft_state s) {
 
 void usage(int argc,char **argv) {
   printf("Usage: \n %s -n other_node1_addr [-n other_node2_addr]\n",argv[0]);
-  printf("  raft_client has 3 modes \n");
+  printf("raft_client has 3 modes \n");
   printf("--------------------\n");
   printf("1. intaractive mode\n");
   printf("$ %s -n 'ofi+tcp;ofi_rxm://127.0.0.1:30000' -n 'ofi+tcp;ofi_rxm://127.0.0.1:31000'\n",argv[0]);
