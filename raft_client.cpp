@@ -20,7 +20,7 @@ std::string raft_state_to_string(raft_state s) {
 void usage(int argc,char **argv) {
   printf("Usage: \n %s -n other_node1_addr [-n other_node2_addr]\n",argv[0]);
   printf("  raft_client has 3 modes \n");
-  printf("--------------------");
+  printf("--------------------\n");
   printf("1. intaractive mode\n");
   printf("$ %s -n 'ofi+tcp;ofi_rxm://127.0.0.1:30000' -n 'ofi+tcp;ofi_rxm://127.0.0.1:31000'\n",argv[0]);
   printf("enter cmd (put or get)\n");
@@ -31,12 +31,13 @@ void usage(int argc,char **argv) {
   printf("check if node ofi+tcp;ofi_rxm://127.0.0.1:30000 is leader\n");
   printf("node ofi+tcp;ofi_rxm://127.0.0.1:30000's state is leader\n");
   printf("get SUCCESS key: hello value: world\n");
-  printf("--------------------");
+  printf("--------------------\n");
   printf("2. get mode\n");
   printf("$ %s -g -k hello -n 'ofi+tcp;ofi_rxm://127.0.0.1:30000' -n 'ofi+tcp;ofi_rxm://127.0.0.1:31000'\n",argv[0]);
   printf("check if node ofi+tcp;ofi_rxm://127.0.0.1:30000 is leader\n");
   printf("node ofi+tcp;ofi_rxm://127.0.0.1:30000's state is leader\n");
   printf("get SUCCESS key: hello value: world\n");
+  printf("--------------------\n");
   printf("3. put mode\n");
   printf("$ %s -p -k hello -v world -n 'ofi+tcp;ofi_rxm://127.0.0.1:30000' -n 'ofi+tcp;ofi_rxm://127.0.0.1:31000'\n",argv[0]);
   printf("check if node ofi+tcp;ofi_rxm://127.0.0.1:30000 is leader\n");
