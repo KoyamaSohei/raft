@@ -79,6 +79,13 @@ int main(int argc,char **argv) {
       break;
     }
   }
+
+  if(nodes.empty()) {
+    printf("please set nodes\n");
+    usage(argc,argv);
+    return 0;
+  }
+  
   if(cmd_buf.empty()) {
     printf("enter cmd (put or get) \n>");
     std::cin >> cmd_buf;
