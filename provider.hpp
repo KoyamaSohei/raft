@@ -26,17 +26,17 @@ private:
   std::map<std::string,tl::provider_handle> node_to_handle;
   // Mutex
   tl::mutex mu;
-  // THIS MUST BE CALLED BY CRITICAL SECTION
+  // THIS MUST BE CALLED IN CRITICAL SECTION
   raft_state get_state();
-  // THIS MUST BE CALLED BY CRITICAL SECTION
+  // THIS MUST BE CALLED IN CRITICAL SECTION
   void set_state(raft_state new_state);
   // current Term
   // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
   int _current_term;
-  // THIS MUST BE CALLED BY CRITICAL SECTION
+  // THIS MUST BE CALLED IN CRITICAL SECTION
   int get_current_term();
   // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower
-  // THIS MUST BE CALLED BY CRITICAL SECTION
+  // THIS MUST BE CALLED IN CRITICAL SECTION
   void set_force_current_term(int term);
   // Voted endpoint on this term
   // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
