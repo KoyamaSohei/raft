@@ -273,6 +273,7 @@ void raft_provider::become_candidate() {
     printf("request_vote to %s\n",node.c_str());
     try {
       request_vote_response resp = m_request_vote_rpc.on(node_to_handle[node])(req);
+      mu.lock();
       if(resp.get_term()>current_term) {
         become_follower();
         return;
@@ -290,11 +291,11 @@ void raft_provider::become_candidate() {
       }
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n",node.c_str());
+      mu.lock();
       if(get_state() == raft_state::follower) {
         return;
       }
     }
-    mu.lock();
   }
   if(vote * 2 > num_nodes) {
     become_leader();
@@ -348,6 +349,7 @@ void raft_provider::run_leader() {
     mu.unlock();
     try {
       append_entries_response resp = m_append_entries_rpc.on(node_to_handle[node])(req);
+      mu.lock();
       if(get_state() == raft_state::follower) {
         return;
       }
@@ -366,11 +368,11 @@ void raft_provider::run_leader() {
       printf("node %s match: %d, next: %d\n",node.c_str(),match_index[node],next_index[node]);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n",node.c_str());
+      mu.lock();
       if(get_state() == raft_state::follower) {
         return;
       }
     }
-    mu.lock();
     
   }
   // check if leader can commit `commit_index+1`
