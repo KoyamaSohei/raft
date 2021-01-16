@@ -352,7 +352,7 @@ void raft_provider::run_leader() {
       next_index[node]--;
       assert(next_index[node]>0);
     }
-    printf("node %s match: %d, next: %d\n",match_index[node],next_index[node]);
+    printf("node %s match: %d, next: %d\n",node.c_str(),match_index[node],next_index[node]);
   }
   // check if leader can commit `commit_index+1`
   if(last_index > commit_index) {
