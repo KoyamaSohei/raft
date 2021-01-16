@@ -368,7 +368,8 @@ void raft_provider::run_leader() {
 void raft_provider::run() {
   mu.lock();
   int last_applied = kvs.get_last_applied();
-  if(last_applied<get_commit_index()) {
+  int commit_index = get_commit_index();
+  if(last_applied<commit_index) {
     int t;
     std::string k,v;
     logger.get_log(last_applied+1,t,k,v);
@@ -387,7 +388,9 @@ void raft_provider::run() {
     run_leader();
     break;
   }
-  printf("current_term: %d, voted_for: %s\n",get_current_term(),_voted_for.c_str());
+  int last_index,last_term;
+  logger.get_last_log(last_index,last_term);
+  printf("term: %d, last: %d, commit: %d, applied: %d \n",get_current_term(),last_index,commit_index,last_applied);
   mu.unlock();
 }
 
