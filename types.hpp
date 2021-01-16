@@ -19,6 +19,21 @@ enum class raft_state {
   leader,
 };
 
+std::string raft_state_to_string(raft_state s) {
+  switch(s) {
+  case raft_state::ready:
+    return "ready";
+  case raft_state::follower:
+    return "follower";
+  case raft_state::candidate:
+    return "candidate";
+  case raft_state::leader:
+    return "leader";
+  }
+  return "";
+}
+
+
 class raft_entry {
 private:
   int index;

@@ -390,7 +390,8 @@ void raft_provider::run() {
   }
   int last_index,last_term;
   logger.get_last_log(last_index,last_term);
-  printf("term: %d, last: %d, commit: %d, applied: %d \n",get_current_term(),last_index,commit_index,last_applied);
+  std::string s = raft_state_to_string(get_state());
+  printf("state: %s, term: %d, last: %d, commit: %d, applied: %d \n",s.c_str(),get_current_term(),last_index,commit_index,last_applied);
   mu.unlock();
 }
 

@@ -3,20 +3,6 @@
 #include <iostream>
 #include "types.hpp"
 
-std::string raft_state_to_string(raft_state s) {
-  switch(s) {
-  case raft_state::ready:
-    return "ready";
-  case raft_state::follower:
-    return "follower";
-  case raft_state::candidate:
-    return "candidate";
-  case raft_state::leader:
-    return "leader";
-  }
-  return "";
-}
-
 void usage(int argc,char **argv) {
   printf("Usage: \n %s -n other_node1_addr [-n other_node2_addr]\n",argv[0]);
   printf("raft_client has 3 modes \n");
