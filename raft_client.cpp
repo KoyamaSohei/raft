@@ -83,7 +83,7 @@ int main(int argc,char **argv) {
   if(nodes.empty()) {
     printf("please set nodes\n");
     usage(argc,argv);
-    return 0;
+    exit(1);
   }
   
   if(cmd_buf.empty()) {
@@ -91,7 +91,7 @@ int main(int argc,char **argv) {
     std::cin >> cmd_buf;
     if(!(cmd_buf=="put" || cmd_buf=="get")) {
       printf("cmd %s is invalid\n",cmd_buf.c_str());
-      return 0;
+      exit(1);
     }
   }
 
@@ -132,19 +132,25 @@ int main(int argc,char **argv) {
     int resp = client_put.on(leader_handle)(key_buf,value_buf);
     if(resp==RAFT_SUCCESS) {
       printf("put SUCCESS key: %s value: %s\n",key_buf.c_str(),value_buf.c_str());
+      exit(0);
     } else if(resp==RAFT_NODE_IS_NOT_LEADER) {
       printf("put error because raft is not leader\n");
+      exit(1);
     } else {
       printf("put error\n");
+      exit(1);
     }
   } else {
     client_get_response resp = client_get.on(leader_handle)(key_buf);
     if(resp.get_error()==RAFT_SUCCESS) {
       printf("get SUCCESS key: %s value: %s\n",key_buf.c_str(),resp.get_value().c_str());
+      exit(0);
     } else if(resp.get_error()==RAFT_NODE_IS_NOT_LEADER) {
       printf("get error because raft is not leader\n");
+      exit(1);
     } else {
       printf("get error\n");
+      exit(1);
     }
   }
 }
