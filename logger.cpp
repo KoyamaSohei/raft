@@ -22,7 +22,7 @@ raft_logger::raft_logger(tl::endpoint id) {
   int err;
 
   err = mkdir(path.c_str(),0755);
-  assert(err==0||err==EEXIST);
+  assert(err==0||errno==EEXIST);
 
   err = mdb_env_create(&env);
   assert(err==0);
