@@ -91,9 +91,11 @@ void raft_provider::set_force_current_term(int term) {
   _current_term = term;
   logger.save_voted_for("");
   _voted_for.clear();
+
   switch(_state) {
     case raft_state::ready:
     case raft_state::follower:
+      update_timeout_limit();
       break;
     case raft_state::candidate:
     case raft_state::leader:
