@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <cassert>
 #include <json/json.h>
+#include <lmdb.h>
 #include "logger.hpp"
 
 std::string generate_path(tl::endpoint id) {
