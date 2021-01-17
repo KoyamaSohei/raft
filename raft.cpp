@@ -24,6 +24,9 @@ void setup_segset(sigset_t *ss) {
 }
 
 void get_nodes_from_buf(std::string buf,std::vector<std::string> &nodes) {
+  if(buf.empty()) {
+    return;
+  }
   std::string::size_type pos = 0,next;
 
   do {
