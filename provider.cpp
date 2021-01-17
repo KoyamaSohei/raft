@@ -19,6 +19,8 @@ raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
   // bootstrap state from (already exist) log
   logger.bootstrap_state_from_log(_current_term,_voted_for);
   get_engine().push_finalize_callback(this,[p=this]() {delete p;});
+  // Block RPC until _state != ready
+  mu.lock();
 }
 
 raft_provider::~raft_provider() {
@@ -122,11 +124,10 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
   switch(get_state()) {
     case raft_state::ready:
       mu.unlock();
-      return append_entries_response(current_term,false);
+      abort();
     case raft_state::candidate:
       become_follower();
-      mu.unlock();
-      return append_entries_response(current_term,false);
+      break;
     case raft_state::leader:
       printf("there are 2 leader in same term\n");
       mu.unlock();
@@ -436,6 +437,7 @@ void raft_provider::run() {
   }
   switch (get_state()) {
   case raft_state::ready:
+    abort();
     break;
   case raft_state::follower:
     run_follower();
@@ -464,10 +466,10 @@ void raft_provider::append_node(std::string addr) {
 }
 
 void raft_provider::start(std::vector<std::string> &addrs) {
-  // append_node(addr)時に名前解決するために、他のサーバーが起動するのを待つ
-  usleep(INTERVAL);
   for(std::string addr:addrs) {
     append_node(addr);
   }
   become_follower();
+  // begin to accept rpc
+  mu.unlock();
 }
