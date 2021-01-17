@@ -1,0 +1,85 @@
+spack:
+  specs:
+  - mochi-thallium
+  - lmdb
+  - jsoncpp
+
+  packages:
+    autoconf:
+      externals:
+      - spec: autoconf
+        prefix: /usr
+        buildable: False
+    automake:
+      externals:
+      - spec: automake
+        prefix: /usr
+        buildable: False
+    libtool:
+      externals:
+      - spec: libtool
+        prefix: /usr
+        buildable: False
+    m4:
+      externals:
+      - spec: m4
+        prefix: /usr
+        buildable: False
+    bzip2:
+      externals:
+      - spec: bzip2
+        prefix: /usr
+        buildable: False
+    zlib:
+      externals:
+      - spec: zlib
+        prefix: /usr
+        buildable: False
+    cmake:
+      externals:
+      - spec: cmake
+        prefix: /usr
+        buildable: False
+    pkg-config:
+      externals:
+      - spec: pkg-config
+        prefix: /usr
+        buildable: False
+    mercury:
+      variants: ~boostsys+ofi+bmi
+    libfabric:
+      variants: fabrics=tcp,rxm,sockets
+    rdma-core:
+      externals:
+        - spec: rdma-core
+          prefix: /usr
+      buildable: False
+  
+  repos:
+  - /opt/sds-repo
+
+  container:
+    format: docker
+    os_packages:
+      build:
+      - autoconf
+      - automake
+      - libtool
+      - m4
+      - bzip2
+      - zlib1g-dev
+      - cmake
+      - pkg-config
+      - rdma-core
+      - git
+      final:
+      - autoconf
+      - automake
+      - libtool
+      - m4
+      - bzip2
+      - zlib1g-dev
+      - cmake
+      - pkg-config
+      - rdma-core
+      - git
