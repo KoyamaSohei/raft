@@ -310,6 +310,12 @@ void raft_provider::become_candidate() {
       if(resp.is_vote_granted()) {
         vote++;
       }
+    } catch (tl::timeout &t) {
+      printf("timeout in connect to node %s",node.c_str());
+      mu.lock();
+      if(get_state() == raft_state::follower) {
+        return;
+      }
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n",node.c_str());
       mu.lock();
@@ -389,6 +395,12 @@ void raft_provider::run_leader() {
         assert(next_index[node]>0);
       }
       printf("node %s match: %d, next: %d\n",node.c_str(),match_index[node],next_index[node]);
+    } catch (tl::timeout &t) {
+      printf("timeout in connect to node %s",node.c_str());
+      mu.lock();
+      if(get_state() == raft_state::follower) {
+        return;
+      }
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n",node.c_str());
       mu.lock();
