@@ -57,29 +57,3 @@ spack:
   
   repos:
   - /opt/sds-repo
-
-  container:
-    format: docker
-    os_packages:
-      build:
-      - autoconf
-      - automake
-      - libtool
-      - m4
-      - bzip2
-      - zlib1g-dev
-      - cmake
-      - pkg-config
-      - rdma-core
-      - git
-      final:
-      - autoconf
-      - automake
-      - libtool
-      - m4
-      - bzip2
-      - zlib1g-dev
-      - cmake
-      - pkg-config
-      - rdma-core
-      - git
