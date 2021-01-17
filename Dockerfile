@@ -15,3 +15,9 @@ RUN spack env activate /opt/spack-environment && \
 COPY . .
 RUN spack env activate /opt/spack-environment && \
     make
+
+ENV SELF 'ofi+tcp;ofi_rxm://127.0.0.1:30000'
+ENV OTHER 'ofi+tcp;ofi_rxm://127.0.0.1:30001,ofi+tcp;ofi_rxm://127.0.0.1:30002'
+
+CMD spack env activate /opt/spack-environment && \
+    ./raft.out -s ${SELF} -n ${OTHER}
