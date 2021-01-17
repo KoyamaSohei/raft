@@ -95,7 +95,6 @@ void raft_provider::set_force_current_term(int term) {
   switch(_state) {
     case raft_state::ready:
     case raft_state::follower:
-      update_timeout_limit();
       break;
     case raft_state::candidate:
     case raft_state::leader:
@@ -117,8 +116,7 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
 
   if(req.get_term() > current_term) {
     set_force_current_term(req.get_term());
-    mu.unlock();
-    return append_entries_response(current_term,false);
+    assert(get_state()==raft_state::follower);
   }
 
   switch(get_state()) {
