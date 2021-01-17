@@ -7,7 +7,7 @@
 #include <string>
 #include <cassert>
 
-#define INTERVAL 5
+#define INTERVAL 5000000
 #define RAFT_PROVIDER_ID 999
 
 namespace tl = thallium;

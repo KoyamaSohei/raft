@@ -82,7 +82,7 @@ void raft_provider::update_timeout_limit() {
   default:
     abort();
   }
-  timeout_limit = system_clock::now() + std::chrono::seconds(span*INTERVAL);
+  timeout_limit = system_clock::now() + std::chrono::microseconds(span*INTERVAL);
 }
 
 void raft_provider::set_force_current_term(int term) {
@@ -449,7 +449,7 @@ void raft_provider::append_node(std::string addr) {
 
 void raft_provider::start(std::vector<std::string> &addrs) {
   // append_node(addr)時に名前解決するために、他のサーバーが起動するのを待つ
-  sleep(INTERVAL);
+  usleep(INTERVAL);
   for(std::string addr:addrs) {
     append_node(addr);
   }
