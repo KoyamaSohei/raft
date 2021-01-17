@@ -290,8 +290,10 @@ void raft_provider::become_candidate() {
   for(std::string node: nodes) {
     mu.unlock();
     printf("request_vote to %s\n",node.c_str());
+    std::chrono::microseconds timeout(INTERVAL/(2*num_nodes));
     try {
-      request_vote_response resp = m_request_vote_rpc.on(node_to_handle[node])(req);
+      request_vote_response resp = 
+        m_request_vote_rpc.on(node_to_handle[node]).timed(timeout,req);
       mu.lock();
       if(resp.get_term()>current_term) {
         become_follower();
@@ -366,8 +368,10 @@ void raft_provider::run_leader() {
     }
     append_entries_request req(term,prev_index,prev_term,entries,commit_index,id);
     mu.unlock();
+    std::chrono::microseconds timeout(INTERVAL/(2*num_nodes));
     try {
-      append_entries_response resp = m_append_entries_rpc.on(node_to_handle[node])(req);
+      append_entries_response resp = 
+        m_append_entries_rpc.on(node_to_handle[node]).timed(timeout,req);
       mu.lock();
       if(get_state() == raft_state::follower) {
         return;
