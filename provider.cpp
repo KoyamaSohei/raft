@@ -444,6 +444,7 @@ void raft_provider::append_node(std::string addr) {
   node_to_handle[addr]=tl::provider_handle(p,RAFT_PROVIDER_ID);
   num_nodes++;
   assert(num_nodes==(int)nodes.size()+1);
+  std::cout << "append node " << addr << std::endl;
 }
 
 void raft_provider::start(std::vector<std::string> &addrs) {

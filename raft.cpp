@@ -23,6 +23,16 @@ void setup_segset(sigset_t *ss) {
   pthread_sigmask(SIG_BLOCK, ss, NULL);
 }
 
+void get_nodes_from_buf(std::string buf,std::vector<std::string> &nodes) {
+  std::string::size_type pos = 0,next;
+
+  do {
+    next = buf.find(",",pos);
+    nodes.emplace_back(buf.substr(pos,next-pos));
+    pos = next+1;
+  } while(next !=std::string::npos);
+}
+
 int main(int argc, char** argv) {
 
   ABT_xstream sig_stream,tick_stream;
@@ -31,6 +41,7 @@ int main(int argc, char** argv) {
   static sigset_t ss;
 
   std::string self_addr = "tcp";
+  std::string node_buf;
   std::vector<std::string> nodes;
   
   setup_segset(&ss);
@@ -48,10 +59,10 @@ int main(int argc, char** argv) {
       self_addr = optarg;
       break;
     case 'n':
-      nodes.push_back(optarg);
+      node_buf = optarg;
       break;
     case 'h':
-      printf("Usage: \n %s [-s self_addr] [-n other_node1_addr] [-n other_node2_addr]\n",argv[0]);
+      printf("Usage: \n %s [-s self_addr] [-n other_node1_addr,other_node2_addr]\n",argv[0]);
       return -1;
       break;
     }
@@ -61,7 +72,9 @@ int main(int argc, char** argv) {
   tl::engine my_engine(self_addr, THALLIUM_SERVER_MODE,true,2);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
   raft_provider provider(my_engine,RAFT_PROVIDER_ID);
-  
+
+  get_nodes_from_buf(node_buf,nodes);
+
   provider.start(nodes);
   
   ABT_xstream_create(ABT_SCHED_NULL,&tick_stream);
