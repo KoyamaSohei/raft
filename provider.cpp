@@ -240,7 +240,6 @@ int raft_provider::client_put_rpc(std::string key, std::string value) {
     if (leader_id.is_null()) { return RAFT_LEADER_NOT_FOUND; }
     mu.unlock();
     int resp = m_client_put_rpc.on(leader_id)(key, value);
-    mu.lock();
     return resp;
   }
   int term = get_current_term();
