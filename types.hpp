@@ -9,6 +9,7 @@
 
 #define INTERVAL 5000000
 #define RAFT_PROVIDER_ID 999
+#define MAX_ENTRIES_NUM 100
 
 namespace tl = thallium;
 using system_clock = std::chrono::system_clock;

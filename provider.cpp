@@ -348,15 +348,17 @@ void raft_provider::become_leader() {
 void raft_provider::run_leader() {
   int term = get_current_term();
   int commit_index = get_commit_index();
-  int last_index, last_term;
-  logger.get_last_log(last_index, last_term);
+  int last_log_index, _;
+  logger.get_last_log(last_log_index, _);
 
   for (std::string node : nodes) {
     int prev_index = next_index[node] - 1;
     assert(0 <= prev_index);
     int prev_term = logger.get_term(prev_index);
     std::vector<raft_entry> entries;
-    for (int idx = prev_index + 1; idx <= last_index; idx++) {
+    int last_index =
+      std::min(last_log_index, next_index[node] + MAX_ENTRIES_NUM);
+    for (int idx = next_index[node]; idx <= last_index; idx++) {
       int t;
       std::string k, v;
       logger.get_log(idx, t, k, v);
@@ -403,8 +405,8 @@ void raft_provider::run_leader() {
   // match_index[]        = {3 1 4 2 5} (leader's match_index is last_index,5)
   // sorted_match_index[] = {1 2 3 4 5}
   // in this case N is 3
-  if (last_index > commit_index) {
-    std::vector<int> sorted_match_index{last_index};
+  if (last_log_index > commit_index) {
+    std::vector<int> sorted_match_index{last_log_index};
 
     for (std::string node : nodes) {
       sorted_match_index.emplace_back(match_index[node]);
@@ -413,7 +415,7 @@ void raft_provider::run_leader() {
     std::sort(sorted_match_index.begin(), sorted_match_index.end());
 
     int N = sorted_match_index[num_nodes / 2];
-    assert(N <= last_index);
+    assert(N <= last_log_index);
 
     if (N > commit_index && logger.get_term(N) == term) { set_commit_index(N); }
   }
