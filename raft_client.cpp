@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     std::string key = argv[2];
     tl::provider_handle handle(my_engine.lookup(argv[3]), RAFT_PROVIDER_ID);
 
-    client_get_response resp = client_put.on(handle)(key);
+    client_get_response resp = client_get.on(handle)(key);
 
     if (resp.get_error() == RAFT_SUCCESS) {
       std::cout << resp.get_value() << std::endl;
