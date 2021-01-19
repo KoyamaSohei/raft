@@ -1,24 +1,28 @@
-#include <cassert>
-#include <unistd.h>
 #include "provider.hpp"
 
-raft_provider::raft_provider(tl::engine& e,uint16_t provider_id)
-  : tl::provider<raft_provider>(e, provider_id),
-    id(get_engine().self()),
-    _state(raft_state::ready),
-    num_nodes(1),
-    _current_term(0),
-    logger(id),
-    _commit_index(0),
-    m_append_entries_rpc(define("append_entries",&raft_provider::append_entries_rpc)),
-    m_request_vote_rpc(define("request_vote",&raft_provider::request_vote_rpc)),
-    m_client_put_rpc(define(CLIENT_PUT_RPC_NAME,&raft_provider::client_put_rpc)),
-    m_client_get_rpc(define(CLIENT_GET_RPC_NAME,&raft_provider::client_get_rpc))
-{
-  define(ECHO_STATE_RPC_NAME,&raft_provider::echo_state_rpc);
+#include <unistd.h>
+
+#include <cassert>
+
+raft_provider::raft_provider(tl::engine &e, uint16_t provider_id)
+  : tl::provider<raft_provider>(e, provider_id)
+  , id(get_engine().self())
+  , _state(raft_state::ready)
+  , num_nodes(1)
+  , _current_term(0)
+  , logger(id)
+  , _commit_index(0)
+  , m_append_entries_rpc(
+      define("append_entries", &raft_provider::append_entries_rpc))
+  , m_request_vote_rpc(define("request_vote", &raft_provider::request_vote_rpc))
+  , m_client_put_rpc(
+      define(CLIENT_PUT_RPC_NAME, &raft_provider::client_put_rpc))
+  , m_client_get_rpc(
+      define(CLIENT_GET_RPC_NAME, &raft_provider::client_get_rpc)) {
+  define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
   // bootstrap state from (already exist) log
-  logger.bootstrap_state_from_log(_current_term,_voted_for);
-  get_engine().push_finalize_callback(this,[p=this]() {delete p;});
+  logger.bootstrap_state_from_log(_current_term, _voted_for);
+  get_engine().push_finalize_callback(this, [p = this]() { delete p; });
   // Block RPC until _state != ready
   mu.lock();
 }
@@ -28,42 +32,39 @@ raft_provider::~raft_provider() {
 }
 
 raft_state raft_provider::get_state() {
-  raft_state s = _state;
-  return s;
+  return _state;
 }
 
 void raft_provider::set_state(raft_state new_state) {
-  switch(new_state) {
-  case raft_state::follower:
-    assert(_state==raft_state::ready     ||
-           _state==raft_state::candidate ||
-           _state==raft_state::leader);
-    break;
-  case raft_state::candidate:
-    assert(_state==raft_state::follower ||
-           _state==raft_state::candidate);
-    logger.save_current_term(_current_term+1);
-    _current_term++;
-    logger.save_voted_for(id);
-    _voted_for=id;
-    break;
-  case raft_state::leader:
-    assert(_state==raft_state::candidate);
-    break;
-  default:
-    abort();
+  switch (new_state) {
+    case raft_state::follower:
+      assert(_state == raft_state::ready || _state == raft_state::candidate ||
+             _state == raft_state::leader);
+      break;
+    case raft_state::candidate:
+      assert(_state == raft_state::follower || _state == raft_state::candidate);
+      logger.save_current_term(_current_term + 1);
+      _current_term++;
+      logger.save_voted_for(id);
+      _voted_for = id;
+      break;
+    case raft_state::leader:
+      assert(_state == raft_state::candidate);
+      break;
+    default:
+      abort();
   }
   _state = new_state;
   leader_id = tl::provider_handle();
 }
 
 int raft_provider::get_current_term() {
-  assert(0<=_current_term);
+  assert(0 <= _current_term);
   return _current_term;
 }
 
 int raft_provider::get_commit_index() {
-  assert(0<=_commit_index);
+  assert(0 <= _commit_index);
   return _commit_index;
 }
 
@@ -74,27 +75,28 @@ void raft_provider::set_commit_index(int index) {
 
 void raft_provider::update_timeout_limit() {
   int span = 0;
-  switch(_state) {
-  case raft_state::follower:
-    span = 2;
-    break;
-  case raft_state::candidate:
-    span = 2 + rand() % 10;
-    break;
-  default:
-    abort();
+  switch (_state) {
+    case raft_state::follower:
+      span = 2;
+      break;
+    case raft_state::candidate:
+      span = 2 + rand() % 10;
+      break;
+    default:
+      abort();
   }
-  timeout_limit = system_clock::now() + std::chrono::microseconds(span*INTERVAL);
+  timeout_limit =
+    system_clock::now() + std::chrono::microseconds(span * INTERVAL);
 }
 
 void raft_provider::set_force_current_term(int term) {
-  assert(_current_term<term);
+  assert(_current_term < term);
   logger.save_current_term(term);
   _current_term = term;
   logger.save_voted_for("");
   _voted_for.clear();
 
-  switch(_state) {
+  switch (_state) {
     case raft_state::ready:
     case raft_state::follower:
       break;
@@ -106,22 +108,24 @@ void raft_provider::set_force_current_term(int term) {
   }
 }
 
-append_entries_response raft_provider::append_entries_rpc(append_entries_request &req) {
+append_entries_response raft_provider::append_entries_rpc(
+  append_entries_request &req) {
   mu.lock();
   int current_term = get_current_term();
-  if(req.get_term() < current_term) {
+  if (req.get_term() < current_term) {
     mu.unlock();
-    return append_entries_response(current_term,false);
+    return append_entries_response(current_term, false);
   }
 
-  leader_id = tl::provider_handle(get_engine().lookup(req.get_leader_id()),RAFT_PROVIDER_ID);
+  leader_id = tl::provider_handle(get_engine().lookup(req.get_leader_id()),
+                                  RAFT_PROVIDER_ID);
 
-  if(req.get_term() > current_term) {
+  if (req.get_term() > current_term) {
     set_force_current_term(req.get_term());
-    assert(get_state()==raft_state::follower);
+    assert(get_state() == raft_state::follower);
   }
 
-  switch(get_state()) {
+  switch (get_state()) {
     case raft_state::ready:
       mu.unlock();
       abort();
@@ -132,88 +136,92 @@ append_entries_response raft_provider::append_entries_rpc(append_entries_request
       printf("there are 2 leader in same term\n");
       mu.unlock();
       abort();
-      return append_entries_response(current_term,false);
+      return append_entries_response(current_term, false);
     case raft_state::follower:
       // run below
       break;
   }
 
-  assert(get_state()==raft_state::follower);
+  assert(get_state() == raft_state::follower);
   update_timeout_limit();
 
-  bool is_match = logger.match_log(req.get_prev_index(),req.get_prev_term());
-  if(!is_match) {
+  bool is_match = logger.match_log(req.get_prev_index(), req.get_prev_term());
+  if (!is_match) {
     mu.unlock();
-    return append_entries_response(current_term,false);
+    return append_entries_response(current_term, false);
   }
   std::vector<raft_entry> entries(req.get_entries());
 
-  for(raft_entry ent:entries) {
+  for (raft_entry ent : entries) {
     printf("entry received, idx: %d, term: %d, key: %s, value: %s\n",
-      ent.get_index(),req.get_term(),ent.get_key().c_str(),ent.get_value().c_str());
-    logger.save_log(ent.get_index(),req.get_term(),ent.get_key(),ent.get_value());
+           ent.get_index(), req.get_term(), ent.get_key().c_str(),
+           ent.get_value().c_str());
+    logger.save_log(ent.get_index(), req.get_term(), ent.get_key(),
+                    ent.get_value());
   }
 
-  if(req.get_leader_commit() > get_commit_index()) {
+  if (req.get_leader_commit() > get_commit_index()) {
     int next_index = req.get_leader_commit();
-    if(!entries.empty()) {
-      next_index = std::min(next_index,entries.back().get_index());
+    if (!entries.empty()) {
+      next_index = std::min(next_index, entries.back().get_index());
     }
     set_commit_index(next_index);
   }
   mu.unlock();
-  return append_entries_response(current_term,true);
+  return append_entries_response(current_term, true);
 }
 
-request_vote_response raft_provider::request_vote_rpc(request_vote_request &req) {
+request_vote_response raft_provider::request_vote_rpc(
+  request_vote_request &req) {
   mu.lock();
   int current_term = get_current_term();
   std::string candidate_id = req.get_candidate_id();
   int request_term = req.get_term();
 
-  printf("request_vote_rpc from %s in term %d\n",candidate_id.c_str(),request_term);
+  printf("request_vote_rpc from %s in term %d\n", candidate_id.c_str(),
+         request_term);
 
-  if(request_term  < current_term) {
+  if (request_term < current_term) {
     mu.unlock();
-    return request_vote_response(current_term,false);
+    return request_vote_response(current_term, false);
   }
 
-  int last_log_index,last_log_term;
-  logger.get_last_log(last_log_index,last_log_term);
+  int last_log_index, last_log_term;
+  logger.get_last_log(last_log_index, last_log_term);
 
-  if(request_term  > current_term) {
+  if (request_term > current_term) {
     set_force_current_term(request_term);
-    
-    if(last_log_index != req.get_last_log_index()) {
+
+    if (last_log_index != req.get_last_log_index()) {
       mu.unlock();
-      return request_vote_response(current_term,false);
+      return request_vote_response(current_term, false);
     }
     logger.save_voted_for(candidate_id);
     _voted_for = candidate_id;
 
     update_timeout_limit();
     mu.unlock();
-    return request_vote_response(current_term,true);
-  }
-  
-  if(!_voted_for.empty() && _voted_for != candidate_id) {
-    mu.unlock();
-    return request_vote_response(current_term,false);
+    return request_vote_response(current_term, true);
   }
 
-  if(last_log_index != req.get_last_log_index()) {
+  if (!_voted_for.empty() && _voted_for != candidate_id) {
     mu.unlock();
-    return request_vote_response(current_term,false);
+    return request_vote_response(current_term, false);
   }
 
-  if(last_log_term != req.get_last_log_term()) {
+  if (last_log_index != req.get_last_log_index()) {
     mu.unlock();
-    return request_vote_response(current_term,false);
+    return request_vote_response(current_term, false);
   }
 
-  if(_voted_for == candidate_id) {
+  if (last_log_term != req.get_last_log_term()) {
     mu.unlock();
-    return request_vote_response(current_term,false);
+    return request_vote_response(current_term, false);
+  }
+
+  if (_voted_for == candidate_id) {
+    mu.unlock();
+    return request_vote_response(current_term, false);
   }
 
   assert(_voted_for.empty());
@@ -223,39 +231,37 @@ request_vote_response raft_provider::request_vote_rpc(request_vote_request &req)
 
   update_timeout_limit();
   mu.unlock();
-  return request_vote_response(current_term,true);
+  return request_vote_response(current_term, true);
 }
 
-int raft_provider::client_put_rpc(std::string key,std::string value) {
+int raft_provider::client_put_rpc(std::string key, std::string value) {
   mu.lock();
-  if(get_state()!=raft_state::leader) {
-    if(leader_id.is_null()) {
-      return RAFT_LEADER_NOT_FOUND;
-    }
+  if (get_state() != raft_state::leader) {
+    if (leader_id.is_null()) { return RAFT_LEADER_NOT_FOUND; }
     mu.unlock();
-    int resp = m_client_put_rpc.on(leader_id)(key,value);
+    int resp = m_client_put_rpc.on(leader_id)(key, value);
     mu.lock();
     return resp;
   }
   int term = get_current_term();
-  logger.append_log(term,key,value);
+  logger.append_log(term, key, value);
   mu.unlock();
   return RAFT_SUCCESS;
 }
 
 client_get_response raft_provider::client_get_rpc(std::string key) {
   mu.lock();
-  if(get_state()!=raft_state::leader) {
-    if(leader_id.is_null()) {
+  if (get_state() != raft_state::leader) {
+    if (leader_id.is_null()) {
       mu.unlock();
-      return client_get_response(RAFT_LEADER_NOT_FOUND,"");
+      return client_get_response(RAFT_LEADER_NOT_FOUND, "");
     }
     mu.unlock();
     client_get_response resp = m_client_get_rpc.on(leader_id)(key);
     return resp;
   }
   mu.unlock();
-  return client_get_response(RAFT_SUCCESS,kvs.get(key));
+  return client_get_response(RAFT_SUCCESS, kvs.get(key));
 }
 
 int raft_provider::echo_state_rpc() {
@@ -269,7 +275,7 @@ void raft_provider::become_follower() {
 }
 
 void raft_provider::run_follower() {
-  if(system_clock::now() > timeout_limit) {
+  if (system_clock::now() > timeout_limit) {
     update_timeout_limit();
     become_candidate();
     return;
@@ -280,147 +286,125 @@ void raft_provider::become_candidate() {
   printf("become candidate, and starting election...\n");
   set_state(raft_state::candidate);
 
-  int last_log_index,last_log_term;
-  logger.get_last_log(last_log_index,last_log_term);
+  int last_log_index, last_log_term;
+  logger.get_last_log(last_log_index, last_log_term);
   int current_term = get_current_term();
 
-  request_vote_request req(current_term,id,last_log_index,last_log_term);
+  request_vote_request req(current_term, id, last_log_index, last_log_term);
   int vote = 1;
 
-
-  for(std::string node: nodes) {
+  for (std::string node : nodes) {
     mu.unlock();
-    printf("request_vote to %s\n",node.c_str());
-    std::chrono::microseconds timeout(INTERVAL/(2*num_nodes));
+    printf("request_vote to %s\n", node.c_str());
+    std::chrono::microseconds timeout(INTERVAL / (2 * num_nodes));
     try {
-      request_vote_response resp = 
-        m_request_vote_rpc.on(node_to_handle[node]).timed(timeout,req);
+      request_vote_response resp =
+        m_request_vote_rpc.on(node_to_handle[node]).timed(timeout, req);
       mu.lock();
-      if(resp.get_term()>current_term) {
+      if (resp.get_term() > current_term) {
         become_follower();
         return;
       }
-      if(get_state() == raft_state::follower) {
-        return;
-      }
+      if (get_state() == raft_state::follower) { return; }
       assert(get_state() == raft_state::candidate);
-      if(resp.get_term()>current_term) {
+      if (resp.get_term() > current_term) {
         become_follower();
         return;
       }
-      if(resp.is_vote_granted()) {
-        vote++;
-      }
+      if (resp.is_vote_granted()) { vote++; }
     } catch (tl::timeout &t) {
-      printf("timeout in connect to node %s",node.c_str());
+      printf("timeout in connect to node %s", node.c_str());
       mu.lock();
-      if(get_state() == raft_state::follower) {
-        return;
-      }
+      if (get_state() == raft_state::follower) { return; }
     } catch (const tl::exception &e) {
-      printf("error occured at node %s\n",node.c_str());
+      printf("error occured at node %s\n", node.c_str());
       mu.lock();
-      if(get_state() == raft_state::follower) {
-        return;
-      }
+      if (get_state() == raft_state::follower) { return; }
     }
   }
-  if(vote * 2 > num_nodes) {
+  if (vote * 2 > num_nodes) {
     become_leader();
     return;
   }
 }
 
 void raft_provider::run_candidate() {
-  if(system_clock::now() > timeout_limit) {
-    become_candidate();
-  }
+  if (system_clock::now() > timeout_limit) { become_candidate(); }
 }
 
 void raft_provider::become_leader() {
   printf("become leader\n");
   int last_index;
   int last_term;
-  logger.get_last_log(last_index,last_term);
+  logger.get_last_log(last_index, last_term);
   next_index.clear();
   // next_index initialized to leader last log index + 1
-  for(std::string node:nodes) {
-    next_index[node]=last_index+1;
-  }
+  for (std::string node : nodes) { next_index[node] = last_index + 1; }
   match_index.clear();
   // matchIndex initialized to 0
-  for(std::string node:nodes) {
-    match_index[node]=0;
-  }
+  for (std::string node : nodes) { match_index[node] = 0; }
   set_state(raft_state::leader);
 }
 
 void raft_provider::run_leader() {
   int term = get_current_term();
   int commit_index = get_commit_index();
-  int last_index,last_term;
-  logger.get_last_log(last_index,last_term);
+  int last_index, last_term;
+  logger.get_last_log(last_index, last_term);
 
-  for(std::string node:nodes) {
-    int prev_index = next_index[node]-1;
-    assert(0<=prev_index);
+  for (std::string node : nodes) {
+    int prev_index = next_index[node] - 1;
+    assert(0 <= prev_index);
     int prev_term = logger.get_term(prev_index);
     std::vector<raft_entry> entries;
-    for(int idx=prev_index+1;idx <= last_index;idx++) {
+    for (int idx = prev_index + 1; idx <= last_index; idx++) {
       int t;
-      std::string k,v;
-      logger.get_log(idx,t,k,v);
-      assert(t==term);
-      entries.emplace_back(idx,k,v);
+      std::string k, v;
+      logger.get_log(idx, t, k, v);
+      assert(t == term);
+      entries.emplace_back(idx, k, v);
     }
-    append_entries_request req(term,prev_index,prev_term,entries,commit_index,id);
+    append_entries_request req(term, prev_index, prev_term, entries,
+                               commit_index, id);
     mu.unlock();
-    std::chrono::microseconds timeout(INTERVAL/(2*num_nodes));
+    std::chrono::microseconds timeout(INTERVAL / (2 * num_nodes));
     try {
-      append_entries_response resp = 
-        m_append_entries_rpc.on(node_to_handle[node]).timed(timeout,req);
+      append_entries_response resp =
+        m_append_entries_rpc.on(node_to_handle[node]).timed(timeout, req);
       mu.lock();
-      if(get_state() == raft_state::follower) {
-        return;
-      }
+      if (get_state() == raft_state::follower) { return; }
       assert(get_state() == raft_state::leader);
-      if(resp.get_term()>get_current_term()) {
+      if (resp.get_term() > get_current_term()) {
         become_follower();
         return;
       }
-      if(resp.is_success()) {
-        match_index[node]=last_index;
-        next_index[node]=last_index+1;
+      if (resp.is_success()) {
+        match_index[node] = last_index;
+        next_index[node] = last_index + 1;
       } else {
         next_index[node]--;
-        assert(next_index[node]>0);
+        assert(next_index[node] > 0);
       }
-      printf("node %s match: %d, next: %d\n",node.c_str(),match_index[node],next_index[node]);
+      printf("node %s match: %d, next: %d\n", node.c_str(), match_index[node],
+             next_index[node]);
     } catch (tl::timeout &t) {
-      printf("timeout in connect to node %s",node.c_str());
+      printf("timeout in connect to node %s", node.c_str());
       mu.lock();
-      if(get_state() == raft_state::follower) {
-        return;
-      }
+      if (get_state() == raft_state::follower) { return; }
     } catch (const tl::exception &e) {
-      printf("error occured at node %s\n",node.c_str());
+      printf("error occured at node %s\n", node.c_str());
       mu.lock();
-      if(get_state() == raft_state::follower) {
-        return;
-      }
+      if (get_state() == raft_state::follower) { return; }
     }
-    
   }
   // check if leader can commit `commit_index+1`
-  if(last_index > commit_index) {
+  if (last_index > commit_index) {
     int count = 1;
-    for(std::string node:nodes) {
-      if(match_index[node]>=commit_index+1) {
-        count++;
-      }
+    for (std::string node : nodes) {
+      if (match_index[node] >= commit_index + 1) { count++; }
     }
-    if(count*2 > num_nodes && logger.get_term(commit_index+1)==term) {
-      set_commit_index(commit_index+1);
+    if (count * 2 > num_nodes && logger.get_term(commit_index + 1) == term) {
+      set_commit_index(commit_index + 1);
     }
   }
 }
@@ -429,46 +413,46 @@ void raft_provider::run() {
   mu.lock();
   int last_applied = kvs.get_last_applied();
   int commit_index = get_commit_index();
-  if(last_applied<commit_index) {
+  if (last_applied < commit_index) {
     int t;
-    std::string k,v;
-    logger.get_log(last_applied+1,t,k,v);
-    kvs.apply(last_applied+1,k,v);
+    std::string k, v;
+    logger.get_log(last_applied + 1, t, k, v);
+    kvs.apply(last_applied + 1, k, v);
   }
   switch (get_state()) {
-  case raft_state::ready:
-    abort();
-    break;
-  case raft_state::follower:
-    run_follower();
-    break;
-  case raft_state::candidate:
-    run_candidate();
-    break;
-  case raft_state::leader:
-    run_leader();
-    break;
+    case raft_state::ready:
+      abort();
+      break;
+    case raft_state::follower:
+      run_follower();
+      break;
+    case raft_state::candidate:
+      run_candidate();
+      break;
+    case raft_state::leader:
+      run_leader();
+      break;
   }
-  int last_index,last_term;
-  logger.get_last_log(last_index,last_term);
-  printf("state: %d, term: %d, last: %d, commit: %d, applied: %d \n",(int)get_state(),get_current_term(),last_index,commit_index,last_applied);
+  int last_index, last_term;
+  logger.get_last_log(last_index, last_term);
+  printf("state: %d, term: %d, last: %d, commit: %d, applied: %d \n",
+         (int)get_state(), get_current_term(), last_index, commit_index,
+         last_applied);
   mu.unlock();
 }
 
 void raft_provider::append_node(std::string addr) {
-  assert(get_state()==raft_state::ready);
+  assert(get_state() == raft_state::ready);
   tl::endpoint p = get_engine().lookup(addr);
   nodes.push_back(addr);
-  node_to_handle[addr]=tl::provider_handle(p,RAFT_PROVIDER_ID);
+  node_to_handle[addr] = tl::provider_handle(p, RAFT_PROVIDER_ID);
   num_nodes++;
-  assert(num_nodes==(int)nodes.size()+1);
+  assert(num_nodes == (int)nodes.size() + 1);
   std::cout << "append node " << addr << std::endl;
 }
 
 void raft_provider::start(std::vector<std::string> &addrs) {
-  for(std::string addr:addrs) {
-    append_node(addr);
-  }
+  for (std::string addr : addrs) { append_node(addr); }
   become_follower();
   // begin to accept rpc
   mu.unlock();

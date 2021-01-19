@@ -1,14 +1,15 @@
 #ifndef PROVIDER_HPP
 #define PROVIDER_HPP
 
-#include <thallium.hpp>
 #include <chrono>
-#include <vector>
-#include <string>
 #include <map>
-#include "types.hpp"
-#include "logger.hpp"
+#include <string>
+#include <thallium.hpp>
+#include <vector>
+
 #include "kvs.hpp"
+#include "logger.hpp"
+#include "types.hpp"
 
 class raft_provider : public tl::provider<raft_provider> {
 private:
@@ -25,7 +26,7 @@ private:
   // nodes;
   int num_nodes;
   std::vector<std::string> nodes;
-  std::map<std::string,tl::provider_handle> node_to_handle;
+  std::map<std::string, tl::provider_handle> node_to_handle;
   // Mutex
   tl::mutex mu;
   // THIS MUST BE CALLED IN CRITICAL SECTION
@@ -37,8 +38,8 @@ private:
   int _current_term;
   // THIS MUST BE CALLED IN CRITICAL SECTION
   int get_current_term();
-  // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower
-  // THIS MUST BE CALLED IN CRITICAL SECTION
+  // If RPC request or response contains term T > currentTerm: set currentTerm =
+  // T, convert to follower THIS MUST BE CALLED IN CRITICAL SECTION
   void set_force_current_term(int term);
   // Voted endpoint on this term
   // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
@@ -48,9 +49,9 @@ private:
   // kvs
   raft_kvs kvs;
   // for each server, index of the next log entryto send to that server
-  std::map<std::string,int> next_index;
+  std::map<std::string, int> next_index;
   // for each server, index of highest log entryknown to be replicated on server
-  std::map<std::string,int> match_index;
+  std::map<std::string, int> match_index;
   // index of highest log entry known to be committed
   int _commit_index;
   int get_commit_index();
@@ -62,7 +63,7 @@ private:
   request_vote_response request_vote_rpc(request_vote_request &req);
   tl::remote_procedure m_request_vote_rpc;
   // client put rpc
-  int client_put_rpc(std::string key,std::string value);
+  int client_put_rpc(std::string key, std::string value);
   tl::remote_procedure m_client_put_rpc;
   // client get rpc
   client_get_response client_get_rpc(std::string key);
@@ -80,8 +81,9 @@ private:
 
   // ノードを追加 ready時にのみ呼び出し可能
   void append_node(std::string addr);
+
 public:
-  raft_provider(tl::engine& e,uint16_t provider_id=RAFT_PROVIDER_ID);
+  raft_provider(tl::engine &e, uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
   // readyからfollowerに遷移
