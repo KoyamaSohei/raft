@@ -415,7 +415,7 @@ void raft_provider::run_leader() {
     int N = sorted_match_index[num_nodes / 2];
     assert(N <= last_index);
 
-    if (logger.get_term(N) == term) { set_commit_index(N); }
+    if (N > commit_index && logger.get_term(N) == term) { set_commit_index(N); }
   }
 }
 
