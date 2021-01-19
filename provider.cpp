@@ -396,15 +396,26 @@ void raft_provider::run_leader() {
       if (get_state() == raft_state::follower) { return; }
     }
   }
-  // check if leader can commit `commit_index+1`
+  // check if leader can commit N
+  // N := sorted_match_index[num_nodes/2]
+  //
+  // explain why N can be commited
+  // match_index[]        = {3 1 4 2 5} (leader's match_index is last_index,5)
+  // sorted_match_index[] = {1 2 3 4 5}
+  // in this case N is 3
   if (last_index > commit_index) {
-    int count = 1;
+    std::vector<int> sorted_match_index{last_index};
+
     for (std::string node : nodes) {
-      if (match_index[node] >= commit_index + 1) { count++; }
+      sorted_match_index.emplace_back(match_index[node]);
     }
-    if (count * 2 > num_nodes && logger.get_term(commit_index + 1) == term) {
-      set_commit_index(commit_index + 1);
-    }
+
+    std::sort(sorted_match_index.begin(), sorted_match_index.end());
+
+    int N = sorted_match_index[num_nodes / 2];
+    assert(N <= last_index);
+
+    if (logger.get_term(N) == term) { set_commit_index(N); }
   }
 }
 
