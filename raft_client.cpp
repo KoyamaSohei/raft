@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 
     std::string key = argv[2];
     std::string value = argv[3];
-    tl::provider_handle handle(my_engine.lookup(argv[3]), RAFT_PROVIDER_ID);
+    tl::provider_handle handle(my_engine.lookup(argv[4]), RAFT_PROVIDER_ID);
 
     int error = client_put.on(handle)(key, value);
 
