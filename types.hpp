@@ -60,13 +60,13 @@ public:
   append_entries_request(
     int _term = 1, int _prev_index = 0, int _prev_term = 0,
     std::vector<raft_entry> _entries = std::vector<raft_entry>(),
-    int _leader_commit = 0, tl::endpoint _leader_id = tl::endpoint())
+    int _leader_commit = 0, std::string _leader_id = "")
     : term(_term)
     , prev_index(_prev_index)
     , prev_term(_prev_term)
     , entries(_entries)
     , leader_commit(_leader_commit)
-    , leader_id(std::string(_leader_id)) {
+    , leader_id(_leader_id) {
     assert(0 <= prev_index);
     assert(0 <= prev_term);
     assert(0 <= leader_commit);
@@ -126,11 +126,10 @@ private:
   int last_log_term;
 
 public:
-  request_vote_request(int _term = 1,
-                       tl::endpoint _candidate_id = tl::endpoint(),
+  request_vote_request(int _term = 1, std::string _candidate_id = "",
                        int _last_log_index = 0, int _last_log_term = 0)
     : term(_term)
-    , candidate_id(std::string(_candidate_id))
+    , candidate_id(_candidate_id)
     , last_log_index(_last_log_index)
     , last_log_term(_last_log_term) {
     assert(0 <= term);

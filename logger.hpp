@@ -23,7 +23,7 @@ private:
   void save_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
 
 public:
-  raft_logger(tl::endpoint id);
+  raft_logger(std::string id);
   ~raft_logger();
   void bootstrap_state_from_log(int &current_term, std::string &voted_for);
   void save_current_term(int current_term);

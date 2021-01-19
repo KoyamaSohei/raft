@@ -8,17 +8,16 @@
 #include <cassert>
 #include <string>
 
-std::string generate_path(tl::endpoint id) {
-  std::string id_addr = id;
+std::string generate_path(std::string id) {
   std::string slash = "//";
-  int slash_pos = id_addr.find(slash);
+  int slash_pos = id.find(slash);
   std::string path =
-    "log-" + id_addr.substr(slash_pos + slash.length(),
-                            id_addr.length() - slash_pos - slash.length());
+    "log-" + id.substr(slash_pos + slash.length(),
+                       id.length() - slash_pos - slash.length());
   return path;
 }
 
-raft_logger::raft_logger(tl::endpoint id) {
+raft_logger::raft_logger(std::string id) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_stat stat;

@@ -14,7 +14,7 @@
 class raft_provider : public tl::provider<raft_provider> {
 private:
   // Node ID
-  tl::endpoint id;
+  std::string id;
   // Leader ID
   tl::provider_handle leader_id;
   // 現在の状態(follower/candidate/leader)
