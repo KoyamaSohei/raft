@@ -427,14 +427,18 @@ void raft_provider::run_leader() {
 
 void raft_provider::run() {
   mu.lock();
+
   int last_applied = kvs.get_last_applied();
   int commit_index = get_commit_index();
-  if (last_applied < commit_index) {
+  int limit_index = std::min(commit_index, last_applied + MAX_APPLIED_NUM);
+
+  for (int index = last_applied + 1; index <= limit_index; index++) {
     int t;
     std::string k, v;
     logger.get_log(last_applied + 1, t, k, v);
     kvs.apply(last_applied + 1, k, v);
   }
+
   switch (get_state()) {
     case raft_state::ready:
       abort();

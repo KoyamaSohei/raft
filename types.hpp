@@ -10,6 +10,7 @@
 #define INTERVAL 5000000
 #define RAFT_PROVIDER_ID 999
 #define MAX_ENTRIES_NUM 100
+#define MAX_APPLIED_NUM 100
 
 namespace tl = thallium;
 using system_clock = std::chrono::system_clock;
@@ -23,7 +24,7 @@ enum class raft_state {
 
 enum class raft_progress_state {
   probe,
-  replicate, 
+  replicate,
   snapshot,
 };
 
