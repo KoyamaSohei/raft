@@ -21,6 +21,12 @@ enum class raft_state {
   leader,
 };
 
+enum class raft_progress_state {
+  probe,
+  replicate, 
+  snapshot,
+};
+
 class raft_entry {
 private:
   int index;

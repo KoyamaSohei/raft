@@ -52,6 +52,8 @@ private:
   std::map<std::string, int> next_index;
   // for each server, index of highest log entryknown to be replicated on server
   std::map<std::string, int> match_index;
+  // for each server, progress state
+  std::map<std::string, raft_progress_state> progress_state;
   // index of highest log entry known to be committed
   int _commit_index;
   int get_commit_index();
