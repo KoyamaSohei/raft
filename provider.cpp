@@ -340,7 +340,7 @@ void raft_provider::become_leader() {
   // next_index initialized to leader last log index + 1
   for (std::string node : nodes) { next_index[node] = last_index + 1; }
   match_index.clear();
-  // matchIndex initialized to 0
+  // match_index initialized to 0
   for (std::string node : nodes) { match_index[node] = 0; }
   // progress_state initialized to probe
   for (std::string node : nodes) {
