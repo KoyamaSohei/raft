@@ -434,8 +434,8 @@ void raft_provider::run() {
   for (int index = last_applied + 1; index <= limit_index; index++) {
     int t;
     std::string k, v;
-    logger.get_log(last_applied + 1, t, k, v);
-    kvs.apply(last_applied + 1, k, v);
+    logger.get_log(index, t, k, v);
+    kvs.apply(index, k, v);
   }
 
   switch (get_state()) {
