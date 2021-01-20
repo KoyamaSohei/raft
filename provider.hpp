@@ -65,9 +65,9 @@ private:
                           int req_leader_commit, std::string req_leader_id);
   tl::remote_procedure m_append_entries_rpc;
   // request_vote rpc
-  void request_vote_rpc(const tl::request &r, int term,
-                        std::string candidate_id, int last_log_index,
-                        int last_log_term);
+  void request_vote_rpc(const tl::request &r, int req_term,
+                        std::string req_candidate_id, int req_last_log_index,
+                        int req_last_log_term);
   tl::remote_procedure m_request_vote_rpc;
   // client put rpc
   int client_put_rpc(std::string key, std::string value);
