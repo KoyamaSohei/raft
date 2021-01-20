@@ -290,32 +290,60 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
   return;
 }
 
-int raft_provider::client_put_rpc(std::string key, std::string value) {
+void raft_provider::client_put_rpc(const tl::request &r, std::string key,
+                                   std::string value) {
   mu.lock();
   if (get_state() != raft_state::leader) {
     mu.unlock();
-    if (leader_id.is_null()) { return RAFT_LEADER_NOT_FOUND; }
-    int resp = m_client_put_rpc.on(leader_id)(key, value);
-    return resp;
+    if (leader_id.is_null()) {
+      try {
+        r.respond(RAFT_LEADER_NOT_FOUND);
+      } catch (tl::exception &e) {}
+      return;
+    }
+    try {
+      int resp = m_client_put_rpc.on(leader_id)(key, value);
+      r.respond(resp);
+    } catch (tl::exception &e) {
+      try {
+        r.respond(RAFT_LEADER_NOT_FOUND);
+      } catch (tl::exception &e) {}
+    }
+
+    return;
   }
   logger.append_log(get_current_term(), key, value);
   mu.unlock();
-  return RAFT_SUCCESS;
+  try {
+    r.respond(RAFT_SUCCESS);
+  } catch (tl::exception &e) {}
 }
 
-client_get_response raft_provider::client_get_rpc(std::string key) {
+void raft_provider::client_get_rpc(const tl::request &r, std::string key) {
   mu.lock();
   if (get_state() != raft_state::leader) {
     if (leader_id.is_null()) {
       mu.unlock();
-      return client_get_response(RAFT_LEADER_NOT_FOUND, "");
+      try {
+        r.respond(client_get_response(RAFT_LEADER_NOT_FOUND, ""));
+      } catch (tl::exception &e) {}
+      return;
     }
     mu.unlock();
-    client_get_response resp = m_client_get_rpc.on(leader_id)(key);
-    return resp;
+    try {
+      client_get_response resp = m_client_get_rpc.on(leader_id)(key);
+      r.respond(resp);
+    } catch (tl::exception &e) {
+      try {
+        r.respond(RAFT_LEADER_NOT_FOUND);
+      } catch (tl::exception &e) {}
+    }
+    return;
   }
   mu.unlock();
-  return client_get_response(RAFT_SUCCESS, kvs.get(key));
+  try {
+    r.respond(client_get_response(RAFT_SUCCESS, kvs.get(key)));
+  } catch (tl::exception &e) {}
 }
 
 int raft_provider::echo_state_rpc() {

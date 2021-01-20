@@ -70,10 +70,10 @@ private:
                         int req_last_log_term);
   tl::remote_procedure m_request_vote_rpc;
   // client put rpc
-  int client_put_rpc(std::string key, std::string value);
+  void client_put_rpc(const tl::request &r, std::string key, std::string value);
   tl::remote_procedure m_client_put_rpc;
   // client get rpc
-  client_get_response client_get_rpc(std::string key);
+  void client_get_rpc(const tl::request &r, std::string key);
   tl::remote_procedure m_client_get_rpc;
   // echo state rpc
   int echo_state_rpc();
