@@ -294,10 +294,9 @@ void raft_provider::become_candidate() {
   for (std::string node : nodes) {
     mu.unlock();
     printf("request_vote to %s\n", node.c_str());
-    std::chrono::microseconds timeout(INTERVAL / (2 * num_nodes));
     try {
       request_vote_response resp =
-        m_request_vote_rpc.on(node_to_handle[node]).timed(timeout, req);
+        m_request_vote_rpc.on(node_to_handle[node])(req);
       mu.lock();
       if (resp.get_term() > current_term) {
         become_follower();
@@ -310,10 +309,6 @@ void raft_provider::become_candidate() {
         return;
       }
       if (resp.is_vote_granted()) { vote++; }
-    } catch (tl::timeout &t) {
-      printf("timeout in connect to node %s", node.c_str());
-      mu.lock();
-      if (get_state() == raft_state::follower) { return; }
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
@@ -371,10 +366,9 @@ void raft_provider::run_leader() {
     append_entries_request req(term, prev_index, prev_term, entries,
                                commit_index, id);
     mu.unlock();
-    std::chrono::microseconds timeout(INTERVAL / (2 * num_nodes));
     try {
       append_entries_response resp =
-        m_append_entries_rpc.on(node_to_handle[node]).timed(timeout, req);
+        m_append_entries_rpc.on(node_to_handle[node])(req);
       mu.lock();
       if (get_state() == raft_state::follower) { return; }
       assert(get_state() == raft_state::leader);
@@ -391,10 +385,6 @@ void raft_provider::run_leader() {
       }
       printf("node %s match: %d, next: %d\n", node.c_str(), match_index[node],
              next_index[node]);
-    } catch (tl::timeout &t) {
-      printf("timeout in connect to node %s", node.c_str());
-      mu.lock();
-      if (get_state() == raft_state::follower) { return; }
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
