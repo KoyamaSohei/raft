@@ -108,6 +108,26 @@ public:
 #define RAFT_LEADER_NOT_FOUND -10001
 #define RAFT_SUCCESS 0
 
+class client_put_response {
+private:
+  int error;
+  int index;
+
+public:
+  client_put_response(int _error = RAFT_NOT_IMPLEMENTED, int _index = 0)
+    : error(_error), index(_index) {}
+
+  int get_error() { return error; }
+
+  int get_index() { return index; }
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar& error;
+    ar& index;
+  }
+};
+
 class client_get_response {
 private:
   int error;

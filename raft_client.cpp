@@ -55,8 +55,9 @@ int main(int argc, char **argv) {
     std::string value = argv[3];
     tl::provider_handle handle(my_engine.lookup(argv[4]), RAFT_PROVIDER_ID);
 
-    int error = client_put.on(handle)(key, value);
+    client_put_response resp = client_put.on(handle)(key, value);
 
-    return error;
+    std::cout << resp.get_index() << std::endl;
+    return resp.get_error();
   }
 }

@@ -297,25 +297,25 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string key,
     mu.unlock();
     if (leader_id.is_null()) {
       try {
-        r.respond(RAFT_LEADER_NOT_FOUND);
+        r.respond(client_put_response(RAFT_LEADER_NOT_FOUND));
       } catch (tl::exception &e) {}
       return;
     }
     try {
-      int resp = m_client_put_rpc.on(leader_id)(key, value);
+      client_put_response resp = m_client_put_rpc.on(leader_id)(key, value);
       r.respond(resp);
     } catch (tl::exception &e) {
       try {
-        r.respond(RAFT_LEADER_NOT_FOUND);
+        r.respond(client_put_response(RAFT_LEADER_NOT_FOUND));
       } catch (tl::exception &e) {}
     }
 
     return;
   }
-  logger.append_log(get_current_term(), key, value);
+  int index = logger.append_log(get_current_term(), key, value);
   mu.unlock();
   try {
-    r.respond(RAFT_SUCCESS);
+    r.respond(client_put_response(RAFT_SUCCESS, index));
   } catch (tl::exception &e) {}
 }
 
