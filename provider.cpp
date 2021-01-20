@@ -235,31 +235,25 @@ request_vote_response raft_provider::request_vote_rpc(
 }
 
 int raft_provider::client_put_rpc(std::string key, std::string value) {
-  mu.lock();
   if (get_state() != raft_state::leader) {
     if (leader_id.is_null()) { return RAFT_LEADER_NOT_FOUND; }
-    mu.unlock();
     int resp = m_client_put_rpc.on(leader_id)(key, value);
     return resp;
   }
-  int term = get_current_term();
-  logger.append_log(term, key, value);
+  mu.lock();
+  logger.append_log(get_current_term(), key, value);
   mu.unlock();
   return RAFT_SUCCESS;
 }
 
 client_get_response raft_provider::client_get_rpc(std::string key) {
-  mu.lock();
   if (get_state() != raft_state::leader) {
     if (leader_id.is_null()) {
-      mu.unlock();
       return client_get_response(RAFT_LEADER_NOT_FOUND, "");
     }
-    mu.unlock();
     client_get_response resp = m_client_get_rpc.on(leader_id)(key);
     return resp;
   }
-  mu.unlock();
   return client_get_response(RAFT_SUCCESS, kvs.get(key));
 }
 
