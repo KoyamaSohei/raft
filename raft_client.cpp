@@ -13,7 +13,7 @@ void usage(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-  tl::engine my_engine("tcp", THALLIUM_CLIENT_MODE);
+  tl::engine my_engine("sockets", THALLIUM_CLIENT_MODE);
   tl::remote_procedure client_put = my_engine.define(CLIENT_PUT_RPC_NAME);
   tl::remote_procedure client_get = my_engine.define(CLIENT_GET_RPC_NAME);
 
