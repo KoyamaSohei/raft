@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   ABT_thread_state tick_state;
   static sigset_t ss;
 
-  std::string self_addr = "tcp";
+  std::string self_addr = "sockets";
   std::string node_buf;
   std::vector<std::string> nodes;
 
