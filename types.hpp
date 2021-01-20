@@ -54,55 +54,6 @@ public:
   }
 };
 
-class append_entries_request {
-private:
-  int term;
-  int prev_index;
-  int prev_term;
-  std::vector<raft_entry> entries;
-  int leader_commit;
-  std::string leader_id;
-
-public:
-  append_entries_request(
-    int _term = 1, int _prev_index = 0, int _prev_term = 0,
-    std::vector<raft_entry> _entries = std::vector<raft_entry>(),
-    int _leader_commit = 0, std::string _leader_id = "")
-    : term(_term)
-    , prev_index(_prev_index)
-    , prev_term(_prev_term)
-    , entries(_entries)
-    , leader_commit(_leader_commit)
-    , leader_id(_leader_id) {
-    assert(0 <= prev_index);
-    assert(0 <= prev_term);
-    assert(0 <= leader_commit);
-    for (raft_entry ent : entries) { assert(0 <= ent.get_index()); }
-  }
-
-  int get_term() { return term; }
-
-  int get_prev_index() { return prev_index; }
-
-  int get_prev_term() { return prev_term; }
-
-  std::vector<raft_entry> get_entries() { return entries; }
-
-  int get_leader_commit() { return leader_commit; }
-
-  std::string get_leader_id() { return leader_id; }
-
-  template <typename A>
-  void serialize(A& ar) {
-    ar& term;
-    ar& prev_index;
-    ar& prev_term;
-    ar& entries;
-    ar& leader_commit;
-    ar& leader_id;
-  }
-};
-
 class append_entries_response {
 private:
   int term;
@@ -122,42 +73,6 @@ public:
   void serialize(A& ar) {
     ar& term;
     ar& success;
-  }
-};
-
-class request_vote_request {
-private:
-  int term;
-  std::string candidate_id;
-  int last_log_index;
-  int last_log_term;
-
-public:
-  request_vote_request(int _term = 1, std::string _candidate_id = "",
-                       int _last_log_index = 0, int _last_log_term = 0)
-    : term(_term)
-    , candidate_id(_candidate_id)
-    , last_log_index(_last_log_index)
-    , last_log_term(_last_log_term) {
-    assert(0 <= term);
-    assert(0 <= last_log_index);
-    assert(0 <= last_log_term);
-  }
-
-  int get_term() { return term; }
-
-  std::string get_candidate_id() { return candidate_id; }
-
-  int get_last_log_index() { return last_log_index; }
-
-  int get_last_log_term() { return last_log_term; }
-
-  template <typename A>
-  void serialize(A& ar) {
-    ar& term;
-    ar& candidate_id;
-    ar& last_log_index;
-    ar& last_log_term;
   }
 };
 

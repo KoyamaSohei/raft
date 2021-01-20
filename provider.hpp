@@ -59,10 +59,15 @@ private:
   int get_commit_index();
   void set_commit_index(int index);
   // append_entries_rpc
-  append_entries_response append_entries_rpc(append_entries_request &req);
+  void append_entries_rpc(const tl::request &r, int req_term,
+                          int req_prev_index, int req_prev_term,
+                          std::vector<raft_entry> req_entries,
+                          int req_leader_commit, std::string req_leader_id);
   tl::remote_procedure m_append_entries_rpc;
   // request_vote rpc
-  request_vote_response request_vote_rpc(request_vote_request &req);
+  void request_vote_rpc(const tl::request &r, int term,
+                        std::string candidate_id, int last_log_index,
+                        int last_log_term);
   tl::remote_procedure m_request_vote_rpc;
   // client put rpc
   int client_put_rpc(std::string key, std::string value);

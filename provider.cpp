@@ -108,20 +108,28 @@ void raft_provider::set_force_current_term(int term) {
   }
 }
 
-append_entries_response raft_provider::append_entries_rpc(
-  append_entries_request &req) {
+void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
+                                       int req_prev_index, int req_prev_term,
+                                       std::vector<raft_entry> req_entries,
+                                       int req_leader_commit,
+                                       std::string req_leader_id) {
   mu.lock();
   int current_term = get_current_term();
-  if (req.get_term() < current_term) {
+  if (req_term < current_term) {
     mu.unlock();
-    return append_entries_response(current_term, false);
+    try {
+      r.respond(append_entries_response(current_term, false));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
 
-  leader_id = tl::provider_handle(get_engine().lookup(req.get_leader_id()),
-                                  RAFT_PROVIDER_ID);
+  leader_id =
+    tl::provider_handle(get_engine().lookup(req_leader_id), RAFT_PROVIDER_ID);
 
-  if (req.get_term() > current_term) {
-    set_force_current_term(req.get_term());
+  if (req_term > current_term) {
+    set_force_current_term(req_term);
     assert(get_state() == raft_state::follower);
   }
 
@@ -136,7 +144,7 @@ append_entries_response raft_provider::append_entries_rpc(
       printf("there are 2 leader in same term\n");
       mu.unlock();
       abort();
-      return append_entries_response(current_term, false);
+      return;
     case raft_state::follower:
       // run below
       break;
@@ -145,93 +153,141 @@ append_entries_response raft_provider::append_entries_rpc(
   assert(get_state() == raft_state::follower);
   update_timeout_limit();
 
-  bool is_match = logger.match_log(req.get_prev_index(), req.get_prev_term());
+  bool is_match = logger.match_log(req_prev_index, req_prev_term);
   if (!is_match) {
     mu.unlock();
-    return append_entries_response(current_term, false);
+    try {
+      r.respond(append_entries_response(current_term, false));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
-  std::vector<raft_entry> entries(req.get_entries());
 
-  for (raft_entry ent : entries) {
+  for (raft_entry ent : req_entries) {
     printf("entry received, idx: %d, term: %d, key: %s, value: %s\n",
-           ent.get_index(), req.get_term(), ent.get_key().c_str(),
+           ent.get_index(), req_term, ent.get_key().c_str(),
            ent.get_value().c_str());
-    logger.save_log(ent.get_index(), req.get_term(), ent.get_key(),
-                    ent.get_value());
+    logger.save_log(ent.get_index(), req_term, ent.get_key(), ent.get_value());
   }
 
-  if (req.get_leader_commit() > get_commit_index()) {
-    int next_index = req.get_leader_commit();
-    if (!entries.empty()) {
-      next_index = std::min(next_index, entries.back().get_index());
+  if (req_leader_commit > get_commit_index()) {
+    int next_index = req_leader_commit;
+    if (!req_entries.empty()) {
+      next_index = std::min(next_index, req_entries.back().get_index());
     }
     set_commit_index(next_index);
   }
   mu.unlock();
-  return append_entries_response(current_term, true);
+  try {
+    r.respond(append_entries_response(current_term, true));
+  } catch (tl::exception &e) {
+    printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+  }
+  return;
 }
 
-request_vote_response raft_provider::request_vote_rpc(
-  request_vote_request &req) {
+void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
+                                     std::string req_candidate_id,
+                                     int req_last_log_index,
+                                     int req_last_log_term) {
   mu.lock();
   int current_term = get_current_term();
-  std::string candidate_id = req.get_candidate_id();
-  int request_term = req.get_term();
 
-  printf("request_vote_rpc from %s in term %d\n", candidate_id.c_str(),
-         request_term);
+  printf("request_vote_rpc from %s in term %d\n", req_candidate_id.c_str(),
+         req_term);
 
-  if (request_term < current_term) {
+  if (req_term < current_term) {
     mu.unlock();
-    return request_vote_response(current_term, false);
+    try {
+      r.respond(request_vote_response(current_term, false));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
 
   int last_log_index, last_log_term;
   logger.get_last_log(last_log_index, last_log_term);
 
-  if (request_term > current_term) {
-    set_force_current_term(request_term);
+  if (req_term > current_term) {
+    set_force_current_term(req_term);
 
-    if (last_log_index != req.get_last_log_index()) {
+    if (last_log_index != req_last_log_index) {
       mu.unlock();
-      return request_vote_response(current_term, false);
+      try {
+        r.respond(request_vote_response(current_term, false));
+      } catch (tl::exception &e) {
+        printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+      }
+      return;
     }
-    logger.save_voted_for(candidate_id);
-    _voted_for = candidate_id;
+    logger.save_voted_for(req_candidate_id);
+    _voted_for = req_candidate_id;
 
     update_timeout_limit();
     mu.unlock();
-    return request_vote_response(current_term, true);
+    try {
+      r.respond(request_vote_response(current_term, true));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
 
-  if (!_voted_for.empty() && _voted_for != candidate_id) {
+  if (!_voted_for.empty() && _voted_for != req_candidate_id) {
     mu.unlock();
-    return request_vote_response(current_term, false);
+    try {
+      r.respond(request_vote_response(current_term, false));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
 
-  if (last_log_index != req.get_last_log_index()) {
+  if (last_log_index != req_last_log_index) {
     mu.unlock();
-    return request_vote_response(current_term, false);
+    try {
+      r.respond(request_vote_response(current_term, false));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
 
-  if (last_log_term != req.get_last_log_term()) {
+  if (last_log_term != req_last_log_term) {
     mu.unlock();
-    return request_vote_response(current_term, false);
+    try {
+      r.respond(request_vote_response(current_term, false));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
 
-  if (_voted_for == candidate_id) {
+  if (_voted_for == req_candidate_id) {
     mu.unlock();
-    return request_vote_response(current_term, false);
+    try {
+      r.respond(request_vote_response(current_term, false));
+    } catch (tl::exception &e) {
+      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+    }
+    return;
   }
 
   assert(_voted_for.empty());
 
-  logger.save_voted_for(candidate_id);
-  _voted_for = candidate_id;
+  logger.save_voted_for(req_candidate_id);
+  _voted_for = req_candidate_id;
 
   update_timeout_limit();
   mu.unlock();
-  return request_vote_response(current_term, true);
+  try {
+    r.respond(request_vote_response(current_term, true));
+  } catch (tl::exception &e) {
+    printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
+  }
+  return;
 }
 
 int raft_provider::client_put_rpc(std::string key, std::string value) {
@@ -288,15 +344,14 @@ void raft_provider::become_candidate() {
   logger.get_last_log(last_log_index, last_log_term);
   int current_term = get_current_term();
 
-  request_vote_request req(current_term, id, last_log_index, last_log_term);
   int vote = 1;
 
   for (std::string node : nodes) {
     mu.unlock();
     printf("request_vote to %s\n", node.c_str());
     try {
-      request_vote_response resp =
-        m_request_vote_rpc.on(node_to_handle[node])(req);
+      request_vote_response resp = m_request_vote_rpc.on(node_to_handle[node])(
+        current_term, id, last_log_index, last_log_term);
       mu.lock();
       if (resp.get_term() > current_term) {
         become_follower();
@@ -363,12 +418,12 @@ void raft_provider::run_leader() {
       assert(t == term);
       entries.emplace_back(idx, k, v);
     }
-    append_entries_request req(term, prev_index, prev_term, entries,
-                               commit_index, id);
+
     mu.unlock();
     try {
       append_entries_response resp =
-        m_append_entries_rpc.on(node_to_handle[node])(req);
+        m_append_entries_rpc.on(node_to_handle[node])(
+          term, prev_index, prev_term, entries, commit_index, id);
       mu.lock();
       if (get_state() == raft_state::follower) { return; }
       assert(get_state() == raft_state::leader);
