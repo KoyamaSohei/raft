@@ -31,9 +31,7 @@ protected:
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))
     , server_addr(
-        tl::provider_handle(client_engine.lookup(addr), RAFT_PROVIDER_ID)) {
-    server_engine.enable_remote_shutdown();
-  }
+        tl::provider_handle(client_engine.lookup(addr), RAFT_PROVIDER_ID)) {}
 
   static void finalize(void *arg) { ((tl::engine *)arg)->finalize(); }
 
