@@ -133,6 +133,7 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
 
   if (req_term > current_term) {
     set_force_current_term(req_term);
+    current_term = req_term;
     assert(get_state() == raft_state::follower);
   }
 
