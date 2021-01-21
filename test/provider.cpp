@@ -31,7 +31,9 @@ protected:
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))
     , server_addr(
-        tl::provider_handle(client_engine.lookup(addr), RAFT_PROVIDER_ID)) {}
+        tl::provider_handle(client_engine.lookup(addr), RAFT_PROVIDER_ID)) {
+    std::cout << "server running at " << server_engine.self() << std::endl;
+  }
 
   static void finalize(void *arg) { ((tl::engine *)arg)->finalize(); }
 
