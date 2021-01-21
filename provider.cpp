@@ -379,31 +379,34 @@ void raft_provider::run_leader() {
     }
 
     mu.unlock();
+    append_entries_response resp(0, false);
     try {
-      append_entries_response resp =
-        m_append_entries_rpc.on(node_to_handle[node])(
-          term, prev_index, prev_term, entries, commit_index, id);
-      mu.lock();
-      if (get_state() == raft_state::follower) { return; }
-      assert(get_state() == raft_state::leader);
-      if (resp.get_term() > get_current_term()) {
-        become_follower();
-        return;
-      }
-      if (resp.is_success()) {
-        match_index[node] = last_index;
-        next_index[node] = last_index + 1;
-      } else {
-        next_index[node]--;
-        assert(next_index[node] > 0);
-      }
-      printf("node %s match: %d, next: %d\n", node.c_str(), match_index[node],
-             next_index[node]);
+      resp = m_append_entries_rpc.on(node_to_handle[node])(
+        term, prev_index, prev_term, entries, commit_index, id);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
-      if (get_state() == raft_state::follower) { return; }
+      continue;
     }
+    mu.lock();
+    if (get_state() == raft_state::follower) { return; }
+    assert(get_state() == raft_state::leader);
+
+    if (resp.get_term() > get_current_term()) {
+      become_follower();
+      return;
+    }
+
+    if (resp.is_success()) {
+      match_index[node] = last_index;
+      next_index[node] = last_index + 1;
+    } else {
+      next_index[node]--;
+      assert(next_index[node] > 0);
+    }
+
+    printf("node %s match: %d, next: %d\n", node.c_str(), match_index[node],
+           next_index[node]);
   }
   // check if leader can commit N
   // N := sorted_match_index[num_nodes/2]
