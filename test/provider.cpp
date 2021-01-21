@@ -50,7 +50,7 @@ protected:
     if (err) { printf("rmdir %s error %d\n", dir_path.c_str(), err); }
   }
 
-  raft_state get_state() {
+  raft_state fetch_state() {
     int r = m_echo_state_rpc.on(server_addr)();
     return raft_state(r);
   }
@@ -59,7 +59,17 @@ protected:
 TEST_F(provider_test, MUST_BE_FOLLOWER) {
   std::vector<std::string> nodes;
   provider.start(nodes);
-  ASSERT_EQ(get_state(), raft_state::follower);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, BEGIN_ELECTION) {
+  // Prevent become leader
+  std::vector<std::string> nodes{"sockets://127.0.0.1:30001",
+                                 "sockets://127.0.0.1:30002"};
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
 }
 
 } // namespace
