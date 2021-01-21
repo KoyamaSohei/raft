@@ -22,13 +22,16 @@ raft_provider::raft_provider(tl::engine &e, uint16_t provider_id)
   define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
   // bootstrap state from (already exist) log
   logger.bootstrap_state_from_log(_current_term, _voted_for);
-  get_engine().push_finalize_callback(this, [p = this]() { delete p; });
   // Block RPC until _state != ready
   mu.lock();
 }
 
 raft_provider::~raft_provider() {
-  get_engine().pop_finalize_callback(this);
+  m_append_entries_rpc.deregister();
+  m_request_vote_rpc.deregister();
+  m_client_put_rpc.deregister();
+  m_client_get_rpc.deregister();
+  get_engine().wait_for_finalize();
 }
 
 raft_state raft_provider::get_state() {
