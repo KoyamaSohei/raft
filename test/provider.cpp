@@ -70,14 +70,4 @@ TEST_F(provider_test, BECOME_LEADER) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
-TEST_F(provider_test, BEGIN_ELECTION) {
-  // Prevent become leader
-  std::vector<std::string> nodes{"sockets://127.0.0.1:30001",
-                                 "sockets://127.0.0.1:30002"};
-  provider.start(nodes);
-  usleep(3 * INTERVAL);
-  provider.run();
-  ASSERT_EQ(fetch_state(), raft_state::candidate);
-}
-
 } // namespace
