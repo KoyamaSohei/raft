@@ -313,12 +313,14 @@ void raft_provider::become_candidate() {
   for (std::string node : nodes) {
     mu.unlock();
     printf("request_vote to %s\n", node.c_str());
-    request_vote_response resp(current_term, false);
+    request_vote_response resp;
     try {
       resp = m_request_vote_rpc.on(node_to_handle[node])(
         current_term, id, last_log_index, last_log_term);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
+      mu.lock();
+      continue;
     }
     mu.lock();
     if (get_state() == raft_state::follower) { return; }
@@ -379,7 +381,7 @@ void raft_provider::run_leader() {
     }
 
     mu.unlock();
-    append_entries_response resp(0, false);
+    append_entries_response resp;
     try {
       resp = m_append_entries_rpc.on(node_to_handle[node])(
         term, prev_index, prev_term, entries, commit_index, id);
