@@ -76,6 +76,13 @@ protected:
       term, prev_index, prev_term, entries, leader_commit, leader_id);
     return resp;
   }
+
+  request_vote_response request_vote(int term, std::string candidate_id,
+                                     int last_log_index, int last_log_term) {
+    request_vote_response resp = m_request_vote_rpc.on(server_addr)(
+      term, candidate_id, last_log_index, last_log_term);
+    return resp;
+  }
 };
 
 TEST_F(provider_test, BECOME_FOLLOWER) {
@@ -101,6 +108,18 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
   append_entries_response r =
     append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.get_term(), 2);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, GET_HIGHER_TERM_2) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  request_vote_response r = request_vote(2, caddr, 0, 0);
+  ASSERT_TRUE(r.is_vote_granted());
   ASSERT_EQ(r.get_term(), 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
