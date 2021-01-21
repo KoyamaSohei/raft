@@ -41,13 +41,13 @@ protected:
     std::string lock_path = dir_path + "/lock.mdb";
 
     err = remove(data_path.c_str());
-    if (err) { printf("remove %s error, %d\n", data_path.c_str(), err); }
+    ASSERT_EQ(err, 0);
 
     err = remove(lock_path.c_str());
-    if (err) { printf("remove %s error, %d\n", lock_path.c_str(), err); }
+    ASSERT_EQ(err, 0);
 
     err = rmdir(dir_path.c_str());
-    if (err) { printf("rmdir %s error %d\n", dir_path.c_str(), err); }
+    ASSERT_EQ(err, 0);
   }
 
   raft_state fetch_state() {
@@ -60,6 +60,14 @@ TEST_F(provider_test, MUST_BE_FOLLOWER) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, BECOME_LEADER) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
 TEST_F(provider_test, BEGIN_ELECTION) {
