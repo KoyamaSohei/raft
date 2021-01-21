@@ -3,6 +3,7 @@ spack:
     - mochi-thallium
     - lmdb
     - jsoncpp
+    - googletest
 
   packages:
     autoconf:
