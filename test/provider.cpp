@@ -56,7 +56,7 @@ protected:
   }
 };
 
-TEST_F(provider_test, MUST_BE_FOLLOWER) {
+TEST_F(provider_test, BECOME_FOLLOWER) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
