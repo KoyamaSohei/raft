@@ -376,7 +376,6 @@ void raft_provider::run_leader() {
       int t;
       std::string k, v;
       logger.get_log(idx, t, k, v);
-      assert(t == term);
       entries.emplace_back(idx, k, v);
     }
 
