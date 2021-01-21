@@ -76,7 +76,7 @@ private:
   void client_get_rpc(const tl::request &r, std::string key);
   tl::remote_procedure m_client_get_rpc;
   // echo state rpc
-  int echo_state_rpc();
+  void echo_state_rpc(const tl::request &r);
   void become_follower();
   void run_follower();
 

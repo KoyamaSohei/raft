@@ -284,8 +284,10 @@ void raft_provider::client_get_rpc(const tl::request &r, std::string key) {
   } catch (tl::exception &e) {}
 }
 
-int raft_provider::echo_state_rpc() {
-  return (int)get_state();
+void raft_provider::echo_state_rpc(const tl::request &r) {
+  try {
+    r.respond((int)get_state());
+  } catch (tl::exception &e) {}
 }
 
 void raft_provider::become_follower() {
