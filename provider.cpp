@@ -202,15 +202,16 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
 
   bool granted = [&]() -> bool {
     if (req_term < current_term) return false;
-    if (req_term > current_term) { set_force_current_term(req_term); }
+    if (req_term > current_term) {
+      set_force_current_term(req_term);
+      current_term = req_term;
+    }
     if (!_voted_for.empty()) return false;
     if (req_last_log_term < last_log_term) return false;
     if (req_last_log_term > last_log_term) return true;
     if (req_last_log_index < last_log_index) return false;
     return true;
   }();
-
-  current_term = get_current_term();
 
   if (granted) {
     logger.save_voted_for(req_candidate_id);
