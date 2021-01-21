@@ -197,93 +197,29 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
   printf("request_vote_rpc from %s in term %d\n", req_candidate_id.c_str(),
          req_term);
 
-  if (req_term < current_term) {
-    mu.unlock();
-    try {
-      r.respond(request_vote_response(current_term, false));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
-    return;
-  }
-
   int last_log_index, last_log_term;
   logger.get_last_log(last_log_index, last_log_term);
 
-  if (req_term > current_term) {
-    set_force_current_term(req_term);
+  bool granted = [&]() -> bool {
+    if (req_term < current_term) return false;
+    if (req_term > current_term) { set_force_current_term(req_term); }
+    if (!_voted_for.empty()) return false;
+    if (req_last_log_term < last_log_term) return false;
+    if (req_last_log_term > last_log_term) return true;
+    if (req_last_log_index < last_log_index) return false;
+    return true;
+  }();
 
-    if (last_log_index != req_last_log_index) {
-      mu.unlock();
-      try {
-        r.respond(request_vote_response(current_term, false));
-      } catch (tl::exception &e) {
-        printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-      }
-      return;
-    }
+  current_term = get_current_term();
+
+  if (granted) {
     logger.save_voted_for(req_candidate_id);
     _voted_for = req_candidate_id;
-
-    update_timeout_limit();
-    mu.unlock();
-    try {
-      r.respond(request_vote_response(current_term, true));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
-    return;
   }
 
-  if (!_voted_for.empty() && _voted_for != req_candidate_id) {
-    mu.unlock();
-    try {
-      r.respond(request_vote_response(current_term, false));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
-    return;
-  }
-
-  if (last_log_index != req_last_log_index) {
-    mu.unlock();
-    try {
-      r.respond(request_vote_response(current_term, false));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
-    return;
-  }
-
-  if (last_log_term != req_last_log_term) {
-    mu.unlock();
-    try {
-      r.respond(request_vote_response(current_term, false));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
-    return;
-  }
-
-  if (_voted_for == req_candidate_id) {
-    mu.unlock();
-    try {
-      r.respond(request_vote_response(current_term, false));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
-    return;
-  }
-
-  assert(_voted_for.empty());
-
-  logger.save_voted_for(req_candidate_id);
-  _voted_for = req_candidate_id;
-
-  update_timeout_limit();
   mu.unlock();
   try {
-    r.respond(request_vote_response(current_term, true));
+    r.respond(request_vote_response(current_term, granted));
   } catch (tl::exception &e) {
     printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
   }
