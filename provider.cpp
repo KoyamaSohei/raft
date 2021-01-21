@@ -215,6 +215,7 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
   if (granted) {
     logger.save_voted_for(req_candidate_id);
     _voted_for = req_candidate_id;
+    update_timeout_limit();
   }
 
   mu.unlock();
