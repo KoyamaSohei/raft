@@ -2,14 +2,17 @@
 
 #include <gtest/gtest.h>
 
+#include <random>
 #include <thallium.hpp>
 
-#define ADDR "127.0.0.1:30000"
-#define CADDR "127.0.0.1:30003"
+#define ADDR "127.0.0.1:"
 
 namespace {
 class provider_test : public ::testing::Test {
 protected:
+  std::random_device rnd;
+  int PORT;
+  std::string addr, caddr;
   tl::engine server_engine;
   tl::engine client_engine;
   raft_provider provider;
@@ -18,14 +21,17 @@ protected:
   tl::remote_procedure m_append_entries_rpc;
   tl::provider_handle server_addr;
   provider_test()
-    : server_engine("sockets://" ADDR, THALLIUM_SERVER_MODE, true, 2)
-    , client_engine("sockets://" CADDR, THALLIUM_CLIENT_MODE)
+    : PORT(rnd() % 100 + 30000)
+    , addr("sockets://" ADDR + std::to_string(PORT))
+    , caddr("sockets://" ADDR + std::to_string(PORT + 1))
+    , server_engine(addr, THALLIUM_SERVER_MODE, true, 2)
+    , client_engine(caddr, THALLIUM_CLIENT_MODE)
     , provider(server_engine, RAFT_PROVIDER_ID)
     , m_echo_state_rpc(client_engine.define(ECHO_STATE_RPC_NAME))
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))
-    , server_addr(tl::provider_handle(client_engine.lookup("sockets://" ADDR),
-                                      RAFT_PROVIDER_ID)) {
+    , server_addr(
+        tl::provider_handle(client_engine.lookup(addr), RAFT_PROVIDER_ID)) {
     server_engine.enable_remote_shutdown();
   }
 
@@ -42,7 +48,7 @@ protected:
   }
   void cleanup() {
     int err;
-    std::string dir_path = "log-" ADDR;
+    std::string dir_path = "log-" ADDR + std::to_string(PORT);
     std::string data_path = dir_path + "/data.mdb";
     std::string lock_path = dir_path + "/lock.mdb";
 
@@ -93,7 +99,7 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   append_entries_response r =
-    append_entries(2, 0, 0, std::vector<raft_entry>(), 0, "sockets://" CADDR);
+    append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_TRUE(r.is_success());
   ASSERT_EQ(r.get_term(), 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
