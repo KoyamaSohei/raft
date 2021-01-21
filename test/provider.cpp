@@ -124,4 +124,17 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
+TEST_F(provider_test, GET_LOWER_TERM) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  append_entries_response r =
+    append_entries(0, 0, 0, std::vector<raft_entry>(), 0, caddr);
+  ASSERT_FALSE(r.is_success());
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+}
+
 } // namespace
