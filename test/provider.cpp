@@ -137,4 +137,16 @@ TEST_F(provider_test, GET_LOWER_TERM) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
+TEST_F(provider_test, GET_LOWER_TERM_2) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  request_vote_response r = request_vote(0, caddr, 0, 0);
+  ASSERT_FALSE(r.is_vote_granted());
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+}
+
 } // namespace
