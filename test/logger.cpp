@@ -1,8 +1,8 @@
+#include "../logger.hpp"
+
 #include <dirent.h>
 #include <gtest/gtest.h>
 #include <stdio.h>
-
-#include "../logger.hpp"
 
 #define ADDR "127.0.0.1:30000"
 
@@ -119,8 +119,3 @@ TEST_F(logger_test, MATCHLOG_NOTFOUND) {
 }
 
 } // namespace
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

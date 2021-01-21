@@ -12,7 +12,7 @@ raft_client.out: raft_client.cpp
 
 test.out: test/*.cpp *.cpp
 	$(CC) $(CFLAGS) \
-	test/logger.cpp test/provider.cpp \
+	test/logger.cpp test/provider.cpp test/main.cpp \
 	provider.cpp logger.cpp kvs.cpp \
 	$(LDFLAGS) \
 	-o test.out
