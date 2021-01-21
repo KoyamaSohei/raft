@@ -1,8 +1,8 @@
+#include "../provider.hpp"
+
 #include <gtest/gtest.h>
 
 #include <thallium.hpp>
-
-#include "../provider.hpp"
 
 #define ADDR "127.0.0.1:30000"
 namespace {
@@ -22,13 +22,15 @@ protected:
                                       RAFT_PROVIDER_ID)) {
     server_engine.enable_remote_shutdown();
   }
-  static void wait_loop(void *arg) { ((tl::engine *)arg)->finalize(); }
+
+  static void finalize(void *arg) { ((tl::engine *)arg)->finalize(); }
+
   ~provider_test() {
     ABT_xstream stream;
     ABT_thread thread;
 
     ABT_xstream_create(ABT_SCHED_NULL, &stream);
-    ABT_thread_create_on_xstream(stream, wait_loop, &server_engine,
+    ABT_thread_create_on_xstream(stream, finalize, &server_engine,
                                  ABT_THREAD_ATTR_NULL, &thread);
     cleanup();
   }
