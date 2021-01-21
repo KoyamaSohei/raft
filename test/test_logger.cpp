@@ -108,6 +108,16 @@ TEST_F(logger_test, BOOTSTRAP) {
   ASSERT_STREQ(voted_for.c_str(), "sockets://127.0.0.1:12345");
 }
 
+TEST_F(logger_test, MATCHLOG) {
+  raft_logger logger("sockets://" ADDR);
+  ASSERT_TRUE(logger.match_log(0, 0));
+}
+
+TEST_F(logger_test, MATCHLOG_NOTFOUND) {
+  raft_logger logger("sockets://" ADDR);
+  ASSERT_FALSE(logger.match_log(1234, 0));
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
