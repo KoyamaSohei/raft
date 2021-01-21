@@ -39,7 +39,8 @@ private:
   // THIS MUST BE CALLED IN CRITICAL SECTION
   int get_current_term();
   // If RPC request or response contains term T > currentTerm: set currentTerm =
-  // T, convert to follower THIS MUST BE CALLED IN CRITICAL SECTION
+  // T, convert to follower
+  // THIS MUST BE CALLED IN CRITICAL SECTION
   void set_force_current_term(int term);
   // Voted endpoint on this term
   // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
