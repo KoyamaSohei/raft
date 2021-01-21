@@ -21,7 +21,7 @@ protected:
   tl::remote_procedure m_append_entries_rpc;
   tl::provider_handle server_addr;
   provider_test()
-    : PORT(rnd() % 100 + 30000)
+    : PORT(rnd() % 1000 + 30000)
     , addr("sockets://" ADDR + std::to_string(PORT))
     , caddr("sockets://" ADDR + std::to_string(PORT + 1))
     , server_engine(addr, THALLIUM_SERVER_MODE, true, 2)
