@@ -313,26 +313,21 @@ void raft_provider::become_candidate() {
   for (std::string node : nodes) {
     mu.unlock();
     printf("request_vote to %s\n", node.c_str());
+    request_vote_response resp(current_term, false);
     try {
-      request_vote_response resp = m_request_vote_rpc.on(node_to_handle[node])(
+      resp = m_request_vote_rpc.on(node_to_handle[node])(
         current_term, id, last_log_index, last_log_term);
-      mu.lock();
-      if (resp.get_term() > current_term) {
-        become_follower();
-        return;
-      }
-      if (get_state() == raft_state::follower) { return; }
-      assert(get_state() == raft_state::candidate);
-      if (resp.get_term() > current_term) {
-        become_follower();
-        return;
-      }
-      if (resp.is_vote_granted()) { vote++; }
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
-      mu.lock();
-      if (get_state() == raft_state::follower) { return; }
     }
+    mu.lock();
+    if (get_state() == raft_state::follower) { return; }
+    assert(get_state() == raft_state::candidate);
+    if (resp.get_term() > current_term) {
+      become_follower();
+      return;
+    }
+    if (resp.is_vote_granted()) { vote++; }
   }
   if (vote * 2 > num_nodes) {
     become_leader();
