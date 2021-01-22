@@ -239,9 +239,8 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
 
 void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
                                    std::string key, std::string value) {
-  mu.lock();
+  std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
-    mu.unlock();
     if (leader_id.is_null()) {
       try {
         r.respond(client_put_response(RAFT_LEADER_NOT_FOUND));
@@ -261,14 +260,24 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
     return;
   }
   if (logger.uuid_already_exists(uuid)) {
-    mu.unlock();
     try {
       r.respond(client_put_response(RAFT_DUPLICATE_UUID, 0));
     } catch (tl::exception &e) {}
     return;
   }
   int index = logger.append_log(get_current_term(), uuid, key, value);
-  mu.unlock();
+
+  while (get_commit_index() < index && get_state() == raft_state::leader) {
+    cond.wait(lock);
+  }
+
+  if (get_state() != raft_state::leader) {
+    try {
+      r.respond(client_put_response(RAFT_NODE_IS_NOT_LEADER, 0,
+                                    std::string(leader_id)));
+    } catch (tl::exception &e) {}
+    return;
+  }
   try {
     r.respond(client_put_response(RAFT_SUCCESS, index));
   } catch (tl::exception &e) {}
@@ -478,6 +487,7 @@ void raft_provider::run() {
          (int)get_state(), get_current_term(), last_index, commit_index,
          last_applied);
   mu.unlock();
+  cond.notify_all();
 }
 
 void raft_provider::append_node(std::string addr) {

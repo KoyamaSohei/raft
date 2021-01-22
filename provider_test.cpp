@@ -105,8 +105,14 @@ protected:
 
   client_put_response client_put(std::string uuid, std::string key,
                                  std::string value) {
-    client_put_response resp =
-      m_client_put_rpc.on(server_addr)(uuid, key, value);
+    tl::async_response req =
+      m_client_put_rpc.on(server_addr).async(uuid, key, value);
+
+    usleep(INTERVAL);
+    // to commit log in run_leader
+    provider.run();
+
+    client_put_response resp = req.wait();
     return resp;
   }
 
