@@ -7,10 +7,16 @@
 
 #include "provider.hpp"
 
+struct signal_handler_arg_t {
+  sigset_t *ss;
+  raft_provider *provider;
+};
+
 void signal_handler(void *arg) {
   int num;
-  sigwait((sigset_t *)arg, &num);
+  sigwait(((signal_handler_arg_t *)arg)->ss, &num);
   std::cout << "Signal received " << num << std::endl;
+  ((signal_handler_arg_t *)arg)->provider->finalize();
   exit(1);
 }
 
@@ -47,14 +53,6 @@ int main(int argc, char **argv) {
   std::string node_buf;
   std::vector<std::string> nodes;
 
-  setup_segset(&ss);
-
-  ABT_init(argc, argv);
-
-  ABT_xstream_create(ABT_SCHED_NULL, &sig_stream);
-  ABT_thread_create_on_xstream(sig_stream, signal_handler, &ss,
-                               ABT_THREAD_ATTR_NULL, &sig_thread);
-
   while (1) {
     int opt = getopt(argc, argv, "s:n:h");
     if (opt == -1) break;
@@ -75,12 +73,22 @@ int main(int argc, char **argv) {
     }
   }
 
+  get_nodes_from_buf(node_buf, nodes);
+
+  setup_segset(&ss);
+
+  ABT_init(argc, argv);
+
   std::cout << "try binding with " << self_addr << std::endl;
   tl::engine my_engine(self_addr, THALLIUM_SERVER_MODE, true, 2);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
   raft_provider provider(my_engine, RAFT_PROVIDER_ID);
 
-  get_nodes_from_buf(node_buf, nodes);
+  signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
+
+  ABT_xstream_create(ABT_SCHED_NULL, &sig_stream);
+  ABT_thread_create_on_xstream(sig_stream, signal_handler, &arg,
+                               ABT_THREAD_ATTR_NULL, &sig_thread);
 
   provider.start(nodes);
 
