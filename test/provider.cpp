@@ -155,6 +155,15 @@ TEST_F(provider_test, PUT_RPC) {
   ASSERT_STREQ(r2.get_value().c_str(), "bar");
 }
 
+TEST_F(provider_test, PUT_RPC_LEADER_NOT_FOUND) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  client_put_response r = client_put("foo", "bar");
+  ASSERT_EQ(r.get_error(), RAFT_LEADER_NOT_FOUND);
+  ASSERT_EQ(r.get_index(), 0);
+}
+
 TEST_F(provider_test, GET_HIGHER_TERM) {
   std::vector<std::string> nodes;
   provider.start(nodes);
