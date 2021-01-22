@@ -96,6 +96,7 @@ public:
   void run();
   // readyからfollowerに遷移
   void start(std::vector<std::string> &addrs);
+  void finalize();
 };
 
 #endif

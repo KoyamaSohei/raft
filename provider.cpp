@@ -26,12 +26,16 @@ raft_provider::raft_provider(tl::engine &e, uint16_t provider_id)
   mu.lock();
 }
 
-raft_provider::~raft_provider() {
+raft_provider::~raft_provider() {}
+
+void raft_provider::finalize() {
+  leader_id = tl::provider_handle();
+  node_to_handle.clear();
   m_append_entries_rpc.deregister();
   m_request_vote_rpc.deregister();
   m_client_put_rpc.deregister();
   m_client_get_rpc.deregister();
-  get_engine().wait_for_finalize();
+  get_engine().finalize();
 }
 
 raft_state raft_provider::get_state() {
