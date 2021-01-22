@@ -354,10 +354,6 @@ void raft_provider::become_leader() {
   match_index.clear();
   // match_index initialized to 0
   for (std::string node : nodes) { match_index[node] = 0; }
-  // progress_state initialized to probe
-  for (std::string node : nodes) {
-    progress_state[node] = raft_progress_state::probe;
-  }
   set_state(raft_state::leader);
 }
 
