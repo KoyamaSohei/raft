@@ -27,8 +27,8 @@ protected:
   tl::provider_handle server_addr;
   provider_test()
     : PORT(rnd() % 1000 + 30000)
-    , addr("sockets://" ADDR + std::to_string(PORT))
-    , caddr("sockets://" ADDR + std::to_string(PORT + 1))
+    , addr("ofi+sockets://" ADDR + std::to_string(PORT))
+    , caddr("ofi+sockets://" ADDR + std::to_string(PORT + 1))
     , server_engine(addr, THALLIUM_SERVER_MODE, true, 2)
     , client_engine(caddr, THALLIUM_CLIENT_MODE)
     , provider(server_engine, RAFT_PROVIDER_ID)
@@ -340,7 +340,7 @@ TEST_F(provider_test, APPLY_ENTRIES) {
 
 TEST_F(provider_test, NOT_DETERMINED_LEADER) {
   // dummy
-  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   usleep(3 * INTERVAL);
   provider.run();
@@ -348,7 +348,7 @@ TEST_F(provider_test, NOT_DETERMINED_LEADER) {
 }
 
 TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
-  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   usleep(3 * INTERVAL);
   provider.run();
@@ -361,7 +361,7 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
 }
 
 TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
-  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_get_response r = client_get("hello");
@@ -376,7 +376,7 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
-  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_put_response r = client_put("foo", "bar");
@@ -391,7 +391,7 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
-  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   usleep(3 * INTERVAL);
