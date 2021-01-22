@@ -256,4 +256,13 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
+TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  request_vote_response r2 = request_vote(1, caddr, 1, 1);
+  ASSERT_TRUE(r2.is_vote_granted());
+  ASSERT_EQ(r2.get_term(), 1);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
 } // namespace
