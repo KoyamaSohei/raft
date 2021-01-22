@@ -112,19 +112,24 @@ class client_put_response {
 private:
   int error;
   int index;
+  std::string leader_id;
 
 public:
-  client_put_response(int _error = RAFT_NOT_IMPLEMENTED, int _index = 0)
-    : error(_error), index(_index) {}
+  client_put_response(int _error = RAFT_NOT_IMPLEMENTED, int _index = 0,
+                      std::string _leader_id = "")
+    : error(_error), index(_index), leader_id(_leader_id) {}
 
   int get_error() { return error; }
 
   int get_index() { return index; }
 
+  std::string get_leader_id() { return leader_id; }
+
   template <typename A>
   void serialize(A& ar) {
     ar& error;
     ar& index;
+    ar& leader_id;
   }
 };
 
@@ -132,20 +137,24 @@ class client_get_response {
 private:
   int error;
   std::string value;
+  std::string leader_id;
 
 public:
   client_get_response(int _error = RAFT_NOT_IMPLEMENTED,
-                      std::string _value = "")
-    : error(_error), value(_value) {}
+                      std::string _value = "", std::string _leader_id = "")
+    : error(_error), value(_value), leader_id(_leader_id) {}
 
   int get_error() { return error; }
 
   std::string get_value() { return value; }
 
+  std::string get_leader_id() { return leader_id; }
+
   template <typename A>
   void serialize(A& ar) {
     ar& error;
     ar& value;
+    ar& leader_id;
   }
 };
 

@@ -36,14 +36,28 @@ int main(int argc, char **argv) {
     std::string key = argv[2];
     tl::provider_handle handle(my_engine.lookup(argv[3]), RAFT_PROVIDER_ID);
 
-    client_get_response resp = client_get.on(handle)(key);
+    while (1) {
+      client_get_response resp = client_get.on(handle)(key);
 
-    if (resp.get_error() == RAFT_SUCCESS) {
-      std::cout << resp.get_value() << std::endl;
-      return 0;
+      if (resp.get_error() == RAFT_SUCCESS) {
+        std::cout << resp.get_value() << std::endl;
+        return 0;
+      }
+
+      if (resp.get_error() == RAFT_NODE_IS_NOT_LEADER) {
+        handle = tl::provider_handle(my_engine.lookup(resp.get_leader_id()),
+                                     RAFT_PROVIDER_ID);
+        continue;
+      }
+
+      if (resp.get_error() == RAFT_LEADER_NOT_FOUND) {
+        std::cerr << "leader not found" << std::endl;
+      }
+      if (resp.get_error() == RAFT_NOT_IMPLEMENTED) {
+        std::cerr << "not implemented" << std::endl;
+      }
+      return resp.get_error();
     }
-
-    return resp.get_error();
 
   } else if (!strcasecmp(argv[1], "put")) {
     if (argc != 5) {
@@ -55,9 +69,27 @@ int main(int argc, char **argv) {
     std::string value = argv[3];
     tl::provider_handle handle(my_engine.lookup(argv[4]), RAFT_PROVIDER_ID);
 
-    client_put_response resp = client_put.on(handle)(key, value);
+    while (1) {
+      client_put_response resp = client_put.on(handle)(key, value);
 
-    std::cout << resp.get_index() << std::endl;
-    return resp.get_error();
+      if (resp.get_error() == RAFT_SUCCESS) {
+        std::cout << resp.get_index() << std::endl;
+        return 0;
+      }
+
+      if (resp.get_error() == RAFT_NODE_IS_NOT_LEADER) {
+        handle = tl::provider_handle(my_engine.lookup(resp.get_leader_id()),
+                                     RAFT_PROVIDER_ID);
+        continue;
+      }
+
+      if (resp.get_error() == RAFT_LEADER_NOT_FOUND) {
+        std::cerr << "leader not found" << std::endl;
+      }
+      if (resp.get_error() == RAFT_NOT_IMPLEMENTED) {
+        std::cerr << "not implemented" << std::endl;
+      }
+      return resp.get_error();
+    }
   }
 }
