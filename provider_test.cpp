@@ -347,4 +347,17 @@ TEST_F(provider_test, NOT_DETERMINED_LEADER) {
   ASSERT_EQ(fetch_state(), raft_state::candidate);
 }
 
+TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
+  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+  append_entries_response r =
+    append_entries(1, 0, 0, std::vector<raft_entry>(), 0, caddr);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
 } // namespace
