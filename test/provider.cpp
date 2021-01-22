@@ -295,6 +295,21 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
+TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  client_put_response r = client_put("foo", "bar");
+  ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
+  ASSERT_EQ(r.get_index(), 1);
+  request_vote_response r2 = request_vote(2, caddr, 0, 2);
+  ASSERT_TRUE(r2.is_vote_granted());
+  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
   std::vector<std::string> nodes;
   provider.start(nodes);
