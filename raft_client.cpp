@@ -14,7 +14,8 @@ void usage(int argc, char **argv) {
   printf("For examples,\n");
   printf(
     "%s get hello "
-    "'ofi+sockets://127.0.0.1:30000,ofi+sockets://127.0.0.1:30001' \n");
+    "'ofi+sockets://127.0.0.1:30000,ofi+sockets://127.0.0.1:30001' \n",
+    argv[0]);
 }
 
 std::string generate_id() {
