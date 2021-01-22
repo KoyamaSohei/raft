@@ -390,4 +390,19 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   ASSERT_EQ(r2.get_index(), 0);
 }
 
+TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
+  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  provider.start(nodes);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+  usleep(INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+  usleep(INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+}
+
 } // namespace
