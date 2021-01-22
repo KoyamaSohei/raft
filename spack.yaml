@@ -5,6 +5,7 @@ spack:
     - jsoncpp
     - googletest
     - lconv
+    - libuuid
 
   packages:
     autoconf:

@@ -1,6 +1,8 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
+#include <uuid/uuid.h>
+
 #include <cassert>
 #include <string>
 #include <thallium.hpp>
@@ -25,16 +27,23 @@ enum class raft_state {
 class raft_entry {
 private:
   int index;
+  int term;
+  std::string uuid;
   std::string key;
   std::string value;
 
 public:
-  raft_entry(int _index = 0, std::string _key = "", std::string _value = "")
-    : index(_index), key(_key), value(_value) {
+  raft_entry(int _index = 0, int _term = 0, std::string _uuid = "",
+             std::string _key = "", std::string _value = "")
+    : index(_index), term(_term), uuid(_uuid), key(_key), value(_value) {
     assert(0 <= index);
   }
 
   int get_index() { return index; }
+
+  int get_term() { return term; }
+
+  std::string get_uuid() { return uuid; }
 
   std::string get_key() { return key; }
 
@@ -100,6 +109,7 @@ public:
 #define RAFT_NODE_IS_NOT_LEADER -9999
 #define RAFT_NOT_IMPLEMENTED -10000
 #define RAFT_LEADER_NOT_FOUND -10001
+#define DUPLICATE_REQEST_ID -10002
 #define RAFT_SUCCESS 0
 
 class client_put_response {
@@ -151,5 +161,7 @@ public:
     ar& leader_id;
   }
 };
+
+#define UUID_LENGTH 37
 
 #endif

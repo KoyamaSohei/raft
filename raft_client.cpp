@@ -12,6 +12,14 @@ void usage(int argc, char **argv) {
   printf("%s put [key] [value] [one of nodes addr]\n", argv[0]);
 }
 
+std::string generate_id() {
+  uuid_t id;
+  uuid_generate(id);
+  char sid[UUID_LENGTH];
+  uuid_unparse_lower(id, sid);
+  return std::string(sid);
+}
+
 int main(int argc, char **argv) {
   tl::engine my_engine("sockets", THALLIUM_CLIENT_MODE);
   tl::remote_procedure client_put = my_engine.define(CLIENT_PUT_RPC_NAME);
@@ -67,10 +75,11 @@ int main(int argc, char **argv) {
 
     std::string key = argv[2];
     std::string value = argv[3];
+    std::string uuid = generate_id();
     tl::provider_handle handle(my_engine.lookup(argv[4]), RAFT_PROVIDER_ID);
 
     while (1) {
-      client_put_response resp = client_put.on(handle)(key, value);
+      client_put_response resp = client_put.on(handle)(uuid, key, value);
 
       if (resp.get_error() == RAFT_SUCCESS) {
         std::cout << resp.get_index() << std::endl;

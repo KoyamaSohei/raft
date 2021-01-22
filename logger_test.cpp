@@ -69,21 +69,23 @@ TEST_F(logger_test, DUMMY_IS_HELLO) {
   raft_logger logger("sockets://" ADDR);
   int index = 0;
   int term;
-  std::string key, value;
-  logger.get_log(index, term, key, value);
+  std::string uuid, key, value;
+  logger.get_log(index, term, uuid, key, value);
   ASSERT_EQ(term, 0);
+  ASSERT_STREQ(uuid.c_str(), "12345");
   ASSERT_STREQ(key.c_str(), "hello");
   ASSERT_STREQ(value.c_str(), "world");
 }
 
 TEST_F(logger_test, APPEND_LOG) {
   raft_logger logger("sockets://" ADDR);
-  int idx = logger.append_log(1, "foo", "bar");
+  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
   ASSERT_EQ(idx, 1);
   int term;
-  std::string key, value;
-  logger.get_log(idx, term, key, value);
+  std::string uuid, key, value;
+  logger.get_log(idx, term, uuid, key, value);
   ASSERT_EQ(term, 1);
+  ASSERT_STREQ(uuid.c_str(), "foobaruuid");
   ASSERT_STREQ(key.c_str(), "foo");
   ASSERT_STREQ(value.c_str(), "bar");
 }
@@ -116,6 +118,28 @@ TEST_F(logger_test, MATCHLOG) {
 TEST_F(logger_test, MATCHLOG_NOTFOUND) {
   raft_logger logger("sockets://" ADDR);
   ASSERT_FALSE(logger.match_log(1234, 0));
+}
+
+TEST_F(logger_test, UUID_ALREADY_EXISTS) {
+  raft_logger logger("sockets://" ADDR);
+  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
+  ASSERT_EQ(idx, 1);
+  ASSERT_TRUE(logger.uuid_already_exists("foobaruuid"));
+  ASSERT_FALSE(logger.uuid_already_exists("barfoouuid"));
+}
+
+TEST_F(logger_test, CONFLICT_UUID) {
+  raft_logger logger("sockets://" ADDR);
+  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
+  ASSERT_EQ(idx, 1);
+  ASSERT_DEATH(logger.append_log(1, "foobaruuid", "foo", "bar");, "");
+}
+
+TEST_F(logger_test, CONFLICT_UUID_2) {
+  raft_logger logger("sockets://" ADDR);
+  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
+  ASSERT_EQ(idx, 1);
+  ASSERT_DEATH(logger.append_log(2, "foobaruuid", "hello", "world");, "");
 }
 
 } // namespace

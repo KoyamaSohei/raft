@@ -1,6 +1,6 @@
 CC = g++
-CFLAGS += -Wall -g -std=c++14 `pkg-config --cflags thallium lmdb jsoncpp gtest`
-LDFLAGS += `pkg-config --libs thallium lmdb jsoncpp gtest` -pthread
+CFLAGS += -Wall -g -std=c++14 `pkg-config --cflags thallium lmdb jsoncpp gtest uuid`
+LDFLAGS += `pkg-config --libs thallium lmdb jsoncpp gtest uuid` -pthread
 
 all:: raft.out raft_client.out test.out
 

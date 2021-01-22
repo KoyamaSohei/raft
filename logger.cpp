@@ -55,8 +55,10 @@ raft_logger::raft_logger(std::string id) {
     // set dummy log, this make implimentation easily
     // index:0 ,term: 0
     stored_log_num = 0;
-    save_log_str(
-      0, "{\"index\":0,\"term\":0,\"key\":\"hello\",\"value\":\"world\"}", txn);
+    save_log_str(0,
+                 "{\"index\":0,\"term\":0,\"uuid\": "
+                 "\"12345\",\"key\":\"hello\",\"value\":\"world\"}",
+                 txn);
   } else {
     stored_log_num = stat.ms_entries - 1;
   }
@@ -237,6 +239,88 @@ void raft_logger::save_log_str(int index, std::string log_str, MDB_txn *ptxn) {
   }
 }
 
+void raft_logger::save_uuid(std::string uuid, MDB_txn *ptxn) {
+  MDB_txn *txn;
+  MDB_dbi dbi;
+  MDB_val save_uuid_key, save_uuid_value;
+  int err;
+  err = mdb_txn_begin(env, ptxn, 0, &txn);
+  assert(err == 0);
+
+  err = mdb_dbi_open(txn, uuid_db, MDB_CREATE, &dbi);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  save_uuid_key.mv_size = sizeof(char) * (uuid.size() + 1);
+  save_uuid_key.mv_data = (void *)uuid.c_str();
+
+  err = mdb_get(txn, dbi, &save_uuid_key, &save_uuid_value);
+
+  if (err != MDB_NOTFOUND) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  save_uuid_value.mv_size = 0;
+  save_uuid_value.mv_data = NULL;
+
+  err = mdb_put(txn, dbi, &save_uuid_key, &save_uuid_value, 0);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  err = mdb_txn_commit(txn);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+}
+
+int raft_logger::get_uuid(std::string uuid, MDB_txn *ptxn) {
+  MDB_txn *txn;
+  MDB_dbi dbi;
+  MDB_val get_uuid_key, get_uuid_value;
+  int err;
+
+  err = mdb_txn_begin(env, ptxn, 0, &txn);
+  assert(err == 0);
+
+  err = mdb_dbi_open(txn, uuid_db, MDB_CREATE, &dbi);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  get_uuid_key.mv_size = sizeof(char) * (uuid.size() + 1);
+  get_uuid_key.mv_data = (void *)uuid.c_str();
+
+  err = mdb_get(txn, dbi, &get_uuid_key, &get_uuid_value);
+
+  if (err == MDB_NOTFOUND) {
+    err = mdb_txn_commit(txn);
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
+    }
+    return MDB_NOTFOUND;
+  }
+
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  err = mdb_txn_commit(txn);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+  return 0;
+}
+
 std::string raft_logger::get_log_str(int index) {
   assert(0 <= index);
   if (index > stored_log_num) {
@@ -277,15 +361,16 @@ std::string raft_logger::get_log_str(int index) {
   return std::string((char *)get_log_value.mv_data);
 }
 
-int raft_logger::append_log(int term, std::string key, std::string value) {
+int raft_logger::append_log(int term, std::string uuid, std::string key,
+                            std::string value) {
   assert(0 <= term);
   int index = stored_log_num + 1;
-  save_log(index, term, key, value);
+  save_log(index, term, uuid, key, value);
   return index;
 }
 
-void raft_logger::save_log(int index, int term, std::string key,
-                           std::string value) {
+void raft_logger::save_log(int index, int term, std::string uuid,
+                           std::string key, std::string value) {
   assert(0 <= index);
   assert(index <= stored_log_num + 1);
   if (index == stored_log_num + 1) {
@@ -294,24 +379,34 @@ void raft_logger::save_log(int index, int term, std::string key,
   }
   Json::Value root;
   root["term"] = term;
+  root["uuid"] = uuid;
   root["key"] = key;
   root["value"] = value;
   Json::StreamWriterBuilder builder;
   std::string log_str = Json::writeString(builder, root);
-  save_log_str(index, log_str);
+  MDB_txn *txn;
+  int err = mdb_txn_begin(env, NULL, 0, &txn);
+  assert(err == 0);
+  save_log_str(index, log_str, txn);
+  save_uuid(uuid, txn);
+  err = mdb_txn_commit(txn);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
 }
 
 int raft_logger::get_term(int index) {
   assert(0 <= index);
   assert(index <= stored_log_num);
   int term;
-  std::string key, value;
-  get_log(index, term, key, value);
+  std::string uuid, key, value;
+  get_log(index, term, uuid, key, value);
   return term;
 }
 
-void raft_logger::get_log(int index, int &term, std::string &key,
-                          std::string &value) {
+void raft_logger::get_log(int index, int &term, std::string &uuid,
+                          std::string &key, std::string &value) {
   assert(0 <= index);
   assert(index <= stored_log_num);
   Json::CharReaderBuilder builder;
@@ -324,14 +419,15 @@ void raft_logger::get_log(int index, int &term, std::string &key,
     reader->parse(str.c_str(), str.c_str() + str.length(), &root, &err_str);
   assert(ok);
   term = root["term"].asInt();
+  uuid = root["uuid"].asString();
   key = root["key"].asString();
   value = root["value"].asString();
 }
 
 void raft_logger::get_last_log(int &index, int &term) {
   index = stored_log_num;
-  std::string key, value;
-  get_log(index, term, key, value);
+  std::string uuid, key, value;
+  get_log(index, term, uuid, key, value);
   assert(0 <= index);
   assert(0 <= term);
 }
@@ -342,4 +438,10 @@ bool raft_logger::match_log(int index, int term) {
   assert(index <= stored_log_num);
   int t = get_term(index);
   return t == term;
+}
+
+bool raft_logger::uuid_already_exists(std::string uuid) {
+  int err = get_uuid(uuid);
+  if (err == MDB_NOTFOUND) { return false; }
+  return true;
 }

@@ -174,9 +174,10 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
 
   for (raft_entry ent : req_entries) {
     printf("entry received, idx: %d, term: %d, key: %s, value: %s\n",
-           ent.get_index(), req_term, ent.get_key().c_str(),
+           ent.get_index(), ent.get_term(), ent.get_key().c_str(),
            ent.get_value().c_str());
-    logger.save_log(ent.get_index(), req_term, ent.get_key(), ent.get_value());
+    logger.save_log(ent.get_index(), ent.get_term(), ent.get_uuid(),
+                    ent.get_key(), ent.get_value());
   }
 
   if (req_leader_commit > get_commit_index()) {
@@ -236,8 +237,8 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
   return;
 }
 
-void raft_provider::client_put_rpc(const tl::request &r, std::string key,
-                                   std::string value) {
+void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
+                                   std::string key, std::string value) {
   mu.lock();
   if (get_state() != raft_state::leader) {
     mu.unlock();
@@ -253,7 +254,14 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string key,
     } catch (tl::exception &e) {}
     return;
   }
-  int index = logger.append_log(get_current_term(), key, value);
+  if (logger.uuid_already_exists(uuid)) {
+    mu.unlock();
+    try {
+      r.respond(client_put_response(DUPLICATE_REQEST_ID, 0));
+    } catch (tl::exception &e) {}
+    return;
+  }
+  int index = logger.append_log(get_current_term(), uuid, key, value);
   mu.unlock();
   try {
     r.respond(client_put_response(RAFT_SUCCESS, index));
@@ -372,9 +380,9 @@ void raft_provider::run_leader() {
       std::min(last_log_index, next_index[node] + MAX_ENTRIES_NUM);
     for (int idx = next_index[node]; idx <= last_index; idx++) {
       int t;
-      std::string k, v;
-      logger.get_log(idx, t, k, v);
-      entries.emplace_back(idx, k, v);
+      std::string u, k, v;
+      logger.get_log(idx, t, u, k, v);
+      entries.emplace_back(idx, t, u, k, v);
     }
 
     mu.unlock();
@@ -439,8 +447,8 @@ void raft_provider::run() {
 
   for (int index = last_applied + 1; index <= limit_index; index++) {
     int t;
-    std::string k, v;
-    logger.get_log(index, t, k, v);
+    std::string u, k, v;
+    logger.get_log(index, t, u, k, v);
     kvs.apply(index, k, v);
   }
 

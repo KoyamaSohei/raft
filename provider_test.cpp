@@ -103,8 +103,10 @@ protected:
     return resp;
   }
 
-  client_put_response client_put(std::string key, std::string value) {
-    client_put_response resp = m_client_put_rpc.on(server_addr)(key, value);
+  client_put_response client_put(std::string uuid, std::string key,
+                                 std::string value) {
+    client_put_response resp =
+      m_client_put_rpc.on(server_addr)(uuid, key, value);
     return resp;
   }
 
@@ -145,7 +147,7 @@ TEST_F(provider_test, PUT_RPC) {
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
   provider.run(); // commit "foo" "bar"
@@ -159,7 +161,7 @@ TEST_F(provider_test, PUT_RPC_LEADER_NOT_FOUND) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_LEADER_NOT_FOUND);
   ASSERT_EQ(r.get_index(), 0);
 }
@@ -231,7 +233,7 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
   append_entries_response r2 =
@@ -247,7 +249,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
   request_vote_response r2 = request_vote(2, caddr, 0, 0);
@@ -262,7 +264,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
   request_vote_response r2 = request_vote(2, caddr, 0, 1);
@@ -286,7 +288,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
   request_vote_response r2 = request_vote(2, caddr, 1, 1);
@@ -301,7 +303,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
   request_vote_response r2 = request_vote(2, caddr, 0, 2);
@@ -326,7 +328,7 @@ TEST_F(provider_test, APPLY_ENTRIES) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   std::vector<raft_entry> ent;
-  ent.emplace_back(1, "foo", "bar");
+  ent.emplace_back(1, 1, "12345", "foo", "bar");
   append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
   ASSERT_EQ(r.get_term(), 1);
   ASSERT_TRUE(r.is_success());
@@ -379,13 +381,13 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
-  client_put_response r = client_put("foo", "bar");
+  client_put_response r = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_LEADER_NOT_FOUND);
   ASSERT_EQ(r.get_index(), 0);
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
-  client_put_response r2 = client_put("foo", "bar");
+  client_put_response r2 = client_put("foobaruuid", "foo", "bar");
   ASSERT_EQ(r2.get_error(), RAFT_LEADER_NOT_FOUND);
   ASSERT_EQ(r2.get_index(), 0);
 }
