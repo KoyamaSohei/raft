@@ -52,6 +52,8 @@ public:
   template <typename A>
   void serialize(A& ar) {
     ar& index;
+    ar& term;
+    ar& uuid;
     ar& key;
     ar& value;
   }
