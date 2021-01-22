@@ -72,20 +72,21 @@ TEST_F(logger_test, DUMMY_IS_HELLO) {
   std::string uuid, key, value;
   logger.get_log(index, term, uuid, key, value);
   ASSERT_EQ(term, 0);
-  ASSERT_STREQ(uuid.c_str(), "12345");
+  ASSERT_STREQ(uuid.c_str(), "046ccc3a-2dac-4e40-ae2e-76797a271fe2");
   ASSERT_STREQ(key.c_str(), "hello");
   ASSERT_STREQ(value.c_str(), "world");
 }
 
 TEST_F(logger_test, APPEND_LOG) {
   raft_logger logger("sockets://" ADDR);
-  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
+  int idx =
+    logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
   int term;
   std::string uuid, key, value;
   logger.get_log(idx, term, uuid, key, value);
   ASSERT_EQ(term, 1);
-  ASSERT_STREQ(uuid.c_str(), "foobaruuid");
+  ASSERT_STREQ(uuid.c_str(), "046ccc3a-2dac-4e40-ae2e-76797a271fe2");
   ASSERT_STREQ(key.c_str(), "foo");
   ASSERT_STREQ(value.c_str(), "bar");
 }
@@ -122,24 +123,33 @@ TEST_F(logger_test, MATCHLOG_NOTFOUND) {
 
 TEST_F(logger_test, UUID_ALREADY_EXISTS) {
   raft_logger logger("sockets://" ADDR);
-  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
+  int idx =
+    logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
-  ASSERT_TRUE(logger.uuid_already_exists("foobaruuid"));
-  ASSERT_FALSE(logger.uuid_already_exists("barfoouuid"));
+  ASSERT_TRUE(
+    logger.uuid_already_exists("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  ASSERT_FALSE(
+    logger.uuid_already_exists("146ccc3a-2dac-4e40-ae2e-76797a271fe2"));
 }
 
 TEST_F(logger_test, CONFLICT_UUID) {
   raft_logger logger("sockets://" ADDR);
-  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
+  int idx =
+    logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
-  ASSERT_DEATH(logger.append_log(1, "foobaruuid", "foo", "bar");, "");
+  ASSERT_DEATH(
+    logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
+    , "");
 }
 
 TEST_F(logger_test, CONFLICT_UUID_2) {
   raft_logger logger("sockets://" ADDR);
-  int idx = logger.append_log(1, "foobaruuid", "foo", "bar");
+  int idx =
+    logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
-  ASSERT_DEATH(logger.append_log(2, "foobaruuid", "hello", "world");, "");
+  ASSERT_DEATH(logger.append_log(2, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                 "hello", "world");
+               , "");
 }
 
 } // namespace

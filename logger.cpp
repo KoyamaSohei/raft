@@ -57,7 +57,8 @@ raft_logger::raft_logger(std::string id) {
     stored_log_num = 0;
     save_log_str(0,
                  "{\"index\":0,\"term\":0,\"uuid\": "
-                 "\"12345\",\"key\":\"hello\",\"value\":\"world\"}",
+                 "\"046ccc3a-2dac-4e40-ae2e-76797a271fe2\",\"key\":\"hello\","
+                 "\"value\":\"world\"}",
                  txn);
   } else {
     stored_log_num = stat.ms_entries - 1;
