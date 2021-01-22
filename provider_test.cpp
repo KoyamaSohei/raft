@@ -405,4 +405,21 @@ TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
   ASSERT_EQ(fetch_state(), raft_state::candidate);
 }
 
+TEST_F(provider_test, NODE_IS_NOT_LEADER) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  append_entries_response r =
+    append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.get_term(), 2);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  client_get_response r2 = client_get("hello");
+  ASSERT_EQ(r2.get_error(), RAFT_NODE_IS_NOT_LEADER);
+  ASSERT_STREQ(r2.get_value().c_str(), "");
+  ASSERT_STREQ(r2.get_leader_id().c_str(), caddr.c_str());
+}
+
 } // namespace
