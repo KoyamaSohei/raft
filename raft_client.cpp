@@ -65,16 +65,13 @@ int main(int argc, char **argv) {
 
     auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
 
-    auto get_node_from_addr = [&](std::string addr) {
-      tl::endpoint e = my_engine.lookup(addr);
-      return tl::provider_handle(e, RAFT_PROVIDER_ID);
-    };
-
     std::string next_addr = get_radom_node();
 
     while (1) {
-      client_get_response resp =
-        client_get.on(get_node_from_addr(next_addr))(key);
+
+      tl::endpoint e = my_engine.lookup(next_addr);
+      tl::provider_handle ph(e, RAFT_PROVIDER_ID);
+      client_get_response resp = client_get.on(ph)(key);
 
       int err = resp.get_error();
 
@@ -115,16 +112,12 @@ int main(int argc, char **argv) {
 
     auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
 
-    auto get_node_from_addr = [&](std::string addr) {
-      tl::endpoint e = my_engine.lookup(addr);
-      return tl::provider_handle(e, RAFT_PROVIDER_ID);
-    };
-
     std::string next_addr = get_radom_node();
 
     while (1) {
-      client_put_response resp =
-        client_put.on(get_node_from_addr(next_addr))(uuid, key, value);
+      tl::endpoint e = my_engine.lookup(next_addr);
+      tl::provider_handle ph(e, RAFT_PROVIDER_ID);
+      client_put_response resp = client_put.on(ph)(uuid, key, value);
 
       int err = resp.get_error();
       switch (err) {
