@@ -15,6 +15,7 @@ protected:
   std::random_device rnd;
   int PORT;
   std::string addr, caddr;
+  tl::abt scope;
   tl::engine server_engine;
   tl::engine client_engine;
   raft_provider provider;
@@ -41,17 +42,9 @@ protected:
     std::cout << "server running at " << server_engine.self() << std::endl;
   }
 
-  static void finalize(void *arg) { ((tl::engine *)arg)->finalize(); }
+  static void finalize(void *arg) { ((raft_provider *)arg)->finalize(); }
 
-  ~provider_test() {
-    ABT_xstream stream;
-    ABT_thread thread;
-
-    ABT_xstream_create(ABT_SCHED_NULL, &stream);
-    ABT_thread_create_on_xstream(stream, finalize, &server_engine,
-                                 ABT_THREAD_ATTR_NULL, &thread);
-    cleanup();
-  }
+  ~provider_test() { cleanup(); }
   void cleanup() {
     int err;
     std::string dir_path = "log-" ADDR + std::to_string(PORT);
@@ -68,6 +61,26 @@ protected:
     ASSERT_EQ(err, 0);
   }
 
+  void TearDown() {
+    server_addr = tl::provider_handle();
+    m_echo_state_rpc.deregister();
+    m_request_vote_rpc.deregister();
+    m_append_entries_rpc.deregister();
+    m_client_put_rpc.deregister();
+    m_client_get_rpc.deregister();
+    client_engine.finalize();
+
+    ABT_xstream stream;
+    ABT_thread thread;
+
+    ABT_xstream_create(ABT_SCHED_NULL, &stream);
+    ABT_thread_create_on_xstream(stream, finalize, &provider,
+                                 ABT_THREAD_ATTR_NULL, &thread);
+    server_engine.wait_for_finalize();
+
+    ABT_thread_free(&thread);
+    ABT_xstream_free(&stream);
+  }
   raft_state fetch_state() {
     int r = m_echo_state_rpc.on(server_addr)();
     return raft_state(r);
