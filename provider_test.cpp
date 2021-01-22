@@ -322,4 +322,20 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
+TEST_F(provider_test, APPLY_ENTRIES) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  std::vector<raft_entry> ent;
+  ent.emplace_back(1, "foo", "bar");
+  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.is_success());
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  client_get_response r2 = client_get("foo");
+  ASSERT_EQ(r2.get_error(), RAFT_SUCCESS);
+  ASSERT_STREQ(r2.get_value().c_str(), "bar");
+}
+
 } // namespace
