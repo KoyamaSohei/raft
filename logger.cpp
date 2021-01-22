@@ -396,7 +396,7 @@ void raft_logger::save_log(int index, int term, std::string uuid,
     abort();
   }
   printf("save log index: %d,term: %d, uuid: %s,key: %s,value:%s \n", index,
-         term, uuid.c_str(), key.c_str(), value.c_str());
+         term, uuid.substr(0, 8).c_str(), key.c_str(), value.c_str());
 }
 
 int raft_logger::get_term(int index) {
