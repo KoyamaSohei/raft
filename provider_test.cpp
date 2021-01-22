@@ -338,4 +338,13 @@ TEST_F(provider_test, APPLY_ENTRIES) {
   ASSERT_STREQ(r2.get_value().c_str(), "bar");
 }
 
+TEST_F(provider_test, NOT_DETERMINED_LEADER) {
+  // dummy
+  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+}
+
 } // namespace
