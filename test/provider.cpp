@@ -216,4 +216,20 @@ TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
   provider.run();
 }
 
+TEST_F(provider_test, CONFLICT_PREV_LOG) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  client_put_response r = client_put("foo", "bar");
+  ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
+  ASSERT_EQ(r.get_index(), 1);
+  append_entries_response r2 =
+    append_entries(2, 1, 2, std::vector<raft_entry>(), 0, caddr);
+  ASSERT_FALSE(r2.is_success());
+  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
 } // namespace
