@@ -205,4 +205,15 @@ TEST_F(provider_test, GET_LOWER_TERM_2) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
+TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  append_entries_response r =
+    append_entries(2, 1, 1, std::vector<raft_entry>(), 0, caddr);
+  ASSERT_EQ(r.get_term(), 2);
+  ASSERT_FALSE(r.is_success());
+  provider.run();
+}
+
 } // namespace
