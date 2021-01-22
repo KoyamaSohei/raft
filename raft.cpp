@@ -24,7 +24,7 @@ void tick_loop(void *provider) {
   ((raft_provider *)provider)->run();
 }
 
-void setup_segset(sigset_t *ss) {
+void setup_sigset(sigset_t *ss) {
   sigemptyset(ss);
   sigaddset(ss, SIGINT);
   sigaddset(ss, SIGTERM);
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 
   get_nodes_from_buf(node_buf, nodes);
 
-  setup_segset(&ss);
+  setup_sigset(&ss);
 
   ABT_init(argc, argv);
 
