@@ -83,13 +83,14 @@ void raft_provider::set_commit_index(int index) {
 void raft_provider::update_timeout_limit() {
   int span = 0;
   switch (_state) {
+    case raft_state::ready:
     case raft_state::follower:
       span = 2;
       break;
     case raft_state::candidate:
       span = 2 + rand() % 10;
       break;
-    default:
+    case raft_state::leader:
       abort();
   }
   timeout_limit =
@@ -307,8 +308,8 @@ void raft_provider::echo_state_rpc(const tl::request &r) {
 
 void raft_provider::become_follower() {
   printf("become follower\n");
-  set_state(raft_state::follower);
   update_timeout_limit();
+  set_state(raft_state::follower);
 }
 
 void raft_provider::run_follower() {
