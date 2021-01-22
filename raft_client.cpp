@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
         case RAFT_NOT_IMPLEMENTED:
           std::cerr << "not implemented" << std::endl;
           abort();
-        case DUPLICATE_REQEST_ID:
+        case RAFT_DUPLICATE_UUID:
           std::cerr << "duplicate request" << std::endl;
           abort();
         default:
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
         case RAFT_NOT_IMPLEMENTED:
           std::cerr << "not implemented" << std::endl;
           abort();
-        case DUPLICATE_REQEST_ID:
+        case RAFT_DUPLICATE_UUID:
           std::cerr << "duplicate request" << std::endl;
           abort();
         default:

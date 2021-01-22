@@ -263,7 +263,7 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
   if (logger.uuid_already_exists(uuid)) {
     mu.unlock();
     try {
-      r.respond(client_put_response(DUPLICATE_REQEST_ID, 0));
+      r.respond(client_put_response(RAFT_DUPLICATE_UUID, 0));
     } catch (tl::exception &e) {}
     return;
   }
