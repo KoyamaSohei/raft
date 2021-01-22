@@ -157,7 +157,6 @@ TEST_F(provider_test, PUT_RPC) {
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
-  provider.run(); // commit "foo" "bar"
   provider.run(); // applied "foo" "bar"
   client_get_response r2 = client_get("foo");
   ASSERT_EQ(r2.get_error(), RAFT_SUCCESS);
