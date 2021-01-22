@@ -433,4 +433,14 @@ TEST_F(provider_test, NODE_IS_NOT_LEADER) {
   ASSERT_STREQ(r2.get_leader_id().c_str(), caddr.c_str());
 }
 
+TEST_F(provider_test, PUT_INVALID_UUID) {
+  std::vector<std::string> nodes;
+  provider.start(nodes);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  client_put_response r = client_put("foobarbuz", "foo", "bar");
+  ASSERT_EQ(r.get_error(), RAFT_INVALID_UUID);
+}
+
 } // namespace

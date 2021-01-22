@@ -254,6 +254,12 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
     } catch (tl::exception &e) {}
     return;
   }
+  if (uuid.size() + 1 != UUID_LENGTH) {
+    try {
+      r.respond(client_put_response(RAFT_INVALID_UUID, 0));
+    } catch (tl::exception &e) {}
+    return;
+  }
   if (logger.uuid_already_exists(uuid)) {
     mu.unlock();
     try {
