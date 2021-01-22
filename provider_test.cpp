@@ -375,4 +375,19 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
   ASSERT_STREQ(r2.get_value().c_str(), "");
 }
 
+TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
+  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  provider.start(nodes);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  client_put_response r = client_put("foo", "bar");
+  ASSERT_EQ(r.get_error(), RAFT_LEADER_NOT_FOUND);
+  ASSERT_EQ(r.get_index(), 0);
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+  client_put_response r2 = client_put("foo", "bar");
+  ASSERT_EQ(r2.get_error(), RAFT_LEADER_NOT_FOUND);
+  ASSERT_EQ(r2.get_index(), 0);
+}
+
 } // namespace
