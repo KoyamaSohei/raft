@@ -360,4 +360,19 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
+TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
+  std::vector<std::string> nodes{"sockets://127.0.0.1:299999"};
+  provider.start(nodes);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  client_get_response r = client_get("hello");
+  ASSERT_EQ(r.get_error(), RAFT_LEADER_NOT_FOUND);
+  ASSERT_STREQ(r.get_value().c_str(), "");
+  usleep(3 * INTERVAL);
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+  client_get_response r2 = client_get("hello");
+  ASSERT_EQ(r2.get_error(), RAFT_LEADER_NOT_FOUND);
+  ASSERT_STREQ(r2.get_value().c_str(), "");
+}
+
 } // namespace
