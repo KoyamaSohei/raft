@@ -2,14 +2,19 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <random>
 #include <vector>
 
 #include "types.hpp"
 
 void usage(int argc, char **argv) {
   printf("Usage: \n");
-  printf("%s get [key]         [one of nodes addr]\n", argv[0]);
-  printf("%s put [key] [value] [one of nodes addr]\n", argv[0]);
+  printf("%s get [key]         [nodes addr]\n", argv[0]);
+  printf("%s put [key] [value] [nodes addr]\n", argv[0]);
+  printf("For examples,\n");
+  printf(
+    "%s get hello "
+    "'ofi+sockets://127.0.0.1:30000,ofi+sockets://127.0.0.1:30001' \n");
 }
 
 std::string generate_id() {
@@ -20,10 +25,23 @@ std::string generate_id() {
   return std::string(sid);
 }
 
+void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes) {
+  if (buf.empty()) { return; }
+  std::string::size_type pos = 0, next;
+
+  do {
+    next = buf.find(",", pos);
+    nodes.emplace_back(buf.substr(pos, next - pos));
+    pos = next + 1;
+  } while (next != std::string::npos);
+}
+
 int main(int argc, char **argv) {
   tl::engine my_engine("sockets", THALLIUM_CLIENT_MODE);
   tl::remote_procedure client_put = my_engine.define(CLIENT_PUT_RPC_NAME);
   tl::remote_procedure client_get = my_engine.define(CLIENT_GET_RPC_NAME);
+  std::vector<std::string> nodes;
+  std::random_device rnd;
 
   if (argc <= 3) {
     usage(argc, argv);
@@ -42,29 +60,44 @@ int main(int argc, char **argv) {
     }
 
     std::string key = argv[2];
-    tl::provider_handle handle(my_engine.lookup(argv[3]), RAFT_PROVIDER_ID);
+    get_nodes_from_buf(argv[3], nodes);
+
+    auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
+
+    auto get_node_from_addr = [&](std::string addr) {
+      tl::endpoint e = my_engine.lookup(addr);
+      return tl::provider_handle(e, RAFT_PROVIDER_ID);
+    };
+
+    std::string next_addr = get_radom_node();
 
     while (1) {
-      client_get_response resp = client_get.on(handle)(key);
+      client_get_response resp =
+        client_get.on(get_node_from_addr(next_addr))(key);
 
-      if (resp.get_error() == RAFT_SUCCESS) {
-        std::cout << resp.get_value() << std::endl;
-        return 0;
-      }
+      int err = resp.get_error();
 
-      if (resp.get_error() == RAFT_NODE_IS_NOT_LEADER) {
-        handle = tl::provider_handle(my_engine.lookup(resp.get_leader_id()),
-                                     RAFT_PROVIDER_ID);
-        continue;
+      switch (err) {
+        case RAFT_SUCCESS:
+          std::cout << resp.get_value() << std::endl;
+          return 0;
+        case RAFT_NODE_IS_NOT_LEADER:
+          next_addr = resp.get_leader_id();
+          continue;
+        case RAFT_LEADER_NOT_FOUND:
+          std::cerr << "leader not found" << std::endl;
+          next_addr = get_radom_node();
+          continue;
+        case RAFT_NOT_IMPLEMENTED:
+          std::cerr << "not implemented" << std::endl;
+          abort();
+        case DUPLICATE_REQEST_ID:
+          std::cerr << "duplicate request" << std::endl;
+          abort();
+        default:
+          std::cerr << "unknown error" << std::endl;
+          abort();
       }
-
-      if (resp.get_error() == RAFT_LEADER_NOT_FOUND) {
-        std::cerr << "leader not found" << std::endl;
-      }
-      if (resp.get_error() == RAFT_NOT_IMPLEMENTED) {
-        std::cerr << "not implemented" << std::endl;
-      }
-      return resp.get_error();
     }
 
   } else if (!strcasecmp(argv[1], "put")) {
@@ -76,29 +109,44 @@ int main(int argc, char **argv) {
     std::string key = argv[2];
     std::string value = argv[3];
     std::string uuid = generate_id();
-    tl::provider_handle handle(my_engine.lookup(argv[4]), RAFT_PROVIDER_ID);
+
+    get_nodes_from_buf(argv[4], nodes);
+
+    auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
+
+    auto get_node_from_addr = [&](std::string addr) {
+      tl::endpoint e = my_engine.lookup(addr);
+      return tl::provider_handle(e, RAFT_PROVIDER_ID);
+    };
+
+    std::string next_addr = get_radom_node();
 
     while (1) {
-      client_put_response resp = client_put.on(handle)(uuid, key, value);
+      client_put_response resp =
+        client_put.on(get_node_from_addr(next_addr))(uuid, key, value);
 
-      if (resp.get_error() == RAFT_SUCCESS) {
-        std::cout << resp.get_index() << std::endl;
-        return 0;
+      int err = resp.get_error();
+      switch (err) {
+        case RAFT_SUCCESS:
+          std::cout << resp.get_index() << std::endl;
+          return 0;
+        case RAFT_NODE_IS_NOT_LEADER:
+          next_addr = resp.get_leader_id();
+          continue;
+        case RAFT_LEADER_NOT_FOUND:
+          std::cerr << "leader not found" << std::endl;
+          next_addr = get_radom_node();
+          continue;
+        case RAFT_NOT_IMPLEMENTED:
+          std::cerr << "not implemented" << std::endl;
+          abort();
+        case DUPLICATE_REQEST_ID:
+          std::cerr << "duplicate request" << std::endl;
+          abort();
+        default:
+          std::cerr << "unknown error" << std::endl;
+          abort();
       }
-
-      if (resp.get_error() == RAFT_NODE_IS_NOT_LEADER) {
-        handle = tl::provider_handle(my_engine.lookup(resp.get_leader_id()),
-                                     RAFT_PROVIDER_ID);
-        continue;
-      }
-
-      if (resp.get_error() == RAFT_LEADER_NOT_FOUND) {
-        std::cerr << "leader not found" << std::endl;
-      }
-      if (resp.get_error() == RAFT_NOT_IMPLEMENTED) {
-        std::cerr << "not implemented" << std::endl;
-      }
-      return resp.get_error();
     }
   }
 }
