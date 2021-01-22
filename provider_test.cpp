@@ -1,11 +1,11 @@
-#include "../provider.hpp"
+#include "provider.hpp"
 
 #include <gtest/gtest.h>
 
 #include <random>
 #include <thallium.hpp>
 
-#include "../types.hpp"
+#include "types.hpp"
 
 #define ADDR "127.0.0.1:"
 

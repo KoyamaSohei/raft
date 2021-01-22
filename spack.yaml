@@ -4,6 +4,7 @@ spack:
     - lmdb
     - jsoncpp
     - googletest
+    - lconv
 
   packages:
     autoconf:

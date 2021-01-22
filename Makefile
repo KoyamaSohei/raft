@@ -10,16 +10,24 @@ raft.out: provider.cpp raft.cpp logger.cpp
 raft_client.out: raft_client.cpp 
 	$(CC) $(CFLAGS) raft_client.cpp $(LDFLAGS) -o raft_client.out
 
-test.out: test/*.cpp *.cpp
+test.out: *.cpp
 	$(CC) $(CFLAGS) \
-	test/logger.cpp test/provider.cpp test/main.cpp \
+	-coverage \
+	logger_test.cpp provider_test.cpp raft_test.cpp \
 	provider.cpp logger.cpp kvs.cpp \
 	$(LDFLAGS) \
 	-o test.out
 
 clean:
-	rm -r log-* && \
-	rm *.out
+	rm *.out && \
+	rm *.gcno && \
+	rm *.gcda && \
+	rm -r html && \
+	rm -r log-*
 
 test: test.out
 	./test.out
+
+cov:
+	lcov -c -b . -d . -o cov_test.info && \
+	genhtml --demangle-cpp -o html cov_test.info

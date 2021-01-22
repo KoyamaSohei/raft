@@ -2,3 +2,7 @@
 .local
 *.out
 log-*
+*.gcno
+*.gcda
+*.info
+html
