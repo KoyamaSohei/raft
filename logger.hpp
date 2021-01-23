@@ -51,7 +51,6 @@ private:
   void save_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   int get_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   void save_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
-  std::string generate_path(std::string id);
 
 public:
   lmdb_raft_logger(std::string id);
@@ -72,6 +71,7 @@ public:
   void get_last_log(int &index, int &term);
   bool match_log(int index, int term);
   bool uuid_already_exists(std::string uuid);
+  std::string generate_path(std::string id);
 };
 
 #endif
