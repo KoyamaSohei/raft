@@ -8,7 +8,11 @@
 #include <cassert>
 #include <string>
 
-std::string generate_path(std::string id) {
+lmdb_raft_logger::lmdb_raft_logger(std::string _id) : raft_logger(_id) {}
+
+lmdb_raft_logger::~lmdb_raft_logger() {}
+
+std::string lmdb_raft_logger::generate_path(std::string id) {
   std::string slash = "//";
   int slash_pos = id.find(slash);
   std::string path =
@@ -16,10 +20,6 @@ std::string generate_path(std::string id) {
                        id.length() - slash_pos - slash.length());
   return path;
 }
-
-lmdb_raft_logger::lmdb_raft_logger(std::string _id) : raft_logger(_id) {}
-
-lmdb_raft_logger::~lmdb_raft_logger() {}
 
 void lmdb_raft_logger::init() {
   MDB_txn *txn;
