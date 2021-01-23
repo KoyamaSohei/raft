@@ -29,6 +29,7 @@ raft_provider::~raft_provider() {}
 
 void raft_provider::finalize() {
   leader_id = tl::provider_handle();
+  node_to_handle.clear();
   m_append_entries_rpc.deregister();
   m_request_vote_rpc.deregister();
   m_client_put_rpc.deregister();
@@ -334,9 +335,12 @@ void raft_provider::become_candidate() {
     printf("request_vote to %s\n", node.c_str());
     request_vote_response resp;
     try {
-      tl::provider_handle ph(get_engine().lookup(node), RAFT_PROVIDER_ID);
-      resp = m_request_vote_rpc.on(ph)(current_term, id, last_log_index,
-                                       last_log_term);
+      if (!node_to_handle.count(node)) {
+        node_to_handle[node] =
+          tl::provider_handle(get_engine().lookup(node), RAFT_PROVIDER_ID);
+      }
+      resp = m_request_vote_rpc.on(node_to_handle[node])(
+        current_term, id, last_log_index, last_log_term);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
@@ -407,9 +411,12 @@ void raft_provider::run_leader() {
     mu.unlock();
     append_entries_response resp;
     try {
-      tl::provider_handle ph(get_engine().lookup(node), RAFT_PROVIDER_ID);
-      resp = m_append_entries_rpc.on(ph)(term, prev_index, prev_term, entries,
-                                         commit_index, id);
+      if (!node_to_handle.count(node)) {
+        node_to_handle[node] =
+          tl::provider_handle(get_engine().lookup(node), RAFT_PROVIDER_ID);
+      }
+      resp = m_append_entries_rpc.on(node_to_handle[node])(
+        term, prev_index, prev_term, entries, commit_index, id);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();

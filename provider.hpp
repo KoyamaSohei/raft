@@ -26,6 +26,7 @@ private:
   // nodes;
   int num_nodes;
   std::vector<std::string> nodes;
+  std::map<std::string, tl::provider_handle> node_to_handle;
   // Mutex for _state,_current_term,_commit_index
   tl::mutex mu;
   // Cond for client_put reply after the log was commited.
