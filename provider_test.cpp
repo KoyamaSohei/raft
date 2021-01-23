@@ -50,7 +50,7 @@ public:
   }
   ~mock_raft_logger() {
     int err;
-    std::string dir_path = "log-" + id;
+    std::string dir_path = real_.generate_path(id);
     std::string data_path = dir_path + "/data.mdb";
     std::string lock_path = dir_path + "/lock.mdb";
 
