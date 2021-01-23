@@ -13,6 +13,7 @@
 #define RAFT_PROVIDER_ID 999
 #define MAX_ENTRIES_NUM 100
 #define MAX_APPLIED_NUM 100
+#define PROTOCOL_PREFIX "ofi+sockets://"
 
 namespace tl = thallium;
 using system_clock = std::chrono::system_clock;

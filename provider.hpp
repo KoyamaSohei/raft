@@ -16,7 +16,7 @@ private:
   // Node ID
   std::string id;
   // Leader ID
-  tl::provider_handle leader_id;
+  std::string leader_id;
   // 現在の状態(follower/candidate/leader)
   raft_state _state;
   // follower時タイムアウト -> canditateに遷移、election開始
@@ -89,7 +89,7 @@ private:
   void run_leader();
 
 public:
-  raft_provider(tl::engine &e, raft_logger *logger,
+  raft_provider(tl::engine &e, raft_logger *logger, std::string _id,
                 uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();

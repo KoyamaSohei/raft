@@ -31,6 +31,20 @@ void setup_sigset(sigset_t *ss) {
   pthread_sigmask(SIG_BLOCK, ss, NULL);
 }
 
+void usage(int argc, char **argv) {
+  printf("Basic usage: \n");
+  printf(
+    "%s '127.0.0.1:30000' "
+    "'127.0.0.1:30000"
+    ",127.0.0.1:30001"
+    ",127.0.0.1:30002' \n",
+    argv[0]);
+  printf(
+    "In this case, we have to run :30001 and :30002 node in other process , "
+    "same host\n");
+  printf("And this program binds 127.0.0.1:30000\n");
+}
+
 int main(int argc, char **argv) {
 
   ABT_xstream sig_stream, tick_stream;
@@ -38,41 +52,27 @@ int main(int argc, char **argv) {
   ABT_thread_state tick_state;
   static sigset_t ss;
 
-  std::string self_addr = "sockets";
-  std::string node_buf;
-
-  while (1) {
-    int opt = getopt(argc, argv, "s:n:h");
-    if (opt == -1) break;
-    switch (opt) {
-      case 's':
-        self_addr = optarg;
-        break;
-      case 'n':
-        node_buf = optarg;
-        break;
-      case 'h':
-        printf(
-          "Usage: \n %s [-s self_addr] [-n "
-          "other_node1_addr,other_node2_addr]\n",
-          argv[0]);
-        return -1;
-        break;
-    }
+  if (argc != 3) {
+    usage(argc, argv);
+    return 1;
   }
+
+  std::string self_addr = argv[1];
+  std::string node_buf = argv[2];
 
   setup_sigset(&ss);
 
   ABT_init(argc, argv);
 
-  std::cout << "try binding with " << self_addr << std::endl;
-  tl::engine my_engine(self_addr, THALLIUM_SERVER_MODE, true, 2);
+  std::cout << "try binding with " << PROTOCOL_PREFIX << self_addr << std::endl;
+  tl::engine my_engine(PROTOCOL_PREFIX + self_addr, THALLIUM_SERVER_MODE, true,
+                       2);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
 
-  lmdb_raft_logger logger(my_engine.self());
+  lmdb_raft_logger logger(self_addr);
   logger.init(node_buf);
 
-  raft_provider provider(my_engine, &logger, RAFT_PROVIDER_ID);
+  raft_provider provider(my_engine, &logger, self_addr, RAFT_PROVIDER_ID);
 
   signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 

@@ -56,7 +56,7 @@ public:
   }
   ~mock_raft_logger() {
     int err;
-    std::string dir_path = real_.generate_path(id);
+    std::string dir_path = "log-" + id;
     std::string data_path = dir_path + "/data.mdb";
     std::string lock_path = dir_path + "/lock.mdb";
 
@@ -110,19 +110,19 @@ protected:
   tl::provider_handle server_addr;
   provider_test()
     : PORT(rnd() % 1000 + 30000)
-    , addr("ofi+sockets://" ADDR + std::to_string(PORT))
-    , caddr("ofi+sockets://" ADDR + std::to_string(PORT + 1))
-    , server_engine(addr, THALLIUM_SERVER_MODE, true, 2)
-    , client_engine(caddr, THALLIUM_CLIENT_MODE)
-    , logger(server_engine.self())
-    , provider(server_engine, &logger, RAFT_PROVIDER_ID)
+    , addr(ADDR + std::to_string(PORT))
+    , caddr(ADDR + std::to_string(PORT + 1))
+    , server_engine(PROTOCOL_PREFIX + addr, THALLIUM_SERVER_MODE, true, 2)
+    , client_engine(PROTOCOL_PREFIX + caddr, THALLIUM_CLIENT_MODE)
+    , logger(addr)
+    , provider(server_engine, &logger, addr, RAFT_PROVIDER_ID)
     , m_echo_state_rpc(client_engine.define(ECHO_STATE_RPC_NAME))
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))
     , m_client_put_rpc(client_engine.define(CLIENT_PUT_RPC_NAME))
     , m_client_get_rpc(client_engine.define(CLIENT_GET_RPC_NAME))
-    , server_addr(
-        tl::provider_handle(client_engine.lookup(addr), RAFT_PROVIDER_ID)) {
+    , server_addr(tl::provider_handle(
+        client_engine.lookup(PROTOCOL_PREFIX + addr), RAFT_PROVIDER_ID)) {
     std::cout << "server running at " << server_engine.self() << std::endl;
   }
 
@@ -500,7 +500,7 @@ TEST_F(provider_test, APPLY_ENTRIES) {
 
 TEST_F(provider_test, NOT_DETERMINED_LEADER) {
   // dummy
-  logger.init(addr + ",ofi+sockets://127.0.0.1:299999");
+  logger.init(addr + ",127.0.0.1:299999");
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -510,7 +510,7 @@ TEST_F(provider_test, NOT_DETERMINED_LEADER) {
 }
 
 TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
-  logger.init(addr + ",ofi+sockets://127.0.0.1:299999");
+  logger.init(addr + ",127.0.0.1:299999");
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -525,7 +525,7 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
 }
 
 TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
-  logger.init(addr + ",ofi+sockets://127.0.0.1:299999");
+  logger.init(addr + ",127.0.0.1:299999");
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_get_response r = client_get("hello");
@@ -542,7 +542,7 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
-  logger.init(addr + ",ofi+sockets://127.0.0.1:299999");
+  logger.init(addr + ",127.0.0.1:299999");
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_put_response r =
@@ -561,7 +561,7 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
-  logger.init(addr + ",ofi+sockets://127.0.0.1:299999");
+  logger.init(addr + ",127.0.0.1:299999");
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   usleep(3 * INTERVAL);

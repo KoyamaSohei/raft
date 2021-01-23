@@ -14,7 +14,7 @@ void usage(int argc, char **argv) {
   printf("For examples,\n");
   printf(
     "%s get hello "
-    "'ofi+sockets://127.0.0.1:30000,ofi+sockets://127.0.0.1:30001' \n",
+    "'127.0.0.1:30000,127.0.0.1:30001,127.0.0.1:30002' \n",
     argv[0]);
 }
 
@@ -38,7 +38,7 @@ void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes) {
 }
 
 int main(int argc, char **argv) {
-  tl::engine my_engine("sockets", THALLIUM_CLIENT_MODE);
+  tl::engine my_engine(PROTOCOL_PREFIX, THALLIUM_CLIENT_MODE);
   tl::remote_procedure client_put = my_engine.define(CLIENT_PUT_RPC_NAME);
   tl::remote_procedure client_get = my_engine.define(CLIENT_GET_RPC_NAME);
   std::vector<std::string> nodes;

@@ -5,9 +5,9 @@
 #include <cassert>
 
 raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
-                             uint16_t provider_id)
+                             std::string _id, uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id)
-  , id(get_engine().self())
+  , id(_id)
   , _state(raft_state::ready)
   , num_nodes(1)
   , _current_term(0)
@@ -28,7 +28,7 @@ raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
 raft_provider::~raft_provider() {}
 
 void raft_provider::finalize() {
-  leader_id = tl::provider_handle();
+  leader_id.clear();
   node_to_handle.clear();
   m_append_entries_rpc.deregister();
   m_request_vote_rpc.deregister();
@@ -61,7 +61,7 @@ void raft_provider::set_state(raft_state new_state) {
       abort();
   }
   _state = new_state;
-  leader_id = tl::provider_handle();
+  leader_id.clear();
 }
 
 int raft_provider::get_current_term() {
@@ -133,8 +133,7 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
     return;
   }
 
-  leader_id =
-    tl::provider_handle(get_engine().lookup(req_leader_id), RAFT_PROVIDER_ID);
+  leader_id = req_leader_id;
 
   if (req_term > current_term) {
     set_force_current_term(req_term);
@@ -237,15 +236,14 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
                                    std::string key, std::string value) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
-    if (leader_id.is_null()) {
+    if (leader_id.empty()) {
       try {
         r.respond(client_put_response(RAFT_LEADER_NOT_FOUND));
       } catch (tl::exception &e) {}
       return;
     }
     try {
-      r.respond(client_put_response(RAFT_NODE_IS_NOT_LEADER, 0,
-                                    std::string(leader_id)));
+      r.respond(client_put_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_id));
     } catch (tl::exception &e) {}
     return;
   }
@@ -269,8 +267,7 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
 
   if (get_state() != raft_state::leader) {
     try {
-      r.respond(client_put_response(RAFT_NODE_IS_NOT_LEADER, 0,
-                                    std::string(leader_id)));
+      r.respond(client_put_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_id));
     } catch (tl::exception &e) {}
     return;
   }
@@ -282,15 +279,14 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
 void raft_provider::client_get_rpc(const tl::request &r, std::string key) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
-    if (leader_id.is_null()) {
+    if (leader_id.empty()) {
       try {
         r.respond(client_get_response(RAFT_LEADER_NOT_FOUND, ""));
       } catch (tl::exception &e) {}
       return;
     }
     try {
-      r.respond(client_get_response(RAFT_NODE_IS_NOT_LEADER, "",
-                                    std::string(leader_id)));
+      r.respond(client_get_response(RAFT_NODE_IS_NOT_LEADER, "", leader_id));
     } catch (tl::exception &e) {}
     return;
   }
@@ -336,8 +332,8 @@ void raft_provider::become_candidate() {
     request_vote_response resp;
     try {
       if (!node_to_handle.count(node)) {
-        node_to_handle[node] =
-          tl::provider_handle(get_engine().lookup(node), RAFT_PROVIDER_ID);
+        node_to_handle[node] = tl::provider_handle(
+          get_engine().lookup(PROTOCOL_PREFIX + node), RAFT_PROVIDER_ID);
       }
       resp = m_request_vote_rpc.on(node_to_handle[node])(
         current_term, id, last_log_index, last_log_term);
@@ -412,8 +408,8 @@ void raft_provider::run_leader() {
     append_entries_response resp;
     try {
       if (!node_to_handle.count(node)) {
-        node_to_handle[node] =
-          tl::provider_handle(get_engine().lookup(node), RAFT_PROVIDER_ID);
+        node_to_handle[node] = tl::provider_handle(
+          get_engine().lookup(PROTOCOL_PREFIX + node), RAFT_PROVIDER_ID);
       }
       resp = m_append_entries_rpc.on(node_to_handle[node])(
         term, prev_index, prev_term, entries, commit_index, id);

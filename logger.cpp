@@ -12,15 +12,6 @@ lmdb_raft_logger::lmdb_raft_logger(std::string _id) : raft_logger(_id) {}
 
 lmdb_raft_logger::~lmdb_raft_logger() {}
 
-std::string lmdb_raft_logger::generate_path(std::string id) {
-  std::string slash = "//";
-  int slash_pos = id.find(slash);
-  std::string path =
-    "log-" + id.substr(slash_pos + slash.length(),
-                       id.length() - slash_pos - slash.length());
-  return path;
-}
-
 void lmdb_raft_logger::get_nodes_from_buf(std::string buf,
                                           std::vector<std::string> &nodes) {
   if (buf.empty()) { return; }
@@ -47,7 +38,7 @@ void lmdb_raft_logger::init(std::string addrs) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_stat stat;
-  std::string path = generate_path(id);
+  std::string path = "log-" + id;
   int err;
 
   err = mkdir(path.c_str(), 0755);

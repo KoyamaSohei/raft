@@ -77,7 +77,6 @@ public:
   void get_last_log(int &index, int &term);
   bool match_log(int index, int term);
   bool uuid_already_exists(std::string uuid);
-  std::string generate_path(std::string id);
   std::string generate_uuid();
 };
 
