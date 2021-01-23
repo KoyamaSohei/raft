@@ -21,12 +21,6 @@ public:
   mock_raft_logger(std::string _id) : raft_logger(_id), real_(_id) {
     ON_CALL(*this, init(::testing::_))
       .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::init));
-    ON_CALL(*this, get_nodes_from_buf(::testing::_, ::testing::_))
-      .WillByDefault(
-        ::testing::Invoke(&real_, &lmdb_raft_logger::get_nodes_from_buf));
-    ON_CALL(*this, get_buf_from_nodes(::testing::_, ::testing::_))
-      .WillByDefault(
-        ::testing::Invoke(&real_, &lmdb_raft_logger::get_buf_from_nodes));
     ON_CALL(*this,
             bootstrap_state_from_log(::testing::_, ::testing::_, ::testing::_))
       .WillByDefault(

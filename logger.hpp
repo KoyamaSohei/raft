@@ -17,10 +17,6 @@ public:
   virtual ~raft_logger(){};
 
   virtual void init(std::string addrs) = 0;
-  virtual void get_nodes_from_buf(std::string buf,
-                                  std::vector<std::string> &nodes) = 0;
-  virtual void get_buf_from_nodes(std::string &buf,
-                                  std::vector<std::string> nodes) = 0;
   virtual void bootstrap_state_from_log(int &current_term,
                                         std::string &voted_for,
                                         std::vector<std::string> &nodes) = 0;
@@ -58,14 +54,14 @@ private:
   void save_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   int get_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   void save_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
+  void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes);
+  void get_buf_from_nodes(std::string &buf, std::vector<std::string> nodes);
 
 public:
   lmdb_raft_logger(std::string id);
   ~lmdb_raft_logger();
 
   void init(std::string addrs);
-  void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes);
-  void get_buf_from_nodes(std::string &buf, std::vector<std::string> nodes);
   void bootstrap_state_from_log(int &current_term, std::string &voted_for,
                                 std::vector<std::string> &nodes);
   void save_current_term(int current_term);
