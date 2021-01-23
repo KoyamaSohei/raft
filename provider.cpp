@@ -364,16 +364,18 @@ void raft_provider::run_candidate() {
 
 void raft_provider::become_leader() {
   printf("become leader\n");
-  int last_index;
-  int last_term;
-  logger->get_last_log(last_index, last_term);
+
+  set_state(raft_state::leader);
+  // append empty log to commit
+  int term = get_current_term();
+  int index = logger->append_log(term, logger->generate_uuid(), "__leader",
+                                 std::to_string(term));
   next_index.clear();
   // next_index initialized to leader last log index + 1
-  for (std::string node : nodes) { next_index[node] = last_index + 1; }
+  for (std::string node : nodes) { next_index[node] = index + 1; }
   match_index.clear();
   // match_index initialized to 0
   for (std::string node : nodes) { match_index[node] = 0; }
-  set_state(raft_state::leader);
 }
 
 void raft_provider::run_leader() {
