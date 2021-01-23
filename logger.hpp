@@ -26,9 +26,14 @@ private:
   int get_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   void save_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
 
+protected:
+  std::string id;
+
 public:
   raft_logger(std::string id);
   ~raft_logger();
+
+  void init();
   void bootstrap_state_from_log(int &current_term, std::string &voted_for);
   void save_current_term(int current_term);
   void save_voted_for(std::string voted_for);

@@ -17,7 +17,11 @@ std::string generate_path(std::string id) {
   return path;
 }
 
-raft_logger::raft_logger(std::string id) {
+raft_logger::raft_logger(std::string _id) : id(_id) {}
+
+raft_logger::~raft_logger() {}
+
+void raft_logger::init() {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_stat stat;
@@ -70,8 +74,6 @@ raft_logger::raft_logger(std::string id) {
     abort();
   }
 }
-
-raft_logger::~raft_logger() {}
 
 void raft_logger::bootstrap_state_from_log(int &current_term,
                                            std::string &voted_for) {
