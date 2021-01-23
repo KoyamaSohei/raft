@@ -83,10 +83,10 @@ int main(int argc, char **argv) {
   tl::engine my_engine(self_addr, THALLIUM_SERVER_MODE, true, 2);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
 
-  raft_logger logger(my_engine.self());
+  lmdb_raft_logger logger(my_engine.self());
   logger.init();
 
-  raft_provider provider(my_engine, logger, RAFT_PROVIDER_ID);
+  raft_provider provider(my_engine, &logger, RAFT_PROVIDER_ID);
 
   signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 

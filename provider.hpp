@@ -48,7 +48,7 @@ private:
   // SAVE TO LOGGER BEFORE CHANGE (Write Ahead Log)
   std::string _voted_for;
   // logger
-  raft_logger logger;
+  raft_logger *logger;
   // kvs
   raft_kvs kvs;
   // for each server, index of the next log entryto send to that server
@@ -92,7 +92,7 @@ private:
   void append_node(std::string addr);
 
 public:
-  raft_provider(tl::engine &e, raft_logger &logger,
+  raft_provider(tl::engine &e, raft_logger *logger,
                 uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();

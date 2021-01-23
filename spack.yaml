@@ -57,6 +57,8 @@ spack:
         - spec: rdma-core
           prefix: /usr
       buildable: False
+    googletest:
+      variants: +gmock
 
   repos:
     - /opt/sds-repo

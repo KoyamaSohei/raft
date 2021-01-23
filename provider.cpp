@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-raft_provider::raft_provider(tl::engine &e, raft_logger &_logger,
+raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
                              uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id)
   , id(get_engine().self())
@@ -22,7 +22,7 @@ raft_provider::raft_provider(tl::engine &e, raft_logger &_logger,
       define(CLIENT_GET_RPC_NAME, &raft_provider::client_get_rpc)) {
   define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
   // bootstrap state from (already exist) log
-  logger.bootstrap_state_from_log(_current_term, _voted_for);
+  logger->bootstrap_state_from_log(_current_term, _voted_for);
   // Block RPC until _state != ready
   mu.lock();
 }
@@ -51,9 +51,9 @@ void raft_provider::set_state(raft_state new_state) {
       break;
     case raft_state::candidate:
       assert(_state == raft_state::follower || _state == raft_state::candidate);
-      logger.save_current_term(_current_term + 1);
+      logger->save_current_term(_current_term + 1);
       _current_term++;
-      logger.save_voted_for(id);
+      logger->save_voted_for(id);
       _voted_for = id;
       break;
     case raft_state::leader:
@@ -100,9 +100,9 @@ void raft_provider::update_timeout_limit() {
 
 void raft_provider::set_force_current_term(int term) {
   assert(_current_term < term);
-  logger.save_current_term(term);
+  logger->save_current_term(term);
   _current_term = term;
-  logger.save_voted_for("");
+  logger->save_voted_for("");
   _voted_for.clear();
 
   switch (_state) {
@@ -162,7 +162,7 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
   assert(get_state() == raft_state::follower);
   update_timeout_limit();
 
-  bool is_match = logger.match_log(req_prev_index, req_prev_term);
+  bool is_match = logger->match_log(req_prev_index, req_prev_term);
   if (!is_match) {
     try {
       r.respond(append_entries_response(current_term, false));
@@ -176,8 +176,8 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
     printf("entry received, idx: %d, term: %d, key: %s, value: %s\n",
            ent.get_index(), ent.get_term(), ent.get_key().c_str(),
            ent.get_value().c_str());
-    logger.save_log(ent.get_index(), ent.get_term(), ent.get_uuid(),
-                    ent.get_key(), ent.get_value());
+    logger->save_log(ent.get_index(), ent.get_term(), ent.get_uuid(),
+                     ent.get_key(), ent.get_value());
   }
 
   if (req_leader_commit > get_commit_index()) {
@@ -206,7 +206,7 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
          req_term);
 
   int last_log_index, last_log_term;
-  logger.get_last_log(last_log_index, last_log_term);
+  logger->get_last_log(last_log_index, last_log_term);
 
   bool granted = [&]() -> bool {
     if (req_term < current_term) return false;
@@ -222,7 +222,7 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
   }();
 
   if (granted) {
-    logger.save_voted_for(req_candidate_id);
+    logger->save_voted_for(req_candidate_id);
     _voted_for = req_candidate_id;
     update_timeout_limit();
   }
@@ -257,13 +257,13 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
     } catch (tl::exception &e) {}
     return;
   }
-  if (logger.uuid_already_exists(uuid)) {
+  if (logger->uuid_already_exists(uuid)) {
     try {
       r.respond(client_put_response(RAFT_DUPLICATE_UUID, 0));
     } catch (tl::exception &e) {}
     return;
   }
-  int index = logger.append_log(get_current_term(), uuid, key, value);
+  int index = logger->append_log(get_current_term(), uuid, key, value);
 
   while (get_commit_index() < index && get_state() == raft_state::leader) {
     cond.wait(lock);
@@ -326,7 +326,7 @@ void raft_provider::become_candidate() {
   set_state(raft_state::candidate);
 
   int last_log_index, last_log_term;
-  logger.get_last_log(last_log_index, last_log_term);
+  logger->get_last_log(last_log_index, last_log_term);
   int current_term = get_current_term();
 
   int vote = 1;
@@ -366,7 +366,7 @@ void raft_provider::become_leader() {
   printf("become leader\n");
   int last_index;
   int last_term;
-  logger.get_last_log(last_index, last_term);
+  logger->get_last_log(last_index, last_term);
   next_index.clear();
   // next_index initialized to leader last log index + 1
   for (std::string node : nodes) { next_index[node] = last_index + 1; }
@@ -380,19 +380,19 @@ void raft_provider::run_leader() {
   int term = get_current_term();
   int commit_index = get_commit_index();
   int last_log_index, _;
-  logger.get_last_log(last_log_index, _);
+  logger->get_last_log(last_log_index, _);
 
   for (std::string node : nodes) {
     int prev_index = next_index[node] - 1;
     assert(0 <= prev_index);
-    int prev_term = logger.get_term(prev_index);
+    int prev_term = logger->get_term(prev_index);
     std::vector<raft_entry> entries;
     int last_index =
       std::min(last_log_index, next_index[node] + MAX_ENTRIES_NUM);
     for (int idx = next_index[node]; idx <= last_index; idx++) {
       int t;
       std::string u, k, v;
-      logger.get_log(idx, t, u, k, v);
+      logger->get_log(idx, t, u, k, v);
       entries.emplace_back(idx, t, u, k, v);
     }
 
@@ -445,7 +445,9 @@ void raft_provider::run_leader() {
     int N = sorted_match_index[num_nodes / 2];
     assert(N <= last_log_index);
 
-    if (N > commit_index && logger.get_term(N) == term) { set_commit_index(N); }
+    if (N > commit_index && logger->get_term(N) == term) {
+      set_commit_index(N);
+    }
   }
 }
 
@@ -459,7 +461,7 @@ void raft_provider::run() {
   for (int index = last_applied + 1; index <= limit_index; index++) {
     int t;
     std::string u, k, v;
-    logger.get_log(index, t, u, k, v);
+    logger->get_log(index, t, u, k, v);
     kvs.apply(index, k, v);
   }
 
@@ -478,7 +480,7 @@ void raft_provider::run() {
       break;
   }
   int last_index, last_term;
-  logger.get_last_log(last_index, last_term);
+  logger->get_last_log(last_index, last_term);
   printf("state: %d, term: %d, last: %d, commit: %d, applied: %d \n",
          (int)get_state(), get_current_term(), last_index, commit_index,
          last_applied);

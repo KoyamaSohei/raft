@@ -9,6 +9,32 @@
 #include "types.hpp"
 
 class raft_logger {
+protected:
+  std::string id;
+
+public:
+  raft_logger(std::string _id) : id(_id){};
+  virtual ~raft_logger(){};
+
+  virtual void init() = 0;
+  virtual void bootstrap_state_from_log(int &current_term,
+                                        std::string &voted_for) = 0;
+  virtual void save_current_term(int current_term) = 0;
+  virtual void save_voted_for(std::string voted_for) = 0;
+  virtual void get_log(int index, int &term, std::string &uuid,
+                       std::string &key, std::string &value) = 0;
+  virtual void save_log(int index, int term, std::string uuid, std::string key,
+                        std::string value) = 0;
+  // append_log returns index
+  virtual int append_log(int term, std::string uuid, std::string key,
+                         std::string value) = 0;
+  virtual int get_term(int index) = 0;
+  virtual void get_last_log(int &index, int &term) = 0;
+  virtual bool match_log(int index, int term) = 0;
+  virtual bool uuid_already_exists(std::string uuid) = 0;
+};
+
+class lmdb_raft_logger : public raft_logger {
 private:
   MDB_env *env;
   // 永続Stateのうち、_current_termと_voted_forを保存するDB
@@ -26,12 +52,9 @@ private:
   int get_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   void save_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
 
-protected:
-  std::string id;
-
 public:
-  raft_logger(std::string id);
-  ~raft_logger();
+  lmdb_raft_logger(std::string id);
+  ~lmdb_raft_logger();
 
   void init();
   void bootstrap_state_from_log(int &current_term, std::string &voted_for);

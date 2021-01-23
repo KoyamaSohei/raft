@@ -1,15 +1,85 @@
 #include "provider.hpp"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <random>
 #include <thallium.hpp>
 
+#include "logger.hpp"
 #include "types.hpp"
 
 #define ADDR "127.0.0.1:"
 
 namespace {
+
+class mock_raft_logger : public raft_logger {
+private:
+  lmdb_raft_logger real_;
+
+public:
+  mock_raft_logger(std::string _id) : raft_logger(_id), real_(_id) {
+    ON_CALL(*this, init())
+      .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::init));
+    ON_CALL(*this, bootstrap_state_from_log(::testing::_, ::testing::_))
+      .WillByDefault(
+        ::testing::Invoke(&real_, &lmdb_raft_logger::bootstrap_state_from_log));
+    ON_CALL(*this, save_current_term(::testing::_))
+      .WillByDefault(
+        ::testing::Invoke(&real_, &lmdb_raft_logger::save_current_term));
+    ON_CALL(*this, save_voted_for(::testing::_))
+      .WillByDefault(
+        ::testing::Invoke(&real_, &lmdb_raft_logger::save_voted_for));
+    ON_CALL(*this, get_log(::testing::_, ::testing::_, ::testing::_,
+                           ::testing::_, ::testing::_))
+      .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::get_log));
+    ON_CALL(*this, save_log(::testing::_, ::testing::_, ::testing::_,
+                            ::testing::_, ::testing::_))
+      .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::save_log));
+    ON_CALL(*this,
+            append_log(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+      .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::append_log));
+    ON_CALL(*this, get_term(::testing::_))
+      .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::get_term));
+    ON_CALL(*this, match_log(::testing::_, ::testing::_))
+      .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::match_log));
+    ON_CALL(*this, uuid_already_exists(::testing::_))
+      .WillByDefault(
+        ::testing::Invoke(&real_, &lmdb_raft_logger::uuid_already_exists));
+    real_.init();
+  }
+  ~mock_raft_logger() {
+    int err;
+    std::string dir_path = "log-" + id;
+    std::string data_path = dir_path + "/data.mdb";
+    std::string lock_path = dir_path + "/lock.mdb";
+
+    err = remove(data_path.c_str());
+    if (err) { abort(); }
+
+    err = remove(lock_path.c_str());
+    if (err) { abort(); }
+
+    err = rmdir(dir_path.c_str());
+    if (err) { abort(); }
+  }
+  MOCK_METHOD0(init, void());
+  MOCK_METHOD2(bootstrap_state_from_log,
+               void(int &current_term, std::string &voted_for));
+  MOCK_METHOD1(save_current_term, void(int current_term));
+  MOCK_METHOD1(save_voted_for, void(std::string voted_for));
+  MOCK_METHOD5(get_log, void(int index, int &term, std::string &uuid,
+                             std::string &key, std::string &value));
+  MOCK_METHOD5(save_log, void(int index, int term, std::string uuid,
+                              std::string key, std::string value));
+  MOCK_METHOD4(append_log, int(int term, std::string uuid, std::string key,
+                               std::string value));
+  MOCK_METHOD1(get_term, int(int index));
+  MOCK_METHOD2(get_last_log, void(int &index, int &term));
+  MOCK_METHOD2(match_log, bool(int index, int term));
+  MOCK_METHOD1(uuid_already_exists, bool(std::string uuid));
+};
+
 class provider_test : public ::testing::Test {
 protected:
   std::random_device rnd;
@@ -18,7 +88,7 @@ protected:
   tl::abt scope;
   tl::engine server_engine;
   tl::engine client_engine;
-  raft_logger logger;
+  mock_raft_logger logger;
   raft_provider provider;
   tl::remote_procedure m_echo_state_rpc;
   tl::remote_procedure m_request_vote_rpc;
@@ -33,7 +103,7 @@ protected:
     , server_engine(addr, THALLIUM_SERVER_MODE, true, 2)
     , client_engine(caddr, THALLIUM_CLIENT_MODE)
     , logger(server_engine.self())
-    , provider(server_engine, logger, RAFT_PROVIDER_ID)
+    , provider(server_engine, &logger, RAFT_PROVIDER_ID)
     , m_echo_state_rpc(client_engine.define(ECHO_STATE_RPC_NAME))
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))
@@ -46,23 +116,7 @@ protected:
 
   static void finalize(void *arg) { ((raft_provider *)arg)->finalize(); }
 
-  ~provider_test() { cleanup(); }
-  void cleanup() {
-    int err;
-    std::string dir_path = "log-" ADDR + std::to_string(PORT);
-    std::string data_path = dir_path + "/data.mdb";
-    std::string lock_path = dir_path + "/lock.mdb";
-
-    err = remove(data_path.c_str());
-    ASSERT_EQ(err, 0);
-
-    err = remove(lock_path.c_str());
-    ASSERT_EQ(err, 0);
-
-    err = rmdir(dir_path.c_str());
-    ASSERT_EQ(err, 0);
-  }
-
+  ~provider_test() {}
   void TearDown() {
     server_addr = tl::provider_handle();
     m_echo_state_rpc.deregister();
