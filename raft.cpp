@@ -82,7 +82,8 @@ int main(int argc, char **argv) {
   std::cout << "try binding with " << self_addr << std::endl;
   tl::engine my_engine(self_addr, THALLIUM_SERVER_MODE, true, 2);
   std::cout << "Server running at address " << my_engine.self() << std::endl;
-  raft_provider provider(my_engine, RAFT_PROVIDER_ID);
+  raft_logger logger(my_engine.self());
+  raft_provider provider(my_engine, logger, RAFT_PROVIDER_ID);
 
   signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 

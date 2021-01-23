@@ -92,7 +92,8 @@ private:
   void append_node(std::string addr);
 
 public:
-  raft_provider(tl::engine &e, uint16_t provider_id = RAFT_PROVIDER_ID);
+  raft_provider(tl::engine &e, raft_logger &logger,
+                uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
   // readyからfollowerに遷移

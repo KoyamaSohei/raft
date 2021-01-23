@@ -18,6 +18,7 @@ protected:
   tl::abt scope;
   tl::engine server_engine;
   tl::engine client_engine;
+  raft_logger logger;
   raft_provider provider;
   tl::remote_procedure m_echo_state_rpc;
   tl::remote_procedure m_request_vote_rpc;
@@ -31,7 +32,8 @@ protected:
     , caddr("ofi+sockets://" ADDR + std::to_string(PORT + 1))
     , server_engine(addr, THALLIUM_SERVER_MODE, true, 2)
     , client_engine(caddr, THALLIUM_CLIENT_MODE)
-    , provider(server_engine, RAFT_PROVIDER_ID)
+    , logger(server_engine.self())
+    , provider(server_engine, logger, RAFT_PROVIDER_ID)
     , m_echo_state_rpc(client_engine.define(ECHO_STATE_RPC_NAME))
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))

@@ -4,13 +4,14 @@
 
 #include <cassert>
 
-raft_provider::raft_provider(tl::engine &e, uint16_t provider_id)
+raft_provider::raft_provider(tl::engine &e, raft_logger &_logger,
+                             uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id)
   , id(get_engine().self())
   , _state(raft_state::ready)
   , num_nodes(1)
   , _current_term(0)
-  , logger(id)
+  , logger(_logger)
   , _commit_index(0)
   , m_append_entries_rpc(
       define("append_entries", &raft_provider::append_entries_rpc))
