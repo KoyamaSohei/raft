@@ -49,6 +49,9 @@ public:
     ON_CALL(*this, uuid_already_exists(::testing::_))
       .WillByDefault(
         ::testing::Invoke(&real_, &lmdb_raft_logger::uuid_already_exists));
+    ON_CALL(*this, generate_uuid())
+      .WillByDefault(
+        ::testing::Invoke(&real_, &lmdb_raft_logger::generate_uuid));
     real_.init();
   }
   ~mock_raft_logger() {
@@ -81,6 +84,7 @@ public:
   MOCK_METHOD2(get_last_log, void(int &index, int &term));
   MOCK_METHOD2(match_log, bool(int index, int term));
   MOCK_METHOD1(uuid_already_exists, bool(std::string uuid));
+  MOCK_METHOD0(generate_uuid, std::string());
 };
 
 class provider_test : public ::testing::Test {
