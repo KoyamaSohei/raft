@@ -117,6 +117,10 @@ protected:
     std::cout << "server running at " << server_engine.self() << std::endl;
   }
 
+  void SetUp() {
+    EXPECT_CALL(logger, save_voted_for("")).Times(::testing::AnyNumber());
+  }
+
   static void finalize(void *arg) { ((raft_provider *)arg)->finalize(); }
 
   ~provider_test() {}
@@ -192,6 +196,8 @@ TEST_F(provider_test, BECOME_LEADER) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
@@ -200,6 +206,8 @@ TEST_F(provider_test, GET_RPC) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_get_response r = client_get("hello");
@@ -211,8 +219,14 @@ TEST_F(provider_test, PUT_RPC) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger,
+              uuid_already_exists("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(logger, append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                 "foo", "bar"));
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
@@ -237,8 +251,11 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger, save_current_term(2));
   append_entries_response r =
     append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_TRUE(r.is_success());
@@ -250,8 +267,12 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger, save_voted_for(caddr));
+  EXPECT_CALL(logger, save_current_term(2));
   request_vote_response r = request_vote(2, caddr, 0, 0);
   ASSERT_TRUE(r.is_vote_granted());
   ASSERT_EQ(r.get_term(), 2);
@@ -262,8 +283,12 @@ TEST_F(provider_test, GET_LOWER_TERM) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger, save_voted_for(::testing::_)).Times(0);
+  EXPECT_CALL(logger, save_current_term(::testing::_)).Times(0);
   append_entries_response r =
     append_entries(0, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_FALSE(r.is_success());
@@ -275,8 +300,12 @@ TEST_F(provider_test, GET_LOWER_TERM_2) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger, save_voted_for(::testing::_)).Times(0);
+  EXPECT_CALL(logger, save_current_term(::testing::_)).Times(0);
   request_vote_response r = request_vote(0, caddr, 0, 0);
   ASSERT_FALSE(r.is_vote_granted());
   ASSERT_EQ(r.get_term(), 1);
@@ -287,6 +316,7 @@ TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
+  EXPECT_CALL(logger, save_current_term(2));
   append_entries_response r =
     append_entries(2, 1, 1, std::vector<raft_entry>(), 0, caddr);
   ASSERT_EQ(r.get_term(), 2);
@@ -298,12 +328,19 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger,
+              uuid_already_exists("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(logger, append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                 "foo", "bar"));
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
+  EXPECT_CALL(logger, save_current_term(2));
   append_entries_response r2 =
     append_entries(2, 1, 2, std::vector<raft_entry>(), 0, caddr);
   ASSERT_FALSE(r2.is_success());
@@ -315,12 +352,19 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger,
+              uuid_already_exists("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(logger, append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                 "foo", "bar"));
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
+  EXPECT_CALL(logger, save_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 0, 0);
   ASSERT_FALSE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -331,12 +375,19 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger,
+              uuid_already_exists("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(logger, append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                 "foo", "bar"));
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
+  EXPECT_CALL(logger, save_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 0, 1);
   ASSERT_FALSE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -346,6 +397,8 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
   std::vector<std::string> nodes;
   provider.start(nodes);
+  EXPECT_CALL(logger, save_voted_for(caddr));
+  EXPECT_CALL(logger, save_current_term(1));
   request_vote_response r2 = request_vote(1, caddr, 1, 1);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 1);
@@ -356,12 +409,20 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger,
+              uuid_already_exists("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(logger, append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                 "foo", "bar"));
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
+  EXPECT_CALL(logger, save_voted_for(caddr));
+  EXPECT_CALL(logger, save_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 1, 1);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -372,12 +433,20 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger,
+              uuid_already_exists("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(logger, append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                 "foo", "bar"));
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 1);
+  EXPECT_CALL(logger, save_voted_for(caddr));
+  EXPECT_CALL(logger, save_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 0, 2);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -388,6 +457,8 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   request_vote_response r2 = request_vote(1, caddr, 0, 0);
@@ -399,12 +470,16 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
 TEST_F(provider_test, APPLY_ENTRIES) {
   std::vector<std::string> nodes;
   provider.start(nodes);
+  EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "foo", "bar"));
   std::vector<raft_entry> ent;
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
   ASSERT_EQ(r.get_term(), 1);
   ASSERT_TRUE(r.is_success());
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(2));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_get_response r2 = client_get("foo");
@@ -417,6 +492,8 @@ TEST_F(provider_test, NOT_DETERMINED_LEADER) {
   std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
 }
@@ -425,6 +502,8 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
   std::vector<std::string> nodes{"ofi+sockets://127.0.0.1:299999"};
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   append_entries_response r =
@@ -442,6 +521,8 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
   ASSERT_EQ(r.get_error(), RAFT_LEADER_NOT_FOUND);
   ASSERT_STREQ(r.get_value().c_str(), "");
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   client_get_response r2 = client_get("hello");
@@ -458,6 +539,8 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   ASSERT_EQ(r.get_error(), RAFT_LEADER_NOT_FOUND);
   ASSERT_EQ(r.get_index(), 0);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   client_put_response r2 =
@@ -471,9 +554,13 @@ TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
   provider.start(nodes);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   usleep(INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(2));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   usleep(INTERVAL);
@@ -485,8 +572,11 @@ TEST_F(provider_test, NODE_IS_NOT_LEADER) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(logger, save_current_term(2));
   append_entries_response r =
     append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_TRUE(r.is_success());
@@ -502,6 +592,8 @@ TEST_F(provider_test, PUT_INVALID_UUID) {
   std::vector<std::string> nodes;
   provider.start(nodes);
   usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_put_response r = client_put("foobarbuz", "foo", "bar");
