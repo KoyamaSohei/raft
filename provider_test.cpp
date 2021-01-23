@@ -234,7 +234,7 @@ TEST_F(provider_test, PUT_RPC) {
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 1);
+  ASSERT_EQ(r.get_index(), 2);
   provider.run(); // applied "foo" "bar"
   client_get_response r2 = client_get("foo");
   ASSERT_EQ(r2.get_error(), RAFT_SUCCESS);
@@ -277,7 +277,7 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
   EXPECT_CALL(logger, save_voted_for(caddr));
   EXPECT_CALL(logger, save_current_term(2));
-  request_vote_response r = request_vote(2, caddr, 0, 0);
+  request_vote_response r = request_vote(2, caddr, 1, 1);
   ASSERT_TRUE(r.is_vote_granted());
   ASSERT_EQ(r.get_term(), 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
@@ -343,10 +343,10 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 1);
+  ASSERT_EQ(r.get_index(), 2);
   EXPECT_CALL(logger, save_current_term(2));
   append_entries_response r2 =
-    append_entries(2, 1, 2, std::vector<raft_entry>(), 0, caddr);
+    append_entries(2, 2, 2, std::vector<raft_entry>(), 0, caddr);
   ASSERT_FALSE(r2.is_success());
   ASSERT_EQ(r2.get_term(), 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
@@ -367,9 +367,9 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 1);
+  ASSERT_EQ(r.get_index(), 2);
   EXPECT_CALL(logger, save_current_term(2));
-  request_vote_response r2 = request_vote(2, caddr, 0, 0);
+  request_vote_response r2 = request_vote(2, caddr, 1, 0);
   ASSERT_FALSE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
@@ -390,9 +390,9 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 1);
+  ASSERT_EQ(r.get_index(), 2);
   EXPECT_CALL(logger, save_current_term(2));
-  request_vote_response r2 = request_vote(2, caddr, 0, 1);
+  request_vote_response r2 = request_vote(2, caddr, 1, 1);
   ASSERT_FALSE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
@@ -415,6 +415,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
   EXPECT_CALL(logger, save_current_term(1));
+  EXPECT_CALL(logger, append_log(1, ::testing::_, "__leader", "1"));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   EXPECT_CALL(logger,
@@ -424,10 +425,10 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 1);
+  ASSERT_EQ(r.get_index(), 2);
   EXPECT_CALL(logger, save_voted_for(caddr));
   EXPECT_CALL(logger, save_current_term(2));
-  request_vote_response r2 = request_vote(2, caddr, 1, 1);
+  request_vote_response r2 = request_vote(2, caddr, 2, 1);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
@@ -439,6 +440,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
   EXPECT_CALL(logger, save_current_term(1));
+  EXPECT_CALL(logger, append_log(1, ::testing::_, "__leader", "1"));
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   EXPECT_CALL(logger,
@@ -448,7 +450,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
   client_put_response r =
     client_put("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 1);
+  ASSERT_EQ(r.get_index(), 2);
   EXPECT_CALL(logger, save_voted_for(caddr));
   EXPECT_CALL(logger, save_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 0, 2);
