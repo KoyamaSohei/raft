@@ -41,6 +41,9 @@ public:
       .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::append_log));
     ON_CALL(*this, get_term(::testing::_))
       .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::get_term));
+    ON_CALL(*this, get_last_log(::testing::_, ::testing::_))
+      .WillByDefault(
+        ::testing::Invoke(&real_, &lmdb_raft_logger::get_last_log));
     ON_CALL(*this, match_log(::testing::_, ::testing::_))
       .WillByDefault(::testing::Invoke(&real_, &lmdb_raft_logger::match_log));
     ON_CALL(*this, uuid_already_exists(::testing::_))
@@ -166,6 +169,7 @@ protected:
 
     usleep(INTERVAL);
     // to commit log in run_leader
+    provider.run();
     provider.run();
 
     client_put_response resp = req.wait();
