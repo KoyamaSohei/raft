@@ -29,6 +29,7 @@ protected:
 
 TEST_F(logger_test, EXIST_DIR) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   DIR* dir = opendir("log-" ADDR);
   if (dir) {
     closedir(dir);
@@ -39,6 +40,7 @@ TEST_F(logger_test, EXIST_DIR) {
 
 TEST_F(logger_test, OFI_TCP_SUPPORT) {
   raft_logger logger("ofi+tcp;ofi_rxm://" ADDR);
+  logger.init();
   DIR* dir = opendir("log-" ADDR);
   if (dir) {
     closedir(dir);
@@ -49,6 +51,7 @@ TEST_F(logger_test, OFI_TCP_SUPPORT) {
 
 TEST_F(logger_test, OFI_SOCKETS_SUPPORT) {
   raft_logger logger("ofi+sockets://" ADDR);
+  logger.init();
   DIR* dir = opendir("log-" ADDR);
   if (dir) {
     closedir(dir);
@@ -59,6 +62,7 @@ TEST_F(logger_test, OFI_SOCKETS_SUPPORT) {
 
 TEST_F(logger_test, SET_DUMMY) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   int i, t;
   logger.get_last_log(i, t);
   ASSERT_EQ(i, 0);
@@ -67,6 +71,7 @@ TEST_F(logger_test, SET_DUMMY) {
 
 TEST_F(logger_test, DUMMY_IS_HELLO) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   int index = 0;
   int term;
   std::string uuid, key, value;
@@ -79,6 +84,7 @@ TEST_F(logger_test, DUMMY_IS_HELLO) {
 
 TEST_F(logger_test, APPEND_LOG) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
@@ -93,6 +99,7 @@ TEST_F(logger_test, APPEND_LOG) {
 
 TEST_F(logger_test, BOOTSTRAP_FROM_EMPTY) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   int current_term;
   std::string voted_for;
   logger.bootstrap_state_from_log(current_term, voted_for);
@@ -102,6 +109,7 @@ TEST_F(logger_test, BOOTSTRAP_FROM_EMPTY) {
 
 TEST_F(logger_test, BOOTSTRAP) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   logger.save_current_term(1);
   logger.save_voted_for("sockets://127.0.0.1:12345");
   int term;
@@ -113,16 +121,19 @@ TEST_F(logger_test, BOOTSTRAP) {
 
 TEST_F(logger_test, MATCHLOG) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   ASSERT_TRUE(logger.match_log(0, 0));
 }
 
 TEST_F(logger_test, MATCHLOG_NOTFOUND) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   ASSERT_FALSE(logger.match_log(1234, 0));
 }
 
 TEST_F(logger_test, UUID_ALREADY_EXISTS) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
@@ -134,6 +145,7 @@ TEST_F(logger_test, UUID_ALREADY_EXISTS) {
 
 TEST_F(logger_test, CONFLICT_UUID) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
@@ -144,6 +156,7 @@ TEST_F(logger_test, CONFLICT_UUID) {
 
 TEST_F(logger_test, CONFLICT_UUID_2) {
   raft_logger logger("sockets://" ADDR);
+  logger.init();
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
