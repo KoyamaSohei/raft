@@ -32,6 +32,7 @@ public:
   virtual void get_last_log(int &index, int &term) = 0;
   virtual bool match_log(int index, int term) = 0;
   virtual bool uuid_already_exists(std::string uuid) = 0;
+  virtual std::string generate_uuid() = 0;
 };
 
 class lmdb_raft_logger : public raft_logger {
@@ -72,6 +73,7 @@ public:
   bool match_log(int index, int term);
   bool uuid_already_exists(std::string uuid);
   std::string generate_path(std::string id);
+  std::string generate_uuid();
 };
 
 #endif

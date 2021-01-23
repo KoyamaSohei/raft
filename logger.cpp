@@ -451,3 +451,11 @@ bool lmdb_raft_logger::uuid_already_exists(std::string uuid) {
   if (err == MDB_NOTFOUND) { return false; }
   return true;
 }
+
+std::string lmdb_raft_logger::generate_uuid() {
+  uuid_t id;
+  uuid_generate(id);
+  char sid[UUID_LENGTH];
+  uuid_unparse_lower(id, sid);
+  return std::string(sid);
+}
