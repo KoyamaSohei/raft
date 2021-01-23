@@ -21,7 +21,29 @@ std::string lmdb_raft_logger::generate_path(std::string id) {
   return path;
 }
 
-void lmdb_raft_logger::init() {
+void lmdb_raft_logger::get_nodes_from_buf(std::string buf,
+                                          std::vector<std::string> &nodes) {
+  if (buf.empty()) { return; }
+  std::string::size_type pos = 0, next;
+
+  do {
+    next = buf.find(",", pos);
+    nodes.emplace_back(buf.substr(pos, next - pos));
+    pos = next + 1;
+  } while (next != std::string::npos);
+}
+
+void lmdb_raft_logger::get_buf_from_nodes(std::string &buf,
+                                          std::vector<std::string> nodes) {
+  buf = "";
+  for (std::string node : nodes) {
+    buf += node;
+    buf += ",";
+  }
+  buf.pop_back();
+}
+
+void lmdb_raft_logger::init(std::string addrs) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_stat stat;
@@ -56,15 +78,57 @@ void lmdb_raft_logger::init() {
   }
 
   if (stat.ms_entries == 0) {
+    // Start init log
+
+    // check if include self
+    {
+      bool has_self = false;
+      std::vector<std::string> nbuf;
+      get_nodes_from_buf(addrs, nbuf);
+      for (std::string node : nbuf) {
+        if (node == id) has_self = true;
+      }
+      if (!has_self) {
+        // include self
+        printf("not include self addr in %s,please add.\n", addrs.c_str());
+        abort();
+      }
+    }
+
     // set dummy log, this make implimentation easily
     // index:0 ,term: 0
     stored_log_num = 0;
-    save_log_str(0,
-                 "{\"index\":0,\"term\":0,\"uuid\": "
-                 "\"046ccc3a-2dac-4e40-ae2e-76797a271fe2\",\"key\":\"hello\","
-                 "\"value\":\"world\"}",
-                 txn);
+    Json::Value root;
+    root["term"] = 0;
+    root["uuid"] = generate_uuid();
+    root["key"] = "__cluster";
+    root["value"] = addrs;
+    Json::StreamWriterBuilder builder;
+    std::string log_str = Json::writeString(builder, root);
+    save_log_str(0, log_str, txn);
+    // save to state DB
+    MDB_dbi cdbi;
+    MDB_val cluster_value;
+    err = mdb_dbi_open(txn, state_db, MDB_CREATE, &cdbi);
+
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
+    }
+
+    cluster_value.mv_size = sizeof(char) * (addrs.size() + 1);
+    cluster_value.mv_data = (void *)addrs.c_str();
+
+    err = mdb_put(txn, cdbi, &cluster_key, &cluster_value, 0);
+
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
+    }
+
   } else {
+    printf("log (and clusters info) exists already, so %s is ignored..\n",
+           addrs.c_str());
     stored_log_num = stat.ms_entries - 1;
   }
 
@@ -75,11 +139,11 @@ void lmdb_raft_logger::init() {
   }
 }
 
-void lmdb_raft_logger::bootstrap_state_from_log(int &current_term,
-                                                std::string &voted_for) {
+void lmdb_raft_logger::bootstrap_state_from_log(
+  int &current_term, std::string &voted_for, std::vector<std::string> &nodes) {
   MDB_txn *txn;
   MDB_dbi dbi;
-  MDB_val current_term_value, voted_for_value;
+  MDB_val current_term_value, voted_for_value, cluster_value;
   int err;
 
   err = mdb_txn_begin(env, NULL, 0, &txn);
@@ -120,6 +184,14 @@ void lmdb_raft_logger::bootstrap_state_from_log(int &current_term,
   } else {
     voted_for = std::string((char *)voted_for_value.mv_data);
   }
+
+  err = mdb_get(txn, dbi, &cluster_key, &cluster_value);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+  std::string buf = std::string((char *)cluster_value.mv_data);
+  get_nodes_from_buf(buf, nodes);
 
   err = mdb_txn_commit(txn);
   if (err) {

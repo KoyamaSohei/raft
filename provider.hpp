@@ -26,7 +26,6 @@ private:
   // nodes;
   int num_nodes;
   std::vector<std::string> nodes;
-  std::map<std::string, tl::provider_handle> node_to_handle;
   // Mutex for _state,_current_term,_commit_index
   tl::mutex mu;
   // Cond for client_put reply after the log was commited.
@@ -88,16 +87,13 @@ private:
   void become_leader();
   void run_leader();
 
-  // ノードを追加 ready時にのみ呼び出し可能
-  void append_node(std::string addr);
-
 public:
   raft_provider(tl::engine &e, raft_logger *logger,
                 uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
   // readyからfollowerに遷移
-  void start(std::vector<std::string> &addrs);
+  void start();
   void finalize();
 };
 

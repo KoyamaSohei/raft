@@ -31,17 +31,6 @@ void setup_sigset(sigset_t *ss) {
   pthread_sigmask(SIG_BLOCK, ss, NULL);
 }
 
-void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes) {
-  if (buf.empty()) { return; }
-  std::string::size_type pos = 0, next;
-
-  do {
-    next = buf.find(",", pos);
-    nodes.emplace_back(buf.substr(pos, next - pos));
-    pos = next + 1;
-  } while (next != std::string::npos);
-}
-
 int main(int argc, char **argv) {
 
   ABT_xstream sig_stream, tick_stream;
@@ -51,7 +40,6 @@ int main(int argc, char **argv) {
 
   std::string self_addr = "sockets";
   std::string node_buf;
-  std::vector<std::string> nodes;
 
   while (1) {
     int opt = getopt(argc, argv, "s:n:h");
@@ -73,8 +61,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  get_nodes_from_buf(node_buf, nodes);
-
   setup_sigset(&ss);
 
   ABT_init(argc, argv);
@@ -84,7 +70,7 @@ int main(int argc, char **argv) {
   std::cout << "Server running at address " << my_engine.self() << std::endl;
 
   lmdb_raft_logger logger(my_engine.self());
-  logger.init();
+  logger.init(node_buf);
 
   raft_provider provider(my_engine, &logger, RAFT_PROVIDER_ID);
 
@@ -94,7 +80,7 @@ int main(int argc, char **argv) {
   ABT_thread_create_on_xstream(sig_stream, signal_handler, &arg,
                                ABT_THREAD_ATTR_NULL, &sig_thread);
 
-  provider.start(nodes);
+  provider.start();
 
   ABT_xstream_create(ABT_SCHED_NULL, &tick_stream);
   ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,

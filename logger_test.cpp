@@ -29,7 +29,7 @@ protected:
 
 TEST_F(logger_test, EXIST_DIR) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   DIR* dir = opendir("log-" ADDR);
   if (dir) {
     closedir(dir);
@@ -40,7 +40,7 @@ TEST_F(logger_test, EXIST_DIR) {
 
 TEST_F(logger_test, OFI_TCP_SUPPORT) {
   lmdb_raft_logger logger("ofi+tcp;ofi_rxm://" ADDR);
-  logger.init();
+  logger.init("ofi+tcp;ofi_rxm://" ADDR);
   DIR* dir = opendir("log-" ADDR);
   if (dir) {
     closedir(dir);
@@ -51,7 +51,7 @@ TEST_F(logger_test, OFI_TCP_SUPPORT) {
 
 TEST_F(logger_test, OFI_SOCKETS_SUPPORT) {
   lmdb_raft_logger logger("ofi+sockets://" ADDR);
-  logger.init();
+  logger.init("ofi+sockets://" ADDR);
   DIR* dir = opendir("log-" ADDR);
   if (dir) {
     closedir(dir);
@@ -62,7 +62,7 @@ TEST_F(logger_test, OFI_SOCKETS_SUPPORT) {
 
 TEST_F(logger_test, SET_DUMMY) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   int i, t;
   logger.get_last_log(i, t);
   ASSERT_EQ(i, 0);
@@ -71,20 +71,19 @@ TEST_F(logger_test, SET_DUMMY) {
 
 TEST_F(logger_test, DUMMY_IS_HELLO) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   int index = 0;
   int term;
   std::string uuid, key, value;
   logger.get_log(index, term, uuid, key, value);
   ASSERT_EQ(term, 0);
-  ASSERT_STREQ(uuid.c_str(), "046ccc3a-2dac-4e40-ae2e-76797a271fe2");
-  ASSERT_STREQ(key.c_str(), "hello");
-  ASSERT_STREQ(value.c_str(), "world");
+  ASSERT_STREQ(key.c_str(), "__cluster");
+  ASSERT_STREQ(value.c_str(), "sockets://" ADDR);
 }
 
 TEST_F(logger_test, APPEND_LOG) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
@@ -99,41 +98,47 @@ TEST_F(logger_test, APPEND_LOG) {
 
 TEST_F(logger_test, BOOTSTRAP_FROM_EMPTY) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   int current_term;
   std::string voted_for;
-  logger.bootstrap_state_from_log(current_term, voted_for);
+  std::vector<std::string> nodes;
+  logger.bootstrap_state_from_log(current_term, voted_for, nodes);
   ASSERT_EQ(current_term, 0);
   ASSERT_STREQ(voted_for.c_str(), "");
+  ASSERT_EQ((int)nodes.size(), 1);
+  ASSERT_STREQ(nodes[0].c_str(), "sockets://" ADDR);
 }
 
 TEST_F(logger_test, BOOTSTRAP) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   logger.save_current_term(1);
   logger.save_voted_for("sockets://127.0.0.1:12345");
   int term;
   std::string voted_for;
-  logger.bootstrap_state_from_log(term, voted_for);
+  std::vector<std::string> nodes;
+  logger.bootstrap_state_from_log(term, voted_for, nodes);
   ASSERT_EQ(term, 1);
   ASSERT_STREQ(voted_for.c_str(), "sockets://127.0.0.1:12345");
+  ASSERT_EQ((int)nodes.size(), 1);
+  ASSERT_STREQ(nodes[0].c_str(), "sockets://" ADDR);
 }
 
 TEST_F(logger_test, MATCHLOG) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   ASSERT_TRUE(logger.match_log(0, 0));
 }
 
 TEST_F(logger_test, MATCHLOG_NOTFOUND) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   ASSERT_FALSE(logger.match_log(1234, 0));
 }
 
 TEST_F(logger_test, UUID_ALREADY_EXISTS) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
@@ -145,7 +150,7 @@ TEST_F(logger_test, UUID_ALREADY_EXISTS) {
 
 TEST_F(logger_test, CONFLICT_UUID) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);
@@ -156,7 +161,7 @@ TEST_F(logger_test, CONFLICT_UUID) {
 
 TEST_F(logger_test, CONFLICT_UUID_2) {
   lmdb_raft_logger logger("sockets://" ADDR);
-  logger.init();
+  logger.init("sockets://" ADDR);
   int idx =
     logger.append_log(1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
   ASSERT_EQ(idx, 1);

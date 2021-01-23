@@ -21,8 +21,6 @@ raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
   , m_client_get_rpc(
       define(CLIENT_GET_RPC_NAME, &raft_provider::client_get_rpc)) {
   define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
-  // bootstrap state from (already exist) log
-  logger->bootstrap_state_from_log(_current_term, _voted_for);
   // Block RPC until _state != ready
   mu.lock();
 }
@@ -31,7 +29,6 @@ raft_provider::~raft_provider() {}
 
 void raft_provider::finalize() {
   leader_id = tl::provider_handle();
-  node_to_handle.clear();
   m_append_entries_rpc.deregister();
   m_request_vote_rpc.deregister();
   m_client_put_rpc.deregister();
@@ -332,12 +329,14 @@ void raft_provider::become_candidate() {
   int vote = 1;
 
   for (std::string node : nodes) {
+    if (node == id) continue;
     mu.unlock();
     printf("request_vote to %s\n", node.c_str());
     request_vote_response resp;
     try {
-      resp = m_request_vote_rpc.on(node_to_handle[node])(
-        current_term, id, last_log_index, last_log_term);
+      tl::provider_handle ph(get_engine().lookup(node), RAFT_PROVIDER_ID);
+      resp = m_request_vote_rpc.on(ph)(current_term, id, last_log_index,
+                                       last_log_term);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
@@ -372,10 +371,16 @@ void raft_provider::become_leader() {
                                  std::to_string(term));
   next_index.clear();
   // next_index initialized to leader last log index + 1
-  for (std::string node : nodes) { next_index[node] = index + 1; }
+  for (std::string node : nodes) {
+    if (node == id) continue;
+    next_index[node] = index + 1;
+  }
   match_index.clear();
   // match_index initialized to 0
-  for (std::string node : nodes) { match_index[node] = 0; }
+  for (std::string node : nodes) {
+    if (node == id) continue;
+    match_index[node] = 0;
+  }
 }
 
 void raft_provider::run_leader() {
@@ -385,6 +390,7 @@ void raft_provider::run_leader() {
   logger->get_last_log(last_log_index, _);
 
   for (std::string node : nodes) {
+    if (node == id) continue;
     int prev_index = next_index[node] - 1;
     assert(0 <= prev_index);
     int prev_term = logger->get_term(prev_index);
@@ -401,8 +407,9 @@ void raft_provider::run_leader() {
     mu.unlock();
     append_entries_response resp;
     try {
-      resp = m_append_entries_rpc.on(node_to_handle[node])(
-        term, prev_index, prev_term, entries, commit_index, id);
+      tl::provider_handle ph(get_engine().lookup(node), RAFT_PROVIDER_ID);
+      resp = m_append_entries_rpc.on(ph)(term, prev_index, prev_term, entries,
+                                         commit_index, id);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
@@ -439,6 +446,7 @@ void raft_provider::run_leader() {
     std::vector<int> sorted_match_index{last_log_index};
 
     for (std::string node : nodes) {
+      if (node == id) continue;
       sorted_match_index.emplace_back(match_index[node]);
     }
 
@@ -490,18 +498,10 @@ void raft_provider::run() {
   cond.notify_all();
 }
 
-void raft_provider::append_node(std::string addr) {
-  assert(get_state() == raft_state::ready);
-  tl::endpoint p = get_engine().lookup(addr);
-  nodes.push_back(addr);
-  node_to_handle[addr] = tl::provider_handle(p, RAFT_PROVIDER_ID);
-  num_nodes++;
-  assert(num_nodes == (int)nodes.size() + 1);
-  std::cout << "append node " << addr << std::endl;
-}
-
-void raft_provider::start(std::vector<std::string> &addrs) {
-  for (std::string addr : addrs) { append_node(addr); }
+void raft_provider::start() {
+  // bootstrap state from (already exist) log
+  logger->bootstrap_state_from_log(_current_term, _voted_for, nodes);
+  num_nodes = nodes.size();
   become_follower();
   // begin to accept rpc
   mu.unlock();

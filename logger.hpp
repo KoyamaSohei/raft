@@ -16,9 +16,14 @@ public:
   raft_logger(std::string _id) : id(_id){};
   virtual ~raft_logger(){};
 
-  virtual void init() = 0;
+  virtual void init(std::string addrs) = 0;
+  virtual void get_nodes_from_buf(std::string buf,
+                                  std::vector<std::string> &nodes) = 0;
+  virtual void get_buf_from_nodes(std::string &buf,
+                                  std::vector<std::string> nodes) = 0;
   virtual void bootstrap_state_from_log(int &current_term,
-                                        std::string &voted_for) = 0;
+                                        std::string &voted_for,
+                                        std::vector<std::string> &nodes) = 0;
   virtual void save_current_term(int current_term) = 0;
   virtual void save_voted_for(std::string voted_for) = 0;
   virtual void get_log(int index, int &term, std::string &uuid,
@@ -38,10 +43,11 @@ public:
 class lmdb_raft_logger : public raft_logger {
 private:
   MDB_env *env;
-  // 永続Stateのうち、_current_termと_voted_forを保存するDB
+  // 永続Stateのうち、_current_termと_voted_forと最新のclusterを保存するDB
   const char *state_db = "state_db";
   MDB_val current_term_key = {13 * sizeof(char), (void *)"current_term"};
   MDB_val voted_for_key = {10 * sizeof(char), (void *)"voted_for"};
+  MDB_val cluster_key = {8 * sizeof(char), (void *)"cluster"};
   // 永続Stateのうち、log[]を保存するDB
   const char *log_db = "log_db";
   // uuidを保存するDB
@@ -57,8 +63,11 @@ public:
   lmdb_raft_logger(std::string id);
   ~lmdb_raft_logger();
 
-  void init();
-  void bootstrap_state_from_log(int &current_term, std::string &voted_for);
+  void init(std::string addrs);
+  void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes);
+  void get_buf_from_nodes(std::string &buf, std::vector<std::string> nodes);
+  void bootstrap_state_from_log(int &current_term, std::string &voted_for,
+                                std::vector<std::string> &nodes);
   void save_current_term(int current_term);
   void save_voted_for(std::string voted_for);
   void get_log(int index, int &term, std::string &uuid, std::string &key,
