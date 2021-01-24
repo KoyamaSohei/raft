@@ -746,4 +746,13 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
+TEST_F(provider_test, TIMEOUT_NOW_WITH_HIGHER_LOG) {
+  logger.init(addr);
+  provider.start();
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  int err = timeout_now(1, 1, 1);
+  ASSERT_EQ(err, RAFT_INVALID_REQUEST);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
 } // namespace
