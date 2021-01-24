@@ -108,12 +108,15 @@ public:
 
 #define ECHO_STATE_RPC_NAME "echo_state"
 
+#define RAFT_NODE_IS_NOT_FOLLOWER -9998
 #define RAFT_NODE_IS_NOT_LEADER -9999
 #define RAFT_NOT_IMPLEMENTED -10000
 #define RAFT_LEADER_NOT_FOUND -10001
 #define RAFT_DUPLICATE_UUID -10002
 #define RAFT_INVALID_UUID -10003
+#define RAFT_INVALID_REQUEST -10004
 #define RAFT_SUCCESS 0
+#define RAFT_FAILED 1
 
 class client_put_response {
 private:

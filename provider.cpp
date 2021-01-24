@@ -16,6 +16,7 @@ raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
   , m_append_entries_rpc(
       define("append_entries", &raft_provider::append_entries_rpc))
   , m_request_vote_rpc(define("request_vote", &raft_provider::request_vote_rpc))
+  , m_timeout_now_rpc(define("timeout_now", &raft_provider::timeout_now_rpc))
   , m_client_put_rpc(
       define(CLIENT_PUT_RPC_NAME, &raft_provider::client_put_rpc))
   , m_client_get_rpc(
@@ -224,6 +225,37 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
   } catch (tl::exception &e) {
     printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
   }
+  return;
+}
+
+void raft_provider::timeout_now_rpc(const tl::request &r, int req_term,
+                                    int req_prev_index, int req_prev_term) {
+  std::unique_lock<tl::mutex> lock(mu);
+  if (get_state() != raft_state::follower) {
+    try {
+      r.respond(RAFT_NODE_IS_NOT_FOLLOWER);
+    } catch (tl::exception &e) {}
+    return;
+  }
+  int term = get_current_term();
+  if (req_term != term) {
+    try {
+      r.respond(RAFT_INVALID_REQUEST);
+    } catch (tl::exception &e) {}
+    return;
+  }
+  if (!logger->match_log(req_prev_index, req_prev_term)) {
+    try {
+      r.respond(RAFT_INVALID_REQUEST);
+    } catch (tl::exception &e) {}
+    return;
+  }
+  update_timeout_limit();
+  become_candidate();
+  int err = (get_state() == raft_state::leader) ? RAFT_SUCCESS : RAFT_FAILED;
+  try {
+    r.respond(err);
+  } catch (tl::exception &e) {}
   return;
 }
 

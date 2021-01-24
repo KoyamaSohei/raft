@@ -70,6 +70,10 @@ private:
                         std::string req_candidate_id, int req_last_log_index,
                         int req_last_log_term);
   tl::remote_procedure m_request_vote_rpc;
+  // timeout_now rpc
+  void timeout_now_rpc(const tl::request &r, int req_term, int req_prev_index,
+                       int req_prev_term);
+  tl::remote_procedure m_timeout_now_rpc;
   // client put rpc
   void client_put_rpc(const tl::request &r, std::string uuid, std::string key,
                       std::string value);
