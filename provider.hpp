@@ -92,6 +92,8 @@ private:
   void become_leader();
   void run_leader();
 
+  void transfer_leadership();
+
 public:
   raft_provider(tl::engine &e, raft_logger *logger, std::string _id,
                 uint16_t provider_id = RAFT_PROVIDER_ID);

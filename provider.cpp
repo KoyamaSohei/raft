@@ -537,46 +537,100 @@ void raft_provider::start() {
   mu.unlock();
 }
 
-bool raft_provider::remove_self_from_cluster() {
-  std::unique_lock<tl::mutex> lock(mu);
+void raft_provider::transfer_leadership() {
   int current_term = get_current_term();
-  if (get_state() == raft_state::leader) {
-    std::string target;
-    int match_idx = 0;
-    for (std::string node : nodes) {
-      if (node == id) continue;
-      if (match_index[node] > match_idx) {
-        target = node;
-        match_idx = match_index[node];
-      }
-    }
-    if (match_idx < get_commit_index()) {
-      printf("candidate of next leader not found\n");
-      return false;
-    }
-    assert(match_index[target] == match_idx);
-    assert(!target.empty());
+  int commit_index = get_commit_index();
 
+  std::string target;
+
+  int match_idx = 0;
+
+  for (std::string node : nodes) {
+    if (node == id) continue;
+    if (match_index[node] > match_idx) {
+      target = node;
+      match_idx = match_index[node];
+    }
+  }
+
+  if (match_idx < commit_index) {
+    printf("candidate of next leader not found\n");
+    return;
+  }
+
+  assert(match_index[target] == match_idx);
+  assert(!target.empty());
+
+  printf("begin transfer leadership to %s\n", target.c_str());
+
+  int last_log_index, last_log_term;
+  logger->get_last_log(last_log_index, last_log_term);
+
+  bool target_has_latest_log = match_idx == last_log_index;
+
+  if (!target_has_latest_log) {
+    //  Send Append Entries RPC
     try {
       if (!node_to_handle.count(target)) {
         node_to_handle[target] = tl::provider_handle(
           get_engine().lookup(PROTOCOL_PREFIX + target), RAFT_PROVIDER_ID);
       }
-      int match_term;
-      std::string u, k, v;
-      logger->get_log(match_idx, match_term, u, k, v);
 
-      int err = m_timeout_now_rpc.on(node_to_handle[target])(
-        current_term, match_idx, match_term);
+      int prev_index = next_index[target] - 1;
 
-      if (err == RAFT_SUCCESS) {
-        printf("leadership transfer succeeded, please retry.\n");
-      } else {
-        printf("error occured on leadership transfer, please retry\n");
+      assert(0 <= prev_index);
+      assert(prev_index <= last_log_index);
+
+      int prev_term = logger->get_term(prev_index);
+
+      std::vector<raft_entry> entries;
+      for (int idx = next_index[target]; idx <= last_log_index; idx++) {
+        int t;
+        std::string u, k, v;
+        logger->get_log(idx, t, u, k, v);
+        entries.emplace_back(idx, t, u, k, v);
       }
+
+      append_entries_response resp =
+        m_append_entries_rpc.on(node_to_handle[target])(
+          current_term, prev_index, prev_term, entries, commit_index, id);
+
+      if (resp.get_term() > current_term) {
+        printf("target has greater term\n");
+        become_follower();
+        return;
+      }
+
+      if (resp.is_success()) { target_has_latest_log = true; }
+
     } catch (tl::exception &e) {}
+  }
+  if (!target_has_latest_log) {
+    printf("target has NOT latest log,transfer leadership failed\n");
+    return;
+  }
+
+  try {
+    int err = m_timeout_now_rpc.on(node_to_handle[target])(
+      current_term, last_log_index, last_log_term);
+
+    if (err == RAFT_SUCCESS) {
+      printf("transfer leadership succeeded, please retry.\n");
+    } else {
+      printf("error occured on transfer leadership, please retry\n");
+    }
+  } catch (tl::exception &e) {}
+  return;
+}
+
+bool raft_provider::remove_self_from_cluster() {
+  mu.lock();
+  if (get_state() == raft_state::leader) {
+    transfer_leadership();
+    mu.unlock();
     return false;
   }
+  mu.unlock();
   if (leader_id.empty()) {
     printf("leader not found, please retry after elected new leader\n");
     return false;
