@@ -89,12 +89,18 @@ void lmdb_raft_logger::init(std::string addrs) {
     // set dummy log, this make implimentation easily
     // index:0 ,term: 0
     stored_log_num = 0;
-    Json::Value root;
+    Json::Value cmd, root;
+    Json::StreamWriterBuilder builder;
+
+    cmd["key"] = "__cluster";
+    cmd["value"] = addrs;
+
+    std::string command = Json::writeString(builder, cmd);
+
     root["term"] = 0;
     root["uuid"] = generate_uuid();
-    root["key"] = "__cluster";
-    root["value"] = addrs;
-    Json::StreamWriterBuilder builder;
+    root["command"] = command;
+
     std::string log_str = Json::writeString(builder, root);
     save_log_str(0, log_str, txn);
     // save to state DB
@@ -428,16 +434,16 @@ std::string lmdb_raft_logger::get_log_str(int index) {
   return std::string((char *)get_log_value.mv_data);
 }
 
-int lmdb_raft_logger::append_log(int term, std::string uuid, std::string key,
-                                 std::string value) {
+int lmdb_raft_logger::append_log(int term, std::string uuid,
+                                 std::string command) {
   assert(0 <= term);
   int index = stored_log_num + 1;
-  save_log(index, term, uuid, key, value);
+  save_log(index, term, uuid, command);
   return index;
 }
 
 void lmdb_raft_logger::save_log(int index, int term, std::string uuid,
-                                std::string key, std::string value) {
+                                std::string command) {
   assert(0 <= index);
   assert(index <= stored_log_num + 1);
   if (index == stored_log_num + 1) {
@@ -447,8 +453,7 @@ void lmdb_raft_logger::save_log(int index, int term, std::string uuid,
   Json::Value root;
   root["term"] = term;
   root["uuid"] = uuid;
-  root["key"] = key;
-  root["value"] = value;
+  root["command"] = command;
   Json::StreamWriterBuilder builder;
   std::string log_str = Json::writeString(builder, root);
   MDB_txn *txn;
@@ -461,21 +466,21 @@ void lmdb_raft_logger::save_log(int index, int term, std::string uuid,
     mdb_txn_abort(txn);
     abort();
   }
-  printf("save log index: %d,term: %d, uuid: %s,key: %s,value:%s \n", index,
-         term, uuid.substr(0, 8).c_str(), key.c_str(), value.c_str());
+  printf("save log index: %d,term: %d, uuid: %s,cmd: %s \n", index, term,
+         uuid.substr(0, 8).c_str(), command.c_str());
 }
 
 int lmdb_raft_logger::get_term(int index) {
   assert(0 <= index);
   assert(index <= stored_log_num);
   int term;
-  std::string uuid, key, value;
-  get_log(index, term, uuid, key, value);
+  std::string uuid, command;
+  get_log(index, term, uuid, command);
   return term;
 }
 
 void lmdb_raft_logger::get_log(int index, int &term, std::string &uuid,
-                               std::string &key, std::string &value) {
+                               std::string &command) {
   assert(0 <= index);
   assert(index <= stored_log_num);
   Json::CharReaderBuilder builder;
@@ -489,14 +494,13 @@ void lmdb_raft_logger::get_log(int index, int &term, std::string &uuid,
   assert(ok);
   term = root["term"].asInt();
   uuid = root["uuid"].asString();
-  key = root["key"].asString();
-  value = root["value"].asString();
+  command = root["command"].asString();
 }
 
 void lmdb_raft_logger::get_last_log(int &index, int &term) {
   index = stored_log_num;
-  std::string uuid, key, value;
-  get_log(index, term, uuid, key, value);
+  std::string uuid, command;
+  get_log(index, term, uuid, command);
   assert(0 <= index);
   assert(0 <= term);
 }

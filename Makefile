@@ -5,7 +5,7 @@ LDFLAGS += `pkg-config --libs thallium lmdb jsoncpp uuid` -pthread
 all:: raft.out raft_client.out test.out
 
 raft.out: provider.cpp raft.cpp logger.cpp 
-	$(CC) $(CFLAGS)  provider.cpp raft.cpp logger.cpp kvs.cpp $(LDFLAGS) -o raft.out
+	$(CC) $(CFLAGS)  provider.cpp raft.cpp logger.cpp fsm.cpp $(LDFLAGS) -o raft.out
 
 raft_client.out: raft_client.cpp 
 	$(CC) $(CFLAGS) raft_client.cpp $(LDFLAGS) -o raft_client.out
@@ -14,7 +14,7 @@ test.out: *.cpp
 	$(CC) $(CFLAGS) `pkg-config --cflags gtest gmock` \
 	-coverage \
 	logger_test.cpp provider_test.cpp raft_test.cpp \
-	provider.cpp logger.cpp kvs.cpp \
+	provider.cpp logger.cpp fsm.cpp \
 	$(LDFLAGS) `pkg-config --libs gtest gmock` \
 	-o test.out
 

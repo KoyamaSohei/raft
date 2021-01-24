@@ -23,12 +23,11 @@ public:
   virtual void save_current_term(int current_term) = 0;
   virtual void save_voted_for(std::string voted_for) = 0;
   virtual void get_log(int index, int &term, std::string &uuid,
-                       std::string &key, std::string &value) = 0;
-  virtual void save_log(int index, int term, std::string uuid, std::string key,
-                        std::string value) = 0;
+                       std::string &command) = 0;
+  virtual void save_log(int index, int term, std::string uuid,
+                        std::string command) = 0;
   // append_log returns index
-  virtual int append_log(int term, std::string uuid, std::string key,
-                         std::string value) = 0;
+  virtual int append_log(int term, std::string uuid, std::string command) = 0;
   virtual int get_term(int index) = 0;
   virtual void get_last_log(int &index, int &term) = 0;
   virtual bool match_log(int index, int term) = 0;
@@ -66,13 +65,10 @@ public:
                                 std::vector<std::string> &nodes);
   void save_current_term(int current_term);
   void save_voted_for(std::string voted_for);
-  void get_log(int index, int &term, std::string &uuid, std::string &key,
-               std::string &value);
-  void save_log(int index, int term, std::string uuid, std::string key,
-                std::string value);
+  void get_log(int index, int &term, std::string &uuid, std::string &command);
+  void save_log(int index, int term, std::string uuid, std::string command);
   // append_log returns index
-  int append_log(int term, std::string uuid, std::string key,
-                 std::string value);
+  int append_log(int term, std::string uuid, std::string command);
   int get_term(int index);
   void get_last_log(int &index, int &term);
   bool match_log(int index, int term);

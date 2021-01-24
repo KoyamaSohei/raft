@@ -29,13 +29,12 @@ private:
   int index;
   int term;
   std::string uuid;
-  std::string key;
-  std::string value;
+  std::string command;
 
 public:
   raft_entry(int _index = 0, int _term = 0, std::string _uuid = "",
-             std::string _key = "", std::string _value = "")
-    : index(_index), term(_term), uuid(_uuid), key(_key), value(_value) {
+             std::string _command = "")
+    : index(_index), term(_term), uuid(_uuid), command(_command) {
     assert(0 <= index);
   }
 
@@ -45,17 +44,14 @@ public:
 
   std::string get_uuid() { return uuid; }
 
-  std::string get_key() { return key; }
-
-  std::string get_value() { return value; }
+  std::string get_command() { return command; }
 
   template <typename A>
   void serialize(A& ar) {
     ar& index;
     ar& term;
     ar& uuid;
-    ar& key;
-    ar& value;
+    ar& command;
   }
 };
 
@@ -103,8 +99,8 @@ public:
   }
 };
 
-#define CLIENT_PUT_RPC_NAME "client_put"
-#define CLIENT_GET_RPC_NAME "client_get"
+#define CLIENT_REQUEST_RPC_NAME "client_request"
+#define CLIENT_QUERY_RPC_NAME "client_query"
 
 #define ECHO_STATE_RPC_NAME "echo_state"
 
@@ -118,53 +114,54 @@ public:
 #define RAFT_SUCCESS 0
 #define RAFT_FAILED 1
 
-class client_put_response {
+class client_request_response {
 private:
-  int error;
+  int status;
   int index;
-  std::string leader_id;
+  std::string leader_hint;
 
 public:
-  client_put_response(int _error = RAFT_NOT_IMPLEMENTED, int _index = 0,
-                      std::string _leader_id = "")
-    : error(_error), index(_index), leader_id(_leader_id) {}
+  client_request_response(int _status = RAFT_NOT_IMPLEMENTED, int _index = 0,
+                          std::string _leader_hint = "")
+    : status(_status), index(_index), leader_hint(_leader_hint) {}
 
-  int get_error() { return error; }
+  int get_status() { return status; }
 
   int get_index() { return index; }
 
-  std::string get_leader_id() { return leader_id; }
+  std::string get_leader_hint() { return leader_hint; }
 
   template <typename A>
   void serialize(A& ar) {
-    ar& error;
+    ar& status;
     ar& index;
-    ar& leader_id;
+    ar& leader_hint;
   }
 };
 
-class client_get_response {
+class client_query_response {
 private:
-  int error;
-  std::string value;
-  std::string leader_id;
+  int status;
+  std::string response;
+  std::string leader_hint;
 
 public:
-  client_get_response(int _error = RAFT_NOT_IMPLEMENTED,
-                      std::string _value = "", std::string _leader_id = "")
-    : error(_error), value(_value), leader_id(_leader_id) {}
+  client_query_response(int _status = RAFT_NOT_IMPLEMENTED,
+                        std::string _response = "",
+                        std::string _leader_hint = "")
+    : status(_status), response(_response), leader_hint(_leader_hint) {}
 
-  int get_error() { return error; }
+  int get_status() { return status; }
 
-  std::string get_value() { return value; }
+  std::string get_response() { return response; }
 
-  std::string get_leader_id() { return leader_id; }
+  std::string get_leader_hint() { return leader_hint; }
 
   template <typename A>
   void serialize(A& ar) {
-    ar& error;
-    ar& value;
-    ar& leader_id;
+    ar& status;
+    ar& response;
+    ar& leader_hint;
   }
 };
 

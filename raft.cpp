@@ -78,7 +78,9 @@ int main(int argc, char **argv) {
   lmdb_raft_logger logger(self_addr);
   logger.init(node_buf);
 
-  raft_provider provider(my_engine, &logger, self_addr, RAFT_PROVIDER_ID);
+  kvs_raft_fsm fsm;
+
+  raft_provider provider(my_engine, &logger, &fsm, self_addr, RAFT_PROVIDER_ID);
 
   signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 

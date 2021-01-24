@@ -1,3 +1,4 @@
+#include <json/json.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -9,11 +10,11 @@
 
 void usage(int argc, char **argv) {
   printf("Usage: \n");
-  printf("%s get [key]         [nodes addr]\n", argv[0]);
-  printf("%s put [key] [value] [nodes addr]\n", argv[0]);
+  printf("%s query   [command]     [nodes addr]\n", argv[0]);
+  printf("%s request [key] [value] [nodes addr]\n", argv[0]);
   printf("For examples,\n");
   printf(
-    "%s get hello "
+    "%s query hello "
     "'127.0.0.1:30000,127.0.0.1:30001,127.0.0.1:30002' \n",
     argv[0]);
 }
@@ -39,8 +40,8 @@ void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes) {
 
 int main(int argc, char **argv) {
   tl::engine my_engine(PROTOCOL_PREFIX, THALLIUM_CLIENT_MODE);
-  tl::remote_procedure client_put = my_engine.define(CLIENT_PUT_RPC_NAME);
-  tl::remote_procedure client_get = my_engine.define(CLIENT_GET_RPC_NAME);
+  tl::remote_procedure request = my_engine.define(CLIENT_REQUEST_RPC_NAME);
+  tl::remote_procedure query = my_engine.define(CLIENT_QUERY_RPC_NAME);
   std::vector<std::string> nodes;
   std::random_device rnd;
 
@@ -49,18 +50,18 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (strcasecmp(argv[1], "get") && strcasecmp(argv[1], "put")) {
+  if (strcasecmp(argv[1], "query") && strcasecmp(argv[1], "request")) {
     usage(argc, argv);
     return 1;
   }
 
-  if (!strcasecmp(argv[1], "get")) {
+  if (!strcasecmp(argv[1], "query")) {
     if (argc != 4) {
       usage(argc, argv);
       return 1;
     }
 
-    std::string key = argv[2];
+    std::string command = argv[2];
     get_nodes_from_buf(argv[3], nodes);
 
     auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
@@ -71,16 +72,16 @@ int main(int argc, char **argv) {
 
       tl::endpoint e = my_engine.lookup(next_addr);
       tl::provider_handle ph(e, RAFT_PROVIDER_ID);
-      client_get_response resp = client_get.on(ph)(key);
+      client_query_response resp = query.on(ph)(command);
 
-      int err = resp.get_error();
+      int status = resp.get_status();
 
-      switch (err) {
+      switch (status) {
         case RAFT_SUCCESS:
-          std::cout << resp.get_value() << std::endl;
+          std::cout << resp.get_response() << std::endl;
           return 0;
         case RAFT_NODE_IS_NOT_LEADER:
-          next_addr = resp.get_leader_id();
+          next_addr = resp.get_leader_hint();
           continue;
         case RAFT_LEADER_NOT_FOUND:
           std::cerr << "leader not found" << std::endl;
@@ -98,7 +99,7 @@ int main(int argc, char **argv) {
       }
     }
 
-  } else if (!strcasecmp(argv[1], "put")) {
+  } else if (!strcasecmp(argv[1], "request")) {
     if (argc != 5) {
       usage(argc, argv);
       return 1;
@@ -106,6 +107,13 @@ int main(int argc, char **argv) {
 
     std::string key = argv[2];
     std::string value = argv[3];
+
+    Json::Value root;
+    root["key"] = key;
+    root["value"] = value;
+    Json::StreamWriterBuilder builder;
+    std::string command = Json::writeString(builder, root);
+
     std::string uuid = generate_id();
 
     get_nodes_from_buf(argv[4], nodes);
@@ -117,15 +125,15 @@ int main(int argc, char **argv) {
     while (1) {
       tl::endpoint e = my_engine.lookup(next_addr);
       tl::provider_handle ph(e, RAFT_PROVIDER_ID);
-      client_put_response resp = client_put.on(ph)(uuid, key, value);
+      client_request_response resp = request.on(ph)(uuid, command);
 
-      int err = resp.get_error();
-      switch (err) {
+      int status = resp.get_status();
+      switch (status) {
         case RAFT_SUCCESS:
           std::cout << resp.get_index() << std::endl;
           return 0;
         case RAFT_NODE_IS_NOT_LEADER:
-          next_addr = resp.get_leader_id();
+          next_addr = resp.get_leader_hint();
           continue;
         case RAFT_LEADER_NOT_FOUND:
           std::cerr << "leader not found" << std::endl;

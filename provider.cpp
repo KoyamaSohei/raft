@@ -5,22 +5,25 @@
 #include <cassert>
 
 raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
-                             std::string _id, uint16_t provider_id)
+                             raft_fsm *_fsm, std::string _id,
+                             uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id)
   , id(_id)
   , _state(raft_state::follower)
   , num_nodes(1)
   , _current_term(0)
   , logger(_logger)
+  , fsm(_fsm)
   , _commit_index(0)
+  , _last_applied(0)
   , m_append_entries_rpc(
       define("append_entries", &raft_provider::append_entries_rpc))
   , m_request_vote_rpc(define("request_vote", &raft_provider::request_vote_rpc))
   , m_timeout_now_rpc(define("timeout_now", &raft_provider::timeout_now_rpc))
-  , m_client_put_rpc(
-      define(CLIENT_PUT_RPC_NAME, &raft_provider::client_put_rpc))
-  , m_client_get_rpc(
-      define(CLIENT_GET_RPC_NAME, &raft_provider::client_get_rpc)) {
+  , m_client_request_rpc(
+      define(CLIENT_REQUEST_RPC_NAME, &raft_provider::client_request_rpc))
+  , m_client_query_rpc(
+      define(CLIENT_QUERY_RPC_NAME, &raft_provider::client_query_rpc)) {
   define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
   // Block RPC until start
   mu.lock();
@@ -33,8 +36,8 @@ void raft_provider::finalize() {
   node_to_handle.clear();
   m_append_entries_rpc.deregister();
   m_request_vote_rpc.deregister();
-  m_client_put_rpc.deregister();
-  m_client_get_rpc.deregister();
+  m_client_request_rpc.deregister();
+  m_client_query_rpc.deregister();
   get_engine().finalize();
 }
 
@@ -77,6 +80,14 @@ int raft_provider::get_commit_index() {
 void raft_provider::set_commit_index(int index) {
   assert(_commit_index < index);
   _commit_index = index;
+}
+
+int raft_provider::get_last_applied() {
+  return _last_applied;
+}
+
+void raft_provider::set_last_applied(int index) {
+  _last_applied = index;
 }
 
 void raft_provider::update_timeout_limit() {
@@ -166,11 +177,10 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
   }
 
   for (raft_entry ent : req_entries) {
-    printf("entry received, idx: %d, term: %d, key: %s, value: %s\n",
-           ent.get_index(), ent.get_term(), ent.get_key().c_str(),
-           ent.get_value().c_str());
+    printf("entry received, idx: %d, term: %d, cmd: %s\n", ent.get_index(),
+           ent.get_term(), ent.get_command().c_str());
     logger->save_log(ent.get_index(), ent.get_term(), ent.get_uuid(),
-                     ent.get_key(), ent.get_value());
+                     ent.get_command());
   }
 
   if (req_leader_commit > get_commit_index()) {
@@ -263,34 +273,34 @@ void raft_provider::timeout_now_rpc(const tl::request &r, int req_term,
   return;
 }
 
-void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
-                                   std::string key, std::string value) {
+void raft_provider::client_request_rpc(const tl::request &r, std::string uuid,
+                                       std::string command) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (leader_id.empty()) {
       try {
-        r.respond(client_put_response(RAFT_LEADER_NOT_FOUND));
+        r.respond(client_request_response(RAFT_LEADER_NOT_FOUND));
       } catch (tl::exception &e) {}
       return;
     }
     try {
-      r.respond(client_put_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_id));
+      r.respond(client_request_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_id));
     } catch (tl::exception &e) {}
     return;
   }
   if (uuid.size() + 1 != UUID_LENGTH) {
     try {
-      r.respond(client_put_response(RAFT_INVALID_UUID, 0));
+      r.respond(client_request_response(RAFT_INVALID_UUID, 0));
     } catch (tl::exception &e) {}
     return;
   }
   if (logger->uuid_already_exists(uuid)) {
     try {
-      r.respond(client_put_response(RAFT_DUPLICATE_UUID, 0));
+      r.respond(client_request_response(RAFT_DUPLICATE_UUID, 0));
     } catch (tl::exception &e) {}
     return;
   }
-  int index = logger->append_log(get_current_term(), uuid, key, value);
+  int index = logger->append_log(get_current_term(), uuid, command);
 
   while (get_commit_index() < index && get_state() == raft_state::leader) {
     cond.wait(lock);
@@ -298,31 +308,31 @@ void raft_provider::client_put_rpc(const tl::request &r, std::string uuid,
 
   if (get_state() != raft_state::leader) {
     try {
-      r.respond(client_put_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_id));
+      r.respond(client_request_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_id));
     } catch (tl::exception &e) {}
     return;
   }
   try {
-    r.respond(client_put_response(RAFT_SUCCESS, index));
+    r.respond(client_request_response(RAFT_SUCCESS, index));
   } catch (tl::exception &e) {}
 }
 
-void raft_provider::client_get_rpc(const tl::request &r, std::string key) {
+void raft_provider::client_query_rpc(const tl::request &r, std::string query) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (leader_id.empty()) {
       try {
-        r.respond(client_get_response(RAFT_LEADER_NOT_FOUND, ""));
+        r.respond(client_query_response(RAFT_LEADER_NOT_FOUND, ""));
       } catch (tl::exception &e) {}
       return;
     }
     try {
-      r.respond(client_get_response(RAFT_NODE_IS_NOT_LEADER, "", leader_id));
+      r.respond(client_query_response(RAFT_NODE_IS_NOT_LEADER, "", leader_id));
     } catch (tl::exception &e) {}
     return;
   }
   try {
-    r.respond(client_get_response(RAFT_SUCCESS, kvs.get(key)));
+    r.respond(client_query_response(RAFT_SUCCESS, fsm->resolve(query)));
   } catch (tl::exception &e) {}
 }
 
@@ -401,8 +411,7 @@ void raft_provider::become_leader() {
   set_state(raft_state::leader);
   // append empty log to commit
   int term = get_current_term();
-  int index = logger->append_log(term, logger->generate_uuid(), "__leader",
-                                 std::to_string(term));
+  int index = logger->append_log(term, logger->generate_uuid(), "");
   next_index.clear();
   // next_index initialized to leader last log index + 1
   for (std::string node : nodes) {
@@ -433,9 +442,9 @@ void raft_provider::run_leader() {
       std::min(last_log_index, next_index[node] + MAX_ENTRIES_NUM);
     for (int idx = next_index[node]; idx <= last_index; idx++) {
       int t;
-      std::string u, k, v;
-      logger->get_log(idx, t, u, k, v);
-      entries.emplace_back(idx, t, u, k, v);
+      std::string uuid, command;
+      logger->get_log(idx, t, uuid, command);
+      entries.emplace_back(idx, t, uuid, command);
     }
 
     mu.unlock();
@@ -501,15 +510,16 @@ void raft_provider::run_leader() {
 void raft_provider::run() {
   mu.lock();
 
-  int last_applied = kvs.get_last_applied();
+  int last_applied = get_last_applied();
   int commit_index = get_commit_index();
   int limit_index = std::min(commit_index, last_applied + MAX_APPLIED_NUM);
 
   for (int index = last_applied + 1; index <= limit_index; index++) {
     int t;
-    std::string u, k, v;
-    logger->get_log(index, t, u, k, v);
-    kvs.apply(index, k, v);
+    std::string uuid, command;
+    logger->get_log(index, t, uuid, command);
+    fsm->apply(command);
+    set_last_applied(index);
   }
 
   switch (get_state()) {
@@ -592,9 +602,9 @@ void raft_provider::transfer_leadership() {
       std::vector<raft_entry> entries;
       for (int idx = next_index[target]; idx <= last_log_index; idx++) {
         int t;
-        std::string u, k, v;
-        logger->get_log(idx, t, u, k, v);
-        entries.emplace_back(idx, t, u, k, v);
+        std::string uuid, command;
+        logger->get_log(idx, t, uuid, command);
+        entries.emplace_back(idx, t, uuid, command);
       }
 
       append_entries_response resp =

@@ -7,7 +7,7 @@
 #include <thallium.hpp>
 #include <vector>
 
-#include "kvs.hpp"
+#include "fsm.hpp"
 #include "logger.hpp"
 #include "types.hpp"
 
@@ -49,8 +49,8 @@ private:
   std::string _voted_for;
   // logger
   raft_logger *logger;
-  // kvs
-  raft_kvs kvs;
+  // fsm
+  raft_fsm *fsm;
   // for each server, index of the next log entryto send to that server
   std::map<std::string, int> next_index;
   // for each server, index of highest log entryknown to be replicated on server
@@ -59,6 +59,10 @@ private:
   int _commit_index;
   int get_commit_index();
   void set_commit_index(int index);
+  // last applied
+  int _last_applied;
+  int get_last_applied();
+  void set_last_applied(int index);
   // append_entries_rpc
   void append_entries_rpc(const tl::request &r, int req_term,
                           int req_prev_index, int req_prev_term,
@@ -74,13 +78,13 @@ private:
   void timeout_now_rpc(const tl::request &r, int req_term, int req_prev_index,
                        int req_prev_term);
   tl::remote_procedure m_timeout_now_rpc;
-  // client put rpc
-  void client_put_rpc(const tl::request &r, std::string uuid, std::string key,
-                      std::string value);
-  tl::remote_procedure m_client_put_rpc;
-  // client get rpc
-  void client_get_rpc(const tl::request &r, std::string key);
-  tl::remote_procedure m_client_get_rpc;
+  // client request rpc
+  void client_request_rpc(const tl::request &r, std::string uuid,
+                          std::string command);
+  tl::remote_procedure m_client_request_rpc;
+  // client query rpc
+  void client_query_rpc(const tl::request &r, std::string query);
+  tl::remote_procedure m_client_query_rpc;
   // echo state rpc
   void echo_state_rpc(const tl::request &r);
   void become_follower();
@@ -95,8 +99,8 @@ private:
   void transfer_leadership();
 
 public:
-  raft_provider(tl::engine &e, raft_logger *logger, std::string _id,
-                uint16_t provider_id = RAFT_PROVIDER_ID);
+  raft_provider(tl::engine &e, raft_logger *logger, raft_fsm *fsm,
+                std::string _id, uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
   void start();
