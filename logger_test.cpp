@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 #include <stdio.h>
 
+#include "builder.hpp"
+
 #define ADDR "127.0.0.1:30000"
 
 namespace {
@@ -51,9 +53,19 @@ TEST_F(logger_test, DUMMY_IS_CLUSTER_INFO) {
   std::string uuid, command;
   logger.get_log(index, term, uuid, command);
   ASSERT_EQ(term, 0);
+  std::string key, value;
+  parse_command(key, value, command);
+  int p, n;
+  std::set<std::string> pn, nn;
+  parse_conf_log(p, pn, n, nn, value);
+  std::string pn_buf, nn_buf;
+  get_seq_from_set(pn_buf, pn);
+  get_seq_from_set(nn_buf, nn);
+  ASSERT_EQ(p, 0);
+  ASSERT_EQ(n, 0);
 
-  ASSERT_STREQ(command.c_str(), "{\n\t\"key\" : \"" SPECIAL_ENTRY_KEY
-                                "\",\n\t\"value\" : \"" ADDR "\"\n}");
+  ASSERT_STREQ(pn_buf.c_str(), ADDR);
+  ASSERT_STREQ(nn_buf.c_str(), ADDR);
 }
 
 TEST_F(logger_test, APPEND_LOG) {
