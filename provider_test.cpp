@@ -105,6 +105,7 @@ protected:
   tl::remote_procedure m_echo_state_rpc;
   tl::remote_procedure m_request_vote_rpc;
   tl::remote_procedure m_append_entries_rpc;
+  tl::remote_procedure m_timeout_now_rpc;
   tl::remote_procedure m_client_put_rpc;
   tl::remote_procedure m_client_get_rpc;
   tl::provider_handle server_addr;
@@ -119,6 +120,7 @@ protected:
     , m_echo_state_rpc(client_engine.define(ECHO_STATE_RPC_NAME))
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))
+    , m_timeout_now_rpc(client_engine.define("timeout_now"))
     , m_client_put_rpc(client_engine.define(CLIENT_PUT_RPC_NAME))
     , m_client_get_rpc(client_engine.define(CLIENT_GET_RPC_NAME))
     , server_addr(tl::provider_handle(
@@ -138,6 +140,7 @@ protected:
     m_echo_state_rpc.deregister();
     m_request_vote_rpc.deregister();
     m_append_entries_rpc.deregister();
+    m_timeout_now_rpc.deregister();
     m_client_put_rpc.deregister();
     m_client_get_rpc.deregister();
     client_engine.finalize();
@@ -173,6 +176,11 @@ protected:
     request_vote_response resp = m_request_vote_rpc.on(server_addr)(
       term, candidate_id, last_log_index, last_log_term);
     return resp;
+  }
+
+  int timeout_now(int term, int prev_index, int prev_term) {
+    int err = m_timeout_now_rpc.on(server_addr)(term, prev_index, prev_term);
+    return err;
   }
 
   client_put_response client_put(std::string uuid, std::string key,
@@ -609,6 +617,132 @@ TEST_F(provider_test, PUT_INVALID_UUID) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_put_response r = client_put("foobarbuz", "foo", "bar");
   ASSERT_EQ(r.get_error(), RAFT_INVALID_UUID);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW) {
+  logger.init(addr);
+  provider.start();
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
+  int err = timeout_now(0, 0, 0);
+  ASSERT_EQ(err, RAFT_SUCCESS);
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_2) {
+  logger.init(addr + "," + caddr);
+  provider.start();
+  EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "__leader", ""));
+  std::vector<raft_entry> ent;
+  ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "__leader",
+                   "");
+  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  int err = timeout_now(1, 1, 1);
+  ASSERT_EQ(err, RAFT_SUCCESS);
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
+  logger.init(addr);
+  provider.start();
+  usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  int err = timeout_now(0, 1, 1);
+  ASSERT_EQ(err, RAFT_NODE_IS_NOT_FOLLOWER);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
+  logger.init(addr + ",127.0.0.1:299999");
+  provider.start();
+  usleep(3 * INTERVAL);
+  EXPECT_CALL(logger, save_voted_for(addr));
+  EXPECT_CALL(logger, save_current_term(1));
+  provider.run();
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+  int err = timeout_now(0, 0, 0);
+  ASSERT_EQ(err, RAFT_NODE_IS_NOT_FOLLOWER);
+  ASSERT_EQ(fetch_state(), raft_state::candidate);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
+  logger.init(addr);
+  provider.start();
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  int err = timeout_now(1, 0, 0);
+  ASSERT_EQ(err, RAFT_INVALID_REQUEST);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
+  logger.init(addr);
+  provider.start();
+  EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "foo", "bar"));
+  std::vector<raft_entry> ent;
+  ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
+  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  int err = timeout_now(0, 1, 1);
+  ASSERT_EQ(err, RAFT_INVALID_REQUEST);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
+  logger.init(addr);
+  provider.start();
+  EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "foo", "bar"));
+  std::vector<raft_entry> ent;
+  ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
+  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  int err = timeout_now(1, 0, 0);
+  ASSERT_EQ(err, RAFT_INVALID_REQUEST);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
+  logger.init(addr);
+  provider.start();
+  EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "foo", "bar"));
+  std::vector<raft_entry> ent;
+  ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
+  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  int err = timeout_now(1, 1, 0);
+  ASSERT_EQ(err, RAFT_INVALID_REQUEST);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
+  logger.init(addr);
+  provider.start();
+  EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "foo", "bar"));
+  std::vector<raft_entry> ent;
+  ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo", "bar");
+  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  int err = timeout_now(1, 0, 1);
+  ASSERT_EQ(err, RAFT_INVALID_REQUEST);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
 } // namespace
