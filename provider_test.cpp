@@ -708,7 +708,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
   ASSERT_EQ(r.get_term(), 1);
   ASSERT_TRUE(r.is_success());
   ASSERT_EQ(fetch_state(), raft_state::follower);
-  int err = timeout_now(1, 0, 0);
+  int err = timeout_now(1, 0, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
