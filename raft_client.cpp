@@ -1,4 +1,3 @@
-#include <json/json.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -6,6 +5,7 @@
 #include <random>
 #include <vector>
 
+#include "builder.hpp"
 #include "types.hpp"
 
 void usage(int argc, char **argv) {
@@ -17,25 +17,6 @@ void usage(int argc, char **argv) {
     "%s query hello "
     "'127.0.0.1:30000,127.0.0.1:30001,127.0.0.1:30002' \n",
     argv[0]);
-}
-
-std::string generate_id() {
-  uuid_t id;
-  uuid_generate(id);
-  char sid[UUID_LENGTH];
-  uuid_unparse_lower(id, sid);
-  return std::string(sid);
-}
-
-void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes) {
-  if (buf.empty()) { return; }
-  std::string::size_type pos = 0, next;
-
-  do {
-    next = buf.find(",", pos);
-    nodes.emplace_back(buf.substr(pos, next - pos));
-    pos = next + 1;
-  } while (next != std::string::npos);
 }
 
 int main(int argc, char **argv) {
@@ -62,7 +43,7 @@ int main(int argc, char **argv) {
     }
 
     std::string command = argv[2];
-    get_nodes_from_buf(argv[3], nodes);
+    get_vector_from_seq(nodes, argv[3]);
 
     auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
 
@@ -105,18 +86,11 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    std::string key = argv[2];
-    std::string value = argv[3];
+    std::string command, uuid;
+    build_command(command, argv[2], argv[3]);
+    generate_uuid(uuid);
 
-    Json::Value root;
-    root["key"] = key;
-    root["value"] = value;
-    Json::StreamWriterBuilder builder;
-    std::string command = Json::writeString(builder, root);
-
-    std::string uuid = generate_id();
-
-    get_nodes_from_buf(argv[4], nodes);
+    get_vector_from_seq(nodes, argv[4]);
 
     auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
 

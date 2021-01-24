@@ -32,7 +32,6 @@ public:
   virtual void get_last_log(int &index, int &term) = 0;
   virtual bool match_log(int index, int term) = 0;
   virtual bool uuid_already_exists(std::string uuid) = 0;
-  virtual std::string generate_uuid() = 0;
 };
 
 class lmdb_raft_logger : public raft_logger {
@@ -53,8 +52,6 @@ private:
   void save_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   int get_uuid(std::string uuid, MDB_txn *ptxn = NULL);
   void save_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
-  void get_nodes_from_buf(std::string buf, std::vector<std::string> &nodes);
-  void get_buf_from_nodes(std::string &buf, std::vector<std::string> nodes);
 
 public:
   lmdb_raft_logger(std::string id);
@@ -73,7 +70,6 @@ public:
   void get_last_log(int &index, int &term);
   bool match_log(int index, int term);
   bool uuid_already_exists(std::string uuid);
-  std::string generate_uuid();
 };
 
 #endif

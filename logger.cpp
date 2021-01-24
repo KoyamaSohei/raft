@@ -1,38 +1,17 @@
 #include "logger.hpp"
 
 #include <errno.h>
-#include <json/json.h>
 #include <lmdb.h>
 #include <sys/stat.h>
 
 #include <cassert>
 #include <string>
 
+#include "builder.hpp"
+
 lmdb_raft_logger::lmdb_raft_logger(std::string _id) : raft_logger(_id) {}
 
 lmdb_raft_logger::~lmdb_raft_logger() {}
-
-void lmdb_raft_logger::get_nodes_from_buf(std::string buf,
-                                          std::vector<std::string> &nodes) {
-  if (buf.empty()) { return; }
-  std::string::size_type pos = 0, next;
-
-  do {
-    next = buf.find(",", pos);
-    nodes.emplace_back(buf.substr(pos, next - pos));
-    pos = next + 1;
-  } while (next != std::string::npos);
-}
-
-void lmdb_raft_logger::get_buf_from_nodes(std::string &buf,
-                                          std::vector<std::string> nodes) {
-  buf = "";
-  for (std::string node : nodes) {
-    buf += node;
-    buf += ",";
-  }
-  buf.pop_back();
-}
 
 void lmdb_raft_logger::init(std::string addrs) {
   MDB_txn *txn;
@@ -75,7 +54,7 @@ void lmdb_raft_logger::init(std::string addrs) {
     {
       bool has_self = false;
       std::vector<std::string> nbuf;
-      get_nodes_from_buf(addrs, nbuf);
+      get_vector_from_seq(nbuf, addrs);
       for (std::string node : nbuf) {
         if (node == id) has_self = true;
       }
@@ -89,20 +68,12 @@ void lmdb_raft_logger::init(std::string addrs) {
     // set dummy log, this make implimentation easily
     // index:0 ,term: 0
     stored_log_num = 0;
-    Json::Value cmd, root;
-    Json::StreamWriterBuilder builder;
+    std::string uuid, command, log;
+    build_command(command, "__cluster", addrs);
+    generate_uuid(uuid);
+    build_log(log, 0, uuid, command);
 
-    cmd["key"] = "__cluster";
-    cmd["value"] = addrs;
-
-    std::string command = Json::writeString(builder, cmd);
-
-    root["term"] = 0;
-    root["uuid"] = generate_uuid();
-    root["command"] = command;
-
-    std::string log_str = Json::writeString(builder, root);
-    save_log_str(0, log_str, txn);
+    save_log_str(0, log, txn);
     // save to state DB
     MDB_dbi cdbi;
     MDB_val cluster_value;
@@ -188,7 +159,7 @@ void lmdb_raft_logger::bootstrap_state_from_log(
     abort();
   }
   std::string buf = std::string((char *)cluster_value.mv_data);
-  get_nodes_from_buf(buf, nodes);
+  get_vector_from_seq(nodes, buf);
 
   err = mdb_txn_commit(txn);
   if (err) {
@@ -450,16 +421,12 @@ void lmdb_raft_logger::save_log(int index, int term, std::string uuid,
     // append log
     stored_log_num++;
   }
-  Json::Value root;
-  root["term"] = term;
-  root["uuid"] = uuid;
-  root["command"] = command;
-  Json::StreamWriterBuilder builder;
-  std::string log_str = Json::writeString(builder, root);
+  std::string log;
+  build_log(log, term, uuid, command);
   MDB_txn *txn;
   int err = mdb_txn_begin(env, NULL, 0, &txn);
   assert(err == 0);
-  save_log_str(index, log_str, txn);
+  save_log_str(index, log, txn);
   save_uuid(uuid, txn);
   err = mdb_txn_commit(txn);
   if (err) {
@@ -483,18 +450,8 @@ void lmdb_raft_logger::get_log(int index, int &term, std::string &uuid,
                                std::string &command) {
   assert(0 <= index);
   assert(index <= stored_log_num);
-  Json::CharReaderBuilder builder;
-  Json::Value root;
-  JSONCPP_STRING err_str;
-  const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-
-  std::string str = get_log_str(index);
-  int ok =
-    reader->parse(str.c_str(), str.c_str() + str.length(), &root, &err_str);
-  assert(ok);
-  term = root["term"].asInt();
-  uuid = root["uuid"].asString();
-  command = root["command"].asString();
+  std::string log = get_log_str(index);
+  parse_log(term, uuid, command, log);
 }
 
 void lmdb_raft_logger::get_last_log(int &index, int &term) {
@@ -517,12 +474,4 @@ bool lmdb_raft_logger::uuid_already_exists(std::string uuid) {
   int err = get_uuid(uuid);
   if (err == MDB_NOTFOUND) { return false; }
   return true;
-}
-
-std::string lmdb_raft_logger::generate_uuid() {
-  uuid_t id;
-  uuid_generate(id);
-  char sid[UUID_LENGTH];
-  uuid_unparse_lower(id, sid);
-  return std::string(sid);
 }

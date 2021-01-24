@@ -4,6 +4,8 @@
 
 #include <cassert>
 
+#include "builder.hpp"
+
 raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
                              raft_fsm *_fsm, std::string _id,
                              uint16_t provider_id)
@@ -411,7 +413,9 @@ void raft_provider::become_leader() {
   set_state(raft_state::leader);
   // append empty log to commit
   int term = get_current_term();
-  int index = logger->append_log(term, logger->generate_uuid(), "");
+  std::string uuid;
+  generate_uuid(uuid);
+  int index = logger->append_log(term, uuid, "");
   next_index.clear();
   // next_index initialized to leader last log index + 1
   for (std::string node : nodes) {
