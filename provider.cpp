@@ -538,6 +538,8 @@ void raft_provider::start() {
 }
 
 void raft_provider::transfer_leadership() {
+  assert(get_state() == raft_state::leader);
+
   int current_term = get_current_term();
   int commit_index = get_commit_index();
 
