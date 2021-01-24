@@ -636,12 +636,12 @@ bool raft_provider::remove_self_from_cluster() {
     mu.unlock();
     return false;
   }
-  mu.unlock();
   if (leader_id.empty()) {
+    mu.unlock();
     printf("leader not found, please retry after elected new leader\n");
     return false;
   }
-
+  mu.unlock();
   // TODO
   return false;
 }
