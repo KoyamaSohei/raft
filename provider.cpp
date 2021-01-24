@@ -538,7 +538,7 @@ void raft_provider::start() {
 }
 
 bool raft_provider::remove_self_from_cluster() {
-  mu.lock();
+  std::unique_lock<tl::mutex> lock(mu);
   int current_term = get_current_term();
   if (get_state() == raft_state::leader) {
     std::string target;
@@ -551,13 +551,12 @@ bool raft_provider::remove_self_from_cluster() {
       }
     }
     if (match_idx < get_commit_index()) {
-      mu.unlock();
       printf("candidate of next leader not found\n");
       return false;
     }
-    mu.unlock();
     assert(match_index[target] == match_idx);
     assert(!target.empty());
+
     try {
       if (!node_to_handle.count(target)) {
         node_to_handle[target] = tl::provider_handle(
@@ -566,8 +565,10 @@ bool raft_provider::remove_self_from_cluster() {
       int match_term;
       std::string u, k, v;
       logger->get_log(match_idx, match_term, u, k, v);
+
       int err = m_timeout_now_rpc.on(node_to_handle[target])(
         current_term, match_idx, match_term);
+
       if (err == RAFT_SUCCESS) {
         printf("leadership transfer succeeded, please retry.\n");
       } else {
@@ -577,7 +578,6 @@ bool raft_provider::remove_self_from_cluster() {
     return false;
   }
   if (leader_id.empty()) {
-    mu.unlock();
     printf("leader not found, please retry after elected new leader\n");
     return false;
   }
