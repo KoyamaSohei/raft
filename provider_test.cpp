@@ -641,23 +641,6 @@ TEST_F(provider_test, TIMEOUT_NOW) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
-TEST_F(provider_test, TIMEOUT_NOW_2) {
-  logger.init(addr + "," + caddr);
-  provider.start();
-  EXPECT_CALL(logger, save_voted_for(caddr));
-  EXPECT_CALL(logger,
-              save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", ""));
-  std::vector<raft_entry> ent;
-  ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2", "");
-  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
-  ASSERT_EQ(r.get_term(), 1);
-  ASSERT_TRUE(r.is_success());
-  ASSERT_EQ(fetch_state(), raft_state::follower);
-  int err = timeout_now(1, 1, 1);
-  ASSERT_EQ(err, RAFT_SUCCESS);
-  ASSERT_EQ(fetch_state(), raft_state::leader);
-}
-
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
   logger.init(addr);
   provider.start();
