@@ -19,7 +19,6 @@ namespace tl = thallium;
 using system_clock = std::chrono::system_clock;
 
 enum class raft_state {
-  ready,
   follower,
   candidate,
   leader,

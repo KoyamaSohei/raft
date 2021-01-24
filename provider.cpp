@@ -8,7 +8,7 @@ raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
                              std::string _id, uint16_t provider_id)
   : tl::provider<raft_provider>(e, provider_id)
   , id(_id)
-  , _state(raft_state::ready)
+  , _state(raft_state::follower)
   , num_nodes(1)
   , _current_term(0)
   , logger(_logger)
@@ -21,7 +21,7 @@ raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
   , m_client_get_rpc(
       define(CLIENT_GET_RPC_NAME, &raft_provider::client_get_rpc)) {
   define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
-  // Block RPC until _state != ready
+  // Block RPC until start
   mu.lock();
 }
 
@@ -44,8 +44,7 @@ raft_state raft_provider::get_state() {
 void raft_provider::set_state(raft_state new_state) {
   switch (new_state) {
     case raft_state::follower:
-      assert(_state == raft_state::ready || _state == raft_state::candidate ||
-             _state == raft_state::leader);
+      assert(_state == raft_state::candidate || _state == raft_state::leader);
       break;
     case raft_state::candidate:
       assert(_state == raft_state::follower || _state == raft_state::candidate);
@@ -82,7 +81,6 @@ void raft_provider::set_commit_index(int index) {
 void raft_provider::update_timeout_limit() {
   int span = 0;
   switch (_state) {
-    case raft_state::ready:
     case raft_state::follower:
       span = 2;
       break;
@@ -104,7 +102,6 @@ void raft_provider::set_force_current_term(int term) {
   _voted_for.clear();
 
   switch (_state) {
-    case raft_state::ready:
     case raft_state::follower:
       break;
     case raft_state::candidate:
@@ -142,8 +139,6 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
   }
 
   switch (get_state()) {
-    case raft_state::ready:
-      abort();
     case raft_state::candidate:
       become_follower();
       break;
@@ -479,9 +474,6 @@ void raft_provider::run() {
   }
 
   switch (get_state()) {
-    case raft_state::ready:
-      abort();
-      break;
     case raft_state::follower:
       run_follower();
       break;
@@ -505,7 +497,7 @@ void raft_provider::start() {
   // bootstrap state from (already exist) log
   logger->bootstrap_state_from_log(_current_term, _voted_for, nodes);
   num_nodes = nodes.size();
-  become_follower();
+  update_timeout_limit();
   // begin to accept rpc
   mu.unlock();
 }

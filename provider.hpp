@@ -93,7 +93,6 @@ public:
                 uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
-  // readyからfollowerに遷移
   void start();
   void finalize();
 };
