@@ -244,7 +244,11 @@ void raft_provider::timeout_now_rpc(const tl::request &r, int req_term,
     } catch (tl::exception &e) {}
     return;
   }
-  if (!logger->match_log(req_prev_index, req_prev_term)) {
+
+  int last_log_index, last_log_term;
+  logger->get_last_log(last_log_index, last_log_term);
+
+  if (!(last_log_index == req_prev_index && last_log_term == req_prev_term)) {
     try {
       r.respond(RAFT_INVALID_REQUEST);
     } catch (tl::exception &e) {}
