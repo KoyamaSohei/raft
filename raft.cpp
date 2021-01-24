@@ -14,10 +14,16 @@ struct signal_handler_arg_t {
 
 void signal_handler(void *arg) {
   int num;
-  sigwait(((signal_handler_arg_t *)arg)->ss, &num);
-  std::cout << "Signal received " << num << std::endl;
+  while (1) {
+    sigwait(((signal_handler_arg_t *)arg)->ss, &num);
+    std::cout << "Signal received " << num << std::endl;
+    bool ok =
+      ((signal_handler_arg_t *)arg)->provider->remove_self_from_cluster();
+    if (ok) { break; }
+  }
+
   ((signal_handler_arg_t *)arg)->provider->finalize();
-  exit(1);
+  exit(0);
 }
 
 void tick_loop(void *provider) {

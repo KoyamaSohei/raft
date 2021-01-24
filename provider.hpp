@@ -99,6 +99,7 @@ public:
   void run();
   void start();
   void finalize();
+  bool remove_self_from_cluster();
 };
 
 #endif

@@ -536,3 +536,52 @@ void raft_provider::start() {
   // begin to accept rpc
   mu.unlock();
 }
+
+bool raft_provider::remove_self_from_cluster() {
+  mu.lock();
+  int current_term = get_current_term();
+  if (get_state() == raft_state::leader) {
+    std::string target;
+    int match_idx = 0;
+    for (std::string node : nodes) {
+      if (node == id) continue;
+      if (match_index[node] > match_idx) {
+        target = node;
+        match_idx = match_index[node];
+      }
+    }
+    if (match_idx < get_commit_index()) {
+      mu.unlock();
+      printf("candidate of next leader not found\n");
+      return false;
+    }
+    mu.unlock();
+    assert(match_index[target] == match_idx);
+    assert(!target.empty());
+    try {
+      if (!node_to_handle.count(target)) {
+        node_to_handle[target] = tl::provider_handle(
+          get_engine().lookup(PROTOCOL_PREFIX + target), RAFT_PROVIDER_ID);
+      }
+      int match_term;
+      std::string u, k, v;
+      logger->get_log(match_idx, match_term, u, k, v);
+      int err = m_timeout_now_rpc.on(node_to_handle[target])(
+        current_term, match_idx, match_term);
+      if (err == RAFT_SUCCESS) {
+        printf("leadership transfer succeeded, please retry.\n");
+      } else {
+        printf("error occured on leadership transfer, please retry\n");
+      }
+    } catch (tl::exception &e) {}
+    return false;
+  }
+  if (leader_id.empty()) {
+    mu.unlock();
+    printf("leader not found, please retry after elected new leader\n");
+    return false;
+  }
+
+  // TODO
+  return false;
+}
