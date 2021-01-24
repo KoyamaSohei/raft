@@ -1,5 +1,5 @@
-#ifndef fsm_HPP
-#define fsm_HPP
+#ifndef FSM_HPP
+#define FSM_HPP
 
 #include <map>
 
