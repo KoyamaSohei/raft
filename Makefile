@@ -13,7 +13,7 @@ raft_client.out: raft_client.cpp
 test.out: *.cpp
 	$(CC) $(CFLAGS) `pkg-config --cflags gtest gmock` \
 	-coverage \
-	logger_test.cpp provider_test.cpp raft_test.cpp \
+	fsm_test.cpp logger_test.cpp provider_test.cpp raft_test.cpp \
 	provider.cpp logger.cpp fsm.cpp \
 	$(LDFLAGS) `pkg-config --libs gtest gmock` \
 	-o test.out
