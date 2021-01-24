@@ -613,6 +613,10 @@ void raft_provider::transfer_leadership() {
   }
 
   try {
+    if (!node_to_handle.count(target)) {
+      node_to_handle[target] = tl::provider_handle(
+        get_engine().lookup(PROTOCOL_PREFIX + target), RAFT_PROVIDER_ID);
+    }
     int err = m_timeout_now_rpc.on(node_to_handle[target])(
       current_term, last_log_index, last_log_term);
 
