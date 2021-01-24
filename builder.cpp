@@ -71,7 +71,7 @@ void parse_log(int &term, std::string &uuid, std::string &command,
   int ok =
     reader->parse(src.c_str(), src.c_str() + src.length(), &root, &err_str);
   if (!ok) {
-    printf("%s\n", err_str);
+    printf("%s\n", err_str.c_str());
     abort();
   }
   term = root["term"].asInt();
