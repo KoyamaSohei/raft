@@ -50,22 +50,6 @@ void lmdb_raft_logger::init(std::string addrs) {
   if (stat.ms_entries == 0) {
     // Start init log
 
-    // check if include self
-    {
-      bool has_self = false;
-      std::vector<std::string> nbuf;
-      get_vector_from_seq(nbuf, addrs);
-      for (std::string node : nbuf) {
-        if (node == id) has_self = true;
-      }
-      if (!has_self) {
-        // include self
-        printf("not include self addr in %s,please add.\n", addrs.c_str());
-        abort();
-      }
-    }
-
-    // set dummy log, this make implimentation easily
     // index:0 ,term: 0
     stored_log_num = 0;
     std::string uuid, command, log;
