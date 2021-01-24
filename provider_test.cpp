@@ -81,14 +81,14 @@ public:
     err = rmdir(dir_path.c_str());
     if (err) { abort(); }
   }
-  MOCK_METHOD1(init, void(std::string addrs));
+  MOCK_METHOD1(init, void(std::set<std::string> nodes));
   MOCK_METHOD2(get_nodes_from_buf,
                void(std::string buf, std::vector<std::string> &nodes));
   MOCK_METHOD2(get_buf_from_nodes,
                void(std::string &buf, std::vector<std::string> nodes));
   MOCK_METHOD3(bootstrap_state_from_log,
                void(int &current_term, std::string &voted_for,
-                    std::vector<std::string> &nodes));
+                    std::set<std::string> &nodes));
   MOCK_METHOD1(save_current_term, void(int current_term));
   MOCK_METHOD1(save_voted_for, void(std::string voted_for));
   MOCK_METHOD4(get_log, void(int index, int &term, std::string &uuid,
@@ -216,13 +216,13 @@ protected:
 };
 
 TEST_F(provider_test, BECOME_FOLLOWER) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
 TEST_F(provider_test, BECOME_LEADER) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -232,7 +232,7 @@ TEST_F(provider_test, BECOME_LEADER) {
 }
 
 TEST_F(provider_test, QUERY_RPC) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -245,7 +245,7 @@ TEST_F(provider_test, QUERY_RPC) {
 }
 
 TEST_F(provider_test, REQUEST_RPC) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -268,7 +268,7 @@ TEST_F(provider_test, REQUEST_RPC) {
 }
 
 TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_request_response r =
@@ -279,7 +279,7 @@ TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -295,7 +295,7 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM_2) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -311,7 +311,7 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -328,7 +328,7 @@ TEST_F(provider_test, GET_LOWER_TERM) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM_2) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -344,7 +344,7 @@ TEST_F(provider_test, GET_LOWER_TERM_2) {
 }
 
 TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   EXPECT_CALL(logger, save_current_term(2));
@@ -356,7 +356,7 @@ TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
 }
 
 TEST_F(provider_test, CONFLICT_PREV_LOG) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -381,7 +381,7 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -405,7 +405,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -429,7 +429,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   EXPECT_CALL(logger, save_voted_for(caddr));
   EXPECT_CALL(logger, save_current_term(1));
@@ -440,7 +440,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -466,7 +466,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -492,7 +492,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -506,7 +506,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
 }
 
 TEST_F(provider_test, APPLY_ENTRIES) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
@@ -528,7 +528,7 @@ TEST_F(provider_test, APPLY_ENTRIES) {
 
 TEST_F(provider_test, NOT_DETERMINED_LEADER) {
   // dummy
-  logger.init(addr + ",127.0.0.1:299999");
+  logger.init(std::set<std::string>{addr, "127.0.0.1:299999"});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -538,7 +538,7 @@ TEST_F(provider_test, NOT_DETERMINED_LEADER) {
 }
 
 TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
-  logger.init(addr + ",127.0.0.1:299999");
+  logger.init(std::set<std::string>{addr, "127.0.0.1:299999"});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -553,7 +553,7 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
 }
 
 TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
-  logger.init(addr + ",127.0.0.1:299999");
+  logger.init(std::set<std::string>{addr, "127.0.0.1:299999"});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_query_response r = client_query("hello");
@@ -570,7 +570,7 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
-  logger.init(addr + ",127.0.0.1:299999");
+  logger.init(std::set<std::string>{addr, "127.0.0.1:299999"});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_request_response r =
@@ -591,7 +591,7 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
-  logger.init(addr + ",127.0.0.1:299999");
+  logger.init(std::set<std::string>{addr, "127.0.0.1:299999"});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   usleep(3 * INTERVAL);
@@ -610,7 +610,7 @@ TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
 }
 
 TEST_F(provider_test, NODE_IS_NOT_LEADER) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -630,7 +630,7 @@ TEST_F(provider_test, NODE_IS_NOT_LEADER) {
 }
 
 TEST_F(provider_test, PUT_INVALID_UUID) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -643,7 +643,7 @@ TEST_F(provider_test, PUT_INVALID_UUID) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -654,7 +654,7 @@ TEST_F(provider_test, TIMEOUT_NOW) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -666,7 +666,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
-  logger.init(addr + ",127.0.0.1:299999");
+  logger.init(std::set<std::string>{addr, "127.0.0.1:299999"});
   provider.start();
   usleep(3 * INTERVAL);
   EXPECT_CALL(logger, save_voted_for(addr));
@@ -679,7 +679,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 0, 0);
@@ -688,7 +688,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   EXPECT_CALL(logger, save_current_term(1));
   EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
@@ -706,7 +706,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
@@ -723,7 +723,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
@@ -740,7 +740,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
@@ -757,7 +757,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_WITH_HIGHER_LOG) {
-  logger.init(addr);
+  logger.init(std::set<std::string>{addr});
   provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 1, 1);

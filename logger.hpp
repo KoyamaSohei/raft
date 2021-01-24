@@ -3,6 +3,7 @@
 
 #include <lmdb.h>
 
+#include <set>
 #include <string>
 #include <thallium.hpp>
 
@@ -16,10 +17,10 @@ public:
   raft_logger(std::string _id) : id(_id){};
   virtual ~raft_logger(){};
 
-  virtual void init(std::string addrs) = 0;
+  virtual void init(std::set<std::string> nodes) = 0;
   virtual void bootstrap_state_from_log(int &current_term,
                                         std::string &voted_for,
-                                        std::vector<std::string> &nodes) = 0;
+                                        std::set<std::string> &nodes) = 0;
   virtual void save_current_term(int current_term) = 0;
   virtual void save_voted_for(std::string voted_for) = 0;
   virtual void get_log(int index, int &term, std::string &uuid,
@@ -57,9 +58,9 @@ public:
   lmdb_raft_logger(std::string id);
   ~lmdb_raft_logger();
 
-  void init(std::string addrs);
+  void init(std::set<std::string> nodes);
   void bootstrap_state_from_log(int &current_term, std::string &voted_for,
-                                std::vector<std::string> &nodes);
+                                std::set<std::string> &nodes);
   void save_current_term(int current_term);
   void save_voted_for(std::string voted_for);
   void get_log(int index, int &term, std::string &uuid, std::string &command);

@@ -1,8 +1,8 @@
 #ifndef BUILDER_HPP
 #define BUILDER_HPP
 
+#include <set>
 #include <string>
-#include <vector>
 
 /**
  *  generate uuid, uuid length is UUID_LENGTH
@@ -30,17 +30,17 @@ void build_command(std::string &dst, const std::string &key,
 
 /**
  *  parse string sequence. sequence splits string with ','
- *  @param vec dst e.g.) ["127.0.0.1","127.0.0.2"]
- *  @param seq src e.g.) "127.0.0.1,127.0.0.2"
+ *  @param dst dst e.g.) {"127.0.0.1","127.0.0.2"}
+ *  @param src src e.g.) "127.0.0.1,127.0.0.2"
  */
-void get_vector_from_seq(std::vector<std::string> &vec, const std::string &seq);
+void get_set_from_seq(std::set<std::string> &dst, const std::string &src);
 
 /**
  *  parse string sequence. sequence splits string with ','
- *  @param seq dst e.g.) "127.0.0.1,127.0.0.2"
- *  @param vec src e.g.) ["127.0.0.1","127.0.0.2"]
+ *  @param dst dst e.g.) "127.0.0.1,127.0.0.2"
+ *  @param src src e.g.) {"127.0.0.1","127.0.0.2"}
  */
-void get_seq_from_vector(std::string &seq, const std::vector<std::string> &vec);
+void get_seq_from_set(std::string &dst, const std::set<std::string> &src);
 
 /**
  *  parse log from string.
@@ -61,5 +61,36 @@ void parse_log(int &term, std::string &uuid, std::string &command,
  */
 void build_log(std::string &dst, const int &term, const std::string &uuid,
                const std::string &command);
+
+/**
+ *  parse cluster change config log from this src.
+ *  this special log is stored at `log_db` as a part of entry.
+ *  key = SPECIAL_ENTRY_KEY, value = {this src}
+ *  and this src also stored at `state_db` (to find  more efficiently)
+ *  @param prev_index index on which prev cluster change commited
+ *  @param prev_nodes nodes which belog to prev cluster
+ *  @param next_index index on which next cluster change applied
+ *  @param next_nodes nodes which belog to next cluster
+ *  @param src        src string
+ */
+void parse_conf_log(int &prev_index, std::set<std::string> &prev_nodes,
+                    int &next_index, std::set<std::string> &next_nodes,
+                    const std::string &src);
+
+/**
+ *  build cluster change config log to dst
+ *  this special log is stored at `log_db` as a part of entry.
+ *  key = SPECIAL_ENTRY_KEY, value = {this src}
+ *  and this dst also stored at `state_db` (to find  more efficiently)
+ *  @param dst        dst string
+ *  @param prev_index index on which prev cluster change commited
+ *  @param prev_nodes nodes which belog to prev cluster
+ *  @param next_index index on which next cluster change applied
+ *  @param next_nodes nodes which belog to next cluster
+ */
+void build_conf_log(std::string &dst, const int &prev_index,
+                    const std::set<std::string> &prev_nodes,
+                    const int &next_index,
+                    const std::set<std::string> &next_nodes);
 
 #endif

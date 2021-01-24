@@ -13,7 +13,7 @@ lmdb_raft_logger::lmdb_raft_logger(std::string _id) : raft_logger(_id) {}
 
 lmdb_raft_logger::~lmdb_raft_logger() {}
 
-void lmdb_raft_logger::init(std::string addrs) {
+void lmdb_raft_logger::init(std::set<std::string> nodes) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_stat stat;
@@ -52,12 +52,15 @@ void lmdb_raft_logger::init(std::string addrs) {
 
     // index:0 ,term: 0
     stored_log_num = 0;
-    std::string uuid, command, log;
-    build_command(command, SPECIAL_ENTRY_KEY, addrs);
+    std::string conf, uuid, command, log;
+    build_conf_log(conf, 0, nodes, 0, nodes);
+    build_command(command, SPECIAL_ENTRY_KEY, conf);
     generate_uuid(uuid);
     build_log(log, 0, uuid, command);
 
+    // save to log DB
     save_log_str(0, log, txn);
+
     // save to state DB
     MDB_dbi cdbi;
     MDB_val cluster_value;
@@ -68,8 +71,8 @@ void lmdb_raft_logger::init(std::string addrs) {
       abort();
     }
 
-    cluster_value.mv_size = sizeof(char) * (addrs.size() + 1);
-    cluster_value.mv_data = (void *)addrs.c_str();
+    cluster_value.mv_size = sizeof(char) * (conf.size() + 1);
+    cluster_value.mv_data = (void *)conf.c_str();
 
     err = mdb_put(txn, cdbi, &cluster_key, &cluster_value, 0);
 
@@ -79,8 +82,7 @@ void lmdb_raft_logger::init(std::string addrs) {
     }
 
   } else {
-    printf("log (and clusters info) exists already, so %s is ignored..\n",
-           addrs.c_str());
+    printf("log (and clusters info) exists already, so ignored..\n");
     stored_log_num = stat.ms_entries - 1;
   }
 
@@ -91,8 +93,9 @@ void lmdb_raft_logger::init(std::string addrs) {
   }
 }
 
-void lmdb_raft_logger::bootstrap_state_from_log(
-  int &current_term, std::string &voted_for, std::vector<std::string> &nodes) {
+void lmdb_raft_logger::bootstrap_state_from_log(int &current_term,
+                                                std::string &voted_for,
+                                                std::set<std::string> &nodes) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_val current_term_value, voted_for_value, cluster_value;
@@ -143,7 +146,14 @@ void lmdb_raft_logger::bootstrap_state_from_log(
     abort();
   }
   std::string buf = std::string((char *)cluster_value.mv_data);
-  get_vector_from_seq(nodes, buf);
+
+  int prev_index, next_index;
+  std::set<std::string> prev_nodes, next_nodes;
+  parse_conf_log(prev_index, prev_nodes, next_index, next_nodes, buf);
+
+  nodes = next_nodes;
+
+  get_seq_from_set(buf, nodes);
 
   err = mdb_txn_commit(txn);
   if (err) {
@@ -153,6 +163,7 @@ void lmdb_raft_logger::bootstrap_state_from_log(
 
   printf("bootstrap: current_term is %d\n", current_term);
   printf("bootstrap: voted_for is %s\n", voted_for.c_str());
+  printf("bootstrap: nodes are %s\n", buf.c_str());
 }
 
 void lmdb_raft_logger::save_current_term(int current_term) {

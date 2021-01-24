@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <random>
-#include <vector>
+#include <set>
 
 #include "builder.hpp"
 #include "types.hpp"
@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   tl::engine my_engine(PROTOCOL_PREFIX, THALLIUM_CLIENT_MODE);
   tl::remote_procedure request = my_engine.define(CLIENT_REQUEST_RPC_NAME);
   tl::remote_procedure query = my_engine.define(CLIENT_QUERY_RPC_NAME);
-  std::vector<std::string> nodes;
+  std::set<std::string> nodes;
   std::random_device rnd;
 
   if (argc <= 3) {
@@ -43,9 +43,12 @@ int main(int argc, char **argv) {
     }
 
     std::string command = argv[2];
-    get_vector_from_seq(nodes, argv[3]);
+    get_set_from_seq(nodes, argv[3]);
 
-    auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
+    auto get_radom_node = [&]() {
+      auto itr = std::next(nodes.begin(), rnd() % nodes.size());
+      return *itr;
+    };
 
     std::string next_addr = get_radom_node();
 
@@ -90,9 +93,12 @@ int main(int argc, char **argv) {
     build_command(command, argv[2], argv[3]);
     generate_uuid(uuid);
 
-    get_vector_from_seq(nodes, argv[4]);
+    get_set_from_seq(nodes, argv[4]);
 
-    auto get_radom_node = [&]() { return nodes[rnd() % nodes.size()]; };
+    auto get_radom_node = [&]() {
+      auto itr = std::next(nodes.begin(), rnd() % nodes.size());
+      return *itr;
+    };
 
     std::string next_addr = get_radom_node();
 

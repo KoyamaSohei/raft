@@ -5,6 +5,7 @@
 #include <iostream>
 #include <thallium.hpp>
 
+#include "builder.hpp"
 #include "provider.hpp"
 
 struct signal_handler_arg_t {
@@ -64,7 +65,14 @@ int main(int argc, char **argv) {
   }
 
   std::string self_addr = argv[1];
-  std::string node_buf = argv[2];
+  std::set<std::string> nodes;
+  get_set_from_seq(nodes, argv[2]);
+
+  if (!nodes.count(self_addr)) {
+    printf("please add self addr to nodes\n");
+    usage(argc, argv);
+    return 1;
+  }
 
   setup_sigset(&ss);
 
@@ -76,7 +84,7 @@ int main(int argc, char **argv) {
   std::cout << "Server running at address " << my_engine.self() << std::endl;
 
   lmdb_raft_logger logger(self_addr);
-  logger.init(node_buf);
+  logger.init(nodes);
 
   kvs_raft_fsm fsm;
 
