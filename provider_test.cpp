@@ -6,12 +6,28 @@
 #include <random>
 #include <thallium.hpp>
 
+#include "fsm.hpp"
 #include "logger.hpp"
 #include "types.hpp"
 
 #define ADDR "127.0.0.1:"
 
 namespace {
+
+class mock_raft_fsm : public raft_fsm {
+private:
+  kvs_raft_fsm real_;
+
+public:
+  mock_raft_fsm() {
+    ON_CALL(*this, apply(::testing::_))
+      .WillByDefault(::testing::Invoke(&real_, &kvs_raft_fsm::apply));
+    ON_CALL(*this, resolve(::testing::_))
+      .WillByDefault(::testing::Invoke(&real_, &kvs_raft_fsm::resolve));
+  }
+  MOCK_METHOD1(apply, void(std::string));
+  MOCK_METHOD1(resolve, std::string(std::string));
+};
 
 class mock_raft_logger : public raft_logger {
 private:
@@ -100,7 +116,7 @@ protected:
   tl::engine server_engine;
   tl::engine client_engine;
   mock_raft_logger logger;
-  kvs_raft_fsm fsm;
+  mock_raft_fsm fsm;
   raft_provider provider;
   tl::remote_procedure m_echo_state_rpc;
   tl::remote_procedure m_request_vote_rpc;
