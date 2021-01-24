@@ -56,8 +56,8 @@ TEST_F(logger_test, DUMMY_IS_CLUSTER_INFO) {
   logger.get_log(index, term, uuid, command);
   ASSERT_EQ(term, 0);
 
-  ASSERT_STREQ(command.c_str(),
-               "{\n\t\"key\" : \"__cluster\",\n\t\"value\" : \"" ADDR "\"\n}");
+  ASSERT_STREQ(command.c_str(), "{\n\t\"key\" : \"" SPECIAL_ENTRY_KEY
+                                "\",\n\t\"value\" : \"" ADDR "\"\n}");
 }
 
 TEST_F(logger_test, APPEND_LOG) {

@@ -69,7 +69,7 @@ void lmdb_raft_logger::init(std::string addrs) {
     // index:0 ,term: 0
     stored_log_num = 0;
     std::string uuid, command, log;
-    build_command(command, "__cluster", addrs);
+    build_command(command, "SPECIAL_ENTRY_KEY", addrs);
     generate_uuid(uuid);
     build_log(log, 0, uuid, command);
 
