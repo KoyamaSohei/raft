@@ -684,6 +684,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
   logger.init(addr);
   provider.start();
+  EXPECT_CALL(logger, save_current_term(1));
   EXPECT_CALL(logger, save_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "foo", "bar"));
   std::vector<raft_entry> ent;
