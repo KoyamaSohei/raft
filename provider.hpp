@@ -80,6 +80,14 @@ private:
   void client_query_rpc(const tl::request &r, std::string query);
   tl::remote_procedure m_client_query_rpc;
 
+  // add server rpc
+  void add_server_rpc(const tl::request &r, std::string new_server);
+  tl::remote_procedure m_add_server_rpc;
+
+  // remove server rpc
+  void remove_server_rpc(const tl::request &r, std::string old_server);
+  tl::remote_procedure m_remove_server_rpc;
+
   // echo state rpc (for debug)
   void echo_state_rpc(const tl::request &r);
 

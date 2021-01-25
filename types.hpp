@@ -111,6 +111,7 @@ public:
 #define RAFT_DUPLICATE_UUID -10002
 #define RAFT_INVALID_UUID -10003
 #define RAFT_INVALID_REQUEST -10004
+#define RAFT_DENY_REQUEST -10005
 #define RAFT_SUCCESS 0
 #define RAFT_FAILED 1
 
@@ -161,6 +162,48 @@ public:
   void serialize(A& ar) {
     ar& status;
     ar& response;
+    ar& leader_hint;
+  }
+};
+
+class add_server_response {
+private:
+  int status;
+  std::string leader_hint;
+
+public:
+  add_server_response(int _status = RAFT_NOT_IMPLEMENTED,
+                      std::string _leader_hint = "")
+    : status(_status), leader_hint(_leader_hint) {}
+
+  int get_status() { return status; }
+
+  std::string get_leader_hint() { return leader_hint; }
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar& status;
+    ar& leader_hint;
+  }
+};
+
+class remove_server_response {
+private:
+  int status;
+  std::string leader_hint;
+
+public:
+  remove_server_response(int _status = RAFT_NOT_IMPLEMENTED,
+                         std::string _leader_hint = "")
+    : status(_status), leader_hint(_leader_hint) {}
+
+  int get_status() { return status; }
+
+  std::string get_leader_hint() { return leader_hint; }
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar& status;
     ar& leader_hint;
   }
 };

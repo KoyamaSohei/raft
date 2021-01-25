@@ -21,7 +21,10 @@ raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
   , m_client_request_rpc(
       define(CLIENT_REQUEST_RPC_NAME, &raft_provider::client_request_rpc))
   , m_client_query_rpc(
-      define(CLIENT_QUERY_RPC_NAME, &raft_provider::client_query_rpc)) {
+      define(CLIENT_QUERY_RPC_NAME, &raft_provider::client_query_rpc))
+  , m_add_server_rpc(define("add_server", &raft_provider::add_server_rpc))
+  , m_remove_server_rpc(
+      define("remove_server", &raft_provider::remove_server_rpc)) {
   define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
   // Block RPC until start
   mu.lock();
@@ -335,6 +338,74 @@ void raft_provider::client_query_rpc(const tl::request &r, std::string query) {
   try {
     r.respond(client_query_response(RAFT_SUCCESS, fsm->resolve(query)));
   } catch (tl::exception &e) {}
+}
+
+void raft_provider::add_server_rpc(const tl::request &r,
+                                   std::string new_server) {
+  mu.lock();
+  if (get_state() != raft_state::leader) {
+    if (!leader_hint.empty()) {
+      mu.unlock();
+      try {
+        r.respond(add_server_response(RAFT_LEADER_NOT_FOUND, ""));
+      } catch (tl::exception &e) {}
+      return;
+    }
+    mu.unlock();
+    try {
+      r.respond(add_server_response(RAFT_NODE_IS_NOT_LEADER, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
+  if (logger->get_last_conf_applied() < get_commit_index()) {
+    mu.unlock();
+    try {
+      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
+  std::string uuid;
+  generate_special_uuid(uuid);
+  logger->set_add_conf_log(logger->get_current_term(), uuid, new_server);
+  mu.unlock();
+  try {
+    r.respond(add_server_response(RAFT_SUCCESS, leader_hint));
+  } catch (tl::exception &e) {}
+  return;
+}
+
+void raft_provider::remove_server_rpc(const tl::request &r,
+                                      std::string old_server) {
+  mu.lock();
+  if (get_state() != raft_state::leader) {
+    if (!leader_hint.empty()) {
+      mu.unlock();
+      try {
+        r.respond(add_server_response(RAFT_LEADER_NOT_FOUND, ""));
+      } catch (tl::exception &e) {}
+      return;
+    }
+    mu.unlock();
+    try {
+      r.respond(add_server_response(RAFT_NODE_IS_NOT_LEADER, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
+  if (logger->get_last_conf_applied() < get_commit_index()) {
+    mu.unlock();
+    try {
+      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
+  std::string uuid;
+  generate_special_uuid(uuid);
+  logger->set_remove_conf_log(logger->get_current_term(), uuid, old_server);
+  mu.unlock();
+  try {
+    r.respond(add_server_response(RAFT_SUCCESS, leader_hint));
+  } catch (tl::exception &e) {}
+  return;
 }
 
 void raft_provider::echo_state_rpc(const tl::request &r) {
