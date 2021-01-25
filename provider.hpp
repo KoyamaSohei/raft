@@ -50,7 +50,7 @@ private:
   std::string leader_hint;
 
   // cache to resolve host
-  std::map<std::string, tl::provider_handle> node_to_handle;
+  std::map<std::string, tl::provider_handle> _node_to_handle;
   const tl::provider_handle *get_handle(const std::string &node);
 
   // append_entries_rpc

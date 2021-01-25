@@ -31,7 +31,7 @@ raft_provider::~raft_provider() {}
 
 void raft_provider::finalize() {
   leader_hint.clear();
-  node_to_handle.clear();
+  _node_to_handle.clear();
   m_append_entries_rpc.deregister();
   m_request_vote_rpc.deregister();
   m_client_request_rpc.deregister();
@@ -114,13 +114,13 @@ void raft_provider::set_force_current_term(int term) {
 }
 
 const tl::provider_handle *raft_provider::get_handle(const std::string &node) {
-  if (node_to_handle.count(node)) { return &node_to_handle[node]; }
+  if (_node_to_handle.count(node)) { return &_node_to_handle[node]; }
 
   std::string addr(PROTOCOL_PREFIX);
   addr += node;
-  node_to_handle[node] =
+  _node_to_handle[node] =
     tl::provider_handle(get_engine().lookup(addr), RAFT_PROVIDER_ID);
-  return &node_to_handle[node];
+  return &_node_to_handle[node];
 }
 
 void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
