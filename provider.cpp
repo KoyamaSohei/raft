@@ -364,6 +364,13 @@ void raft_provider::add_server_rpc(const tl::request &r,
     } catch (tl::exception &e) {}
     return;
   }
+  if (new_server == logger->get_id()) {
+    mu.unlock();
+    try {
+      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
   std::string uuid;
   generate_special_uuid(uuid);
   logger->set_add_conf_log(logger->get_current_term(), uuid, new_server);
@@ -392,6 +399,13 @@ void raft_provider::remove_server_rpc(const tl::request &r,
     return;
   }
   if (logger->get_last_conf_applied() < get_commit_index()) {
+    mu.unlock();
+    try {
+      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
+  if (old_server == logger->get_id()) {
     mu.unlock();
     try {
       r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
