@@ -544,7 +544,7 @@ void raft_provider::transfer_leadership() {
   int match_idx = 0;
 
   for (std::string node : logger->get_peers()) {
-    if (match_index[node] > match_idx) {
+    if (match_index[node] >= match_idx) {
       target = node;
       match_idx = match_index[node];
     }
