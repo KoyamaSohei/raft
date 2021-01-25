@@ -60,18 +60,19 @@ void lmdb_raft_logger::init() {
 
     // index:0 ,term: 0
     stored_log_num = 1;
+    int index = 0;
     std::string conf, uuid, log;
-    build_conf_log(conf, 0, nodes, 0, nodes);
+    build_conf_log(conf, index, nodes, index, nodes);
     generate_special_uuid(uuid);
     build_log(log, 0, uuid, conf);
 
     // save to log DB
-    set_log_str(0, log, txn);
+    set_log_str(index, log, txn);
 
     // save to state DB
-    MDB_val cluster_value = {sizeof(char) * (conf.size() + 1),
-                             (void *)conf.c_str()};
-    err = mdb_put(txn, state_dbi, &cluster_key, &cluster_value, 0);
+    MDB_val last_conf_applied_value = {sizeof(int), (void *)&index};
+    err = mdb_put(txn, state_dbi, &last_conf_applied_key,
+                  &last_conf_applied_value, 0);
 
     if (err) {
       mdb_txn_abort(txn);
@@ -83,7 +84,7 @@ void lmdb_raft_logger::init() {
     stored_log_num = log_stat.ms_entries;
 
     // recover state
-    MDB_val current_term_value, voted_for_value, cluster_value;
+    MDB_val current_term_value, voted_for_value, last_conf_applied_value;
 
     err = mdb_get(txn, state_dbi, &current_term_key, &current_term_value);
     if (err) {
@@ -99,17 +100,22 @@ void lmdb_raft_logger::init() {
     }
     voted_for = std::string((char *)voted_for_value.mv_data);
 
-    err = mdb_get(txn, state_dbi, &cluster_key, &cluster_value);
+    err =
+      mdb_get(txn, state_dbi, &last_conf_applied_key, &last_conf_applied_value);
     if (err) {
       mdb_txn_abort(txn);
       abort();
     }
-    std::string buf = std::string((char *)cluster_value.mv_data);
+
+    last_conf_applied = *((int *)last_conf_applied_value.mv_data);
+    assert(last_conf_applied < stored_log_num);
+
+    std::string buf = get_log_str(last_conf_applied);
 
     int prev_index, next_index;
     std::set<std::string> prev_nodes, next_nodes;
     parse_conf_log(prev_index, prev_nodes, next_index, next_nodes, buf);
-
+    assert(next_index == last_conf_applied);
     nodes = peers = next_nodes;
     assert(nodes.count(id));
     peers.erase(id);
@@ -420,15 +426,78 @@ void lmdb_raft_logger::set_log(const int index, const int term,
   MDB_txn *txn;
   int err = mdb_txn_begin(env, NULL, 0, &txn);
   assert(err == 0);
+
+  if (index == last_conf_applied) {
+    // rollback config change
+
+    int p_term;
+    std::string p_uuid, p_conf;
+
+    std::string p_log = get_log_str(index);
+    parse_log(p_term, p_uuid, p_conf, p_log);
+
+    assert(uuid_is_special(p_uuid));
+
+    int p_prev_index, p_next_index;
+    std::set<std::string> p_prev_nodes, p_next_nodes;
+    parse_conf_log(p_prev_index, p_prev_nodes, p_next_index, p_next_nodes,
+                   p_log);
+    assert(p_next_index == index);
+
+    // roll back
+    last_conf_applied = p_prev_index;
+    nodes = peers = p_prev_nodes;
+    peers.erase(id);
+  }
+
   set_log_str(index, log, txn);
   set_uuid(uuid, txn);
+
+  if (!uuid_is_special(uuid)) {
+    err = mdb_txn_commit(txn);
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
+    }
+    printf("save log index: %d,term: %d, uuid: %s,cmd: %s \n", index, term,
+           uuid.substr(0, 8).c_str(), command.c_str());
+    return;
+  }
+
+  // apply config change
+
+  MDB_dbi state_dbi;
+  err = mdb_dbi_open(txn, state_db, MDB_CREATE, &state_dbi);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  MDB_val last_conf_applied_value = {sizeof(int), (void *)&index};
+  err = mdb_put(txn, state_dbi, &last_conf_applied_key,
+                &last_conf_applied_value, 0);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
   err = mdb_txn_commit(txn);
   if (err) {
     mdb_txn_abort(txn);
     abort();
   }
-  printf("save log index: %d,term: %d, uuid: %s,cmd: %s \n", index, term,
-         uuid.substr(0, 8).c_str(), command.c_str());
+
+  int prev_index, next_index;
+  std::set<std::string> prev_nodes, next_nodes;
+  parse_conf_log(prev_index, prev_nodes, next_index, next_nodes, command);
+
+  assert(index == next_index);
+  assert(prev_index == last_conf_applied);
+  last_conf_applied = next_index;
+  nodes = peers = next_nodes;
+  if (peers.count(id)) { peers.erase(id); }
+
+  printf("save special log \nconf: \n%s\n", command.c_str());
 }
 
 int lmdb_raft_logger::get_term(int index) {
@@ -466,4 +535,23 @@ bool lmdb_raft_logger::match_log(int index, int term) {
 
 bool lmdb_raft_logger::contains_uuid(const std::string &uuid) {
   return get_uuid(uuid);
+}
+
+int lmdb_raft_logger::get_last_conf_applied() {
+  return last_conf_applied;
+}
+
+void lmdb_raft_logger::set_remove_conf_log(const int &term,
+                                           const std::string &uuid,
+                                           const std::string &old_server) {
+  assert(nodes.count(old_server));
+  assert(uuid_is_special(uuid));
+
+  std::set<std::string> prev_nodes(nodes), next_nodes(nodes);
+  next_nodes.erase(old_server);
+  int prev_index = last_conf_applied;
+  int next_index = stored_log_num;
+  std::string conf;
+  build_conf_log(conf, prev_index, prev_nodes, next_index, next_nodes);
+  set_log(next_index, term, uuid, conf);
 }

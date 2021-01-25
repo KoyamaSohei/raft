@@ -54,6 +54,11 @@ protected:
    */
   int stored_log_num;
 
+  /**
+   * latest index of config change.
+   */
+  int last_conf_applied;
+
 public:
   raft_logger(std::string _id, std::set<std::string> _nodes)
     : id(_id)
@@ -70,7 +75,7 @@ public:
    * init initialize DB and Persistent State
    * location of log is depends on id.
    * if log already exists, all states
-   * (voted_for,current_term,nodes,peers,and stored_log_num)
+   * (voted_for,current_term,nodes,peers,and stored_log_num,last_conf_applied)
    * will be overwritten with past log
    */
   virtual void init() = 0;
@@ -145,6 +150,34 @@ public:
    * @return true if log contains uuid already
    */
   virtual bool contains_uuid(const std::string &uuid) = 0;
+
+  /**
+   * config change is consist of special entry (which uuid is special)
+   * logger have to do below
+   * 1. tell provider that latest index of config change
+   *    leader prevent new config change if old change was not commited
+   * 2. if special entry save to log,
+   *    - update nodes,peers,last_conf_applied
+   *    - save this entry to state db
+   * 3. if normal entry overwrite special entry,
+   *    - rollback nodes,peers,last_conf_applied
+   *    - save prev special entry to state db
+   */
+
+  /**
+   * get_last_conf_applied returns latest index of config change.
+   * @return latest index of config change.
+   */
+  virtual int get_last_conf_applied() = 0;
+
+  /**
+   * set_remove_conf_log saves special entry to log.
+   * @param term term
+   * @param uuid special uuid
+   * @param old_server server which will be removed from cluster.
+   */
+  virtual void set_remove_conf_log(const int &term, const std::string &uuid,
+                                   const std::string &old_server) = 0;
 };
 
 class lmdb_raft_logger : public raft_logger {
@@ -154,7 +187,8 @@ private:
 
   MDB_val current_term_key = {13 * sizeof(char), (void *)"current_term"};
   MDB_val voted_for_key = {10 * sizeof(char), (void *)"voted_for"};
-  MDB_val cluster_key = {8 * sizeof(char), (void *)"cluster"};
+  MDB_val last_conf_applied_key = {18 * sizeof(char),
+                                   (void *)"last_conf_applied"};
 
   const char *log_db = "log_db";
   const char *uuid_db = "uuid_db";
@@ -220,6 +254,11 @@ public:
 
   bool match_log(const int index, const int term);
   bool contains_uuid(const std::string &uuid);
+
+  int get_last_conf_applied();
+
+  void set_remove_conf_log(const int &term, const std::string &uuid,
+                           const std::string &old_server);
 };
 
 #endif
