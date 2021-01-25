@@ -90,7 +90,7 @@ public:
     if (err) { abort(); }
   }
   MOCK_METHOD0(init, void());
-  MOCK_METHOD0(get_id, std::string &());
+  MOCK_METHOD0(get_id, std::string());
   MOCK_METHOD0(get_peers, std::set<std::string> &());
   MOCK_METHOD0(get_num_nodes, int());
   MOCK_METHOD0(get_current_term, int());
