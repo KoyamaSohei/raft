@@ -9,68 +9,209 @@
 
 #include "types.hpp"
 
+/**
+ *  raft_logger manages Persistent State.
+ *  @param id       suffix of server address.  e.g 127.0.0.1:30000
+ *  @param nodes    id of clusters. nodes must contains self id.
+ *
+ */
 class raft_logger {
 protected:
+  /**
+   * id is suffix of server address.
+   * e.g 127.0.0.1:30000
+   * raft_provider binds this id
+   */
   std::string id;
 
+  /**
+   * voted_for is candidate id that received vote in current term
+   * (or empty if none)
+   */
+  std::string voted_for;
+
+  /**
+   * current_term is latest term server has seen
+   * (initialized to 0 on first boot, increases monotonically)
+   */
+  int current_term;
+
+  /**
+   * nodes is id of clusters. nodes must contains self id.
+   */
+  std::set<std::string> nodes;
+
+  /**
+   * peers is subset of nodes . peers must NOT contains self id.
+   */
+  std::set<std::string> peers;
+
 public:
-  raft_logger(std::string _id) : id(_id){};
+  raft_logger(std::string _id, std::set<std::string> _nodes)
+    : id(_id), nodes(_nodes), peers(_nodes) {
+    peers.erase(id);
+  };
   virtual ~raft_logger(){};
 
-  virtual void init(std::set<std::string> nodes) = 0;
-  virtual void bootstrap_state_from_log(int &current_term,
-                                        std::string &voted_for,
-                                        std::set<std::string> &nodes) = 0;
-  virtual void save_current_term(int current_term) = 0;
-  virtual void save_voted_for(std::string voted_for) = 0;
-  virtual void get_log(int index, int &term, std::string &uuid,
+  /**
+   * init initialize DB and Persistent State
+   * location of log is depends on id.
+   * if log already exists, nodes will be overwritten with past log
+   */
+  virtual void init() = 0;
+
+  virtual std::string &get_id() = 0;
+  virtual std::set<std::string> &get_peers() = 0;
+  virtual int get_num_nodes() = 0;
+
+  virtual int get_current_term() = 0;
+  virtual void set_current_term(int new_term) = 0;
+
+  virtual bool exists_voted_for() = 0;
+  virtual void clear_voted_for() = 0;
+  virtual void set_voted_for_self() = 0;
+  virtual void set_voted_for(const std::string &new_addr) = 0;
+
+  /**
+   * get_log get log with index (in other words, key is index)
+   * @param index   key
+   * @param term
+   * @param uuid
+   * @param command
+   */
+  virtual void get_log(const int index, int &term, std::string &uuid,
                        std::string &command) = 0;
-  virtual void save_log(int index, int term, std::string uuid,
-                        std::string command) = 0;
-  // append_log returns index
-  virtual int append_log(int term, std::string uuid, std::string command) = 0;
-  virtual int get_term(int index) = 0;
+  /**
+   * set_log saves log into DB
+   * @param index
+   * @param term
+   * @param uuid
+   * @param command
+   */
+  virtual void set_log(const int index, const int term, const std::string &uuid,
+                       const std::string &command) = 0;
+
+  /**
+   * append_log saves log into DB, behind latest log
+   * @return index
+   * @param uuid
+   * @param command
+   */
+  virtual int append_log(const std::string &uuid,
+                         const std::string &command) = 0;
+
+  /**
+   * get_term returns term of the log which has log.index = `index`
+   * @return term
+   * @param index
+   */
+  virtual int get_term(const int index) = 0;
+
+  /**
+   * get_last_log get latest log
+   * @param index
+   * @param term
+   */
   virtual void get_last_log(int &index, int &term) = 0;
-  virtual bool match_log(int index, int term) = 0;
-  virtual bool uuid_already_exists(std::string uuid) = 0;
+
+  /**
+   * match_log check if same log was saved already.
+   *
+   * Note:
+   * log1.index == log2.index && log1.term == log2.term => log1 == log2
+   * @param index
+   * @param term
+   */
+  virtual bool match_log(const int index, const int term) = 0;
+
+  /**
+   * contains_uuid check if same request was saved already.
+   * @param uuid
+   * @return true if log contains uuid already
+   */
+  virtual bool contains_uuid(const std::string &uuid) = 0;
 };
 
 class lmdb_raft_logger : public raft_logger {
 private:
   MDB_env *env;
-  // 永続Stateのうち、_current_termと_voted_forと最新のclusterを保存するDB
   const char *state_db = "state_db";
+
   MDB_val current_term_key = {13 * sizeof(char), (void *)"current_term"};
   MDB_val voted_for_key = {10 * sizeof(char), (void *)"voted_for"};
   MDB_val cluster_key = {8 * sizeof(char), (void *)"cluster"};
-  // 永続Stateのうち、log[]を保存するDB
+
   const char *log_db = "log_db";
-  // uuidを保存するDB
   const char *uuid_db = "uuid_db";
-  // 保存されているlogの要素数
+
+  /**
+   * num of stored log[]. this is used for append log
+   * if call append_log when stored_log_num=N,
+   * index of new log will be N
+   */
   int stored_log_num;
+
+  /**
+   * get_log_str get log from LMDB
+   * @param index
+   * @return log (stringified json)
+   */
   std::string get_log_str(int index);
-  void save_uuid(std::string uuid, MDB_txn *ptxn = NULL);
-  int get_uuid(std::string uuid, MDB_txn *ptxn = NULL);
-  void save_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
+
+  /**
+   * set_log_str save log into LMDB
+   * @param index
+   * @param log_str stringified json which want to save
+   * @param ptxn parent transaction
+   */
+  void set_log_str(int index, std::string log_str, MDB_txn *ptxn = NULL);
+
+  /**
+   * set_uuid save uuid into LMDB
+   * @param uuid uuid
+   * @param ptxn parent transaction
+   */
+  void set_uuid(std::string uuid, MDB_txn *ptxn = NULL);
+
+  /**
+   * get_uuid get uuid
+   * @param uuid uuid
+   * @param ptxn parent transaction
+   * @return success
+   */
+  bool get_uuid(const std::string &uuid, MDB_txn *ptxn = NULL);
 
 public:
-  lmdb_raft_logger(std::string id);
+  lmdb_raft_logger(std::string _id, std::set<std::string> _nodes);
   ~lmdb_raft_logger();
 
-  void init(std::set<std::string> nodes);
-  void bootstrap_state_from_log(int &current_term, std::string &voted_for,
-                                std::set<std::string> &nodes);
-  void save_current_term(int current_term);
-  void save_voted_for(std::string voted_for);
-  void get_log(int index, int &term, std::string &uuid, std::string &command);
-  void save_log(int index, int term, std::string uuid, std::string command);
-  // append_log returns index
-  int append_log(int term, std::string uuid, std::string command);
-  int get_term(int index);
+  void init();
+
+  std::string &get_id();
+  std::set<std::string> &get_peers();
+  int get_num_nodes();
+
+  int get_current_term();
+  void set_current_term(int current_term);
+
+  bool exists_voted_for();
+  void clear_voted_for();
+  void set_voted_for_self();
+  void set_voted_for(const std::string &new_addr);
+
+  void get_log(const int index, int &term, std::string &uuid,
+               std::string &command);
+  void set_log(const int index, const int term, const std::string &uuid,
+               const std::string &command);
+
+  int append_log(const std::string &uuid, const std::string &command);
+
+  int get_term(const int index);
+
   void get_last_log(int &index, int &term);
-  bool match_log(int index, int term);
-  bool uuid_already_exists(std::string uuid);
+
+  bool match_log(const int index, const int term);
+  bool contains_uuid(const std::string &uuid);
 };
 
 #endif

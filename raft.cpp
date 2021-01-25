@@ -8,6 +8,8 @@
 #include "builder.hpp"
 #include "provider.hpp"
 
+using namespace std;
+
 struct signal_handler_arg_t {
   sigset_t *ss;
   raft_provider *provider;
@@ -52,43 +54,44 @@ void usage(int argc, char **argv) {
   printf("And this program binds 127.0.0.1:30000\n");
 }
 
+void setup_nodes(int argc, char **argv, string &self, set<string> &nodes) {
+  if (argc != 3) {
+    usage(argc, argv);
+    exit(1);
+  }
+  self = argv[1];
+  get_set_from_seq(nodes, argv[2]);
+
+  if (!nodes.count(self)) {
+    printf("please add self address to nodes\n");
+    usage(argc, argv);
+    exit(1);
+  }
+}
+
 int main(int argc, char **argv) {
 
   ABT_xstream sig_stream, tick_stream;
   ABT_thread sig_thread, tick_thread;
   ABT_thread_state tick_state;
   static sigset_t ss;
+  string self;
+  set<string> nodes;
 
-  if (argc != 3) {
-    usage(argc, argv);
-    return 1;
-  }
-
-  std::string self_addr = argv[1];
-  std::set<std::string> nodes;
-  get_set_from_seq(nodes, argv[2]);
-
-  if (!nodes.count(self_addr)) {
-    printf("please add self addr to nodes\n");
-    usage(argc, argv);
-    return 1;
-  }
-
+  setup_nodes(argc, argv, self, nodes);
   setup_sigset(&ss);
 
-  ABT_init(argc, argv);
-
-  std::cout << "try binding with " << PROTOCOL_PREFIX << self_addr << std::endl;
-  tl::engine my_engine(PROTOCOL_PREFIX + self_addr, THALLIUM_SERVER_MODE, true,
-                       2);
-  std::cout << "Server running at address " << my_engine.self() << std::endl;
-
-  lmdb_raft_logger logger(self_addr);
-  logger.init(nodes);
-
+  lmdb_raft_logger logger(self);
   kvs_raft_fsm fsm;
 
-  raft_provider provider(my_engine, &logger, &fsm, self_addr, RAFT_PROVIDER_ID);
+  ABT_init(argc, argv);
+  logger.init(nodes);
+
+  printf("try binding with %s%s\n", PROTOCOL_PREFIX, self);
+  tl::engine my_engine(PROTOCOL_PREFIX + self, THALLIUM_SERVER_MODE, true, 2);
+  printf("Server running at address %s\n", ((string)my_engine.self()).c_str());
+
+  raft_provider provider(my_engine, &logger, &fsm);
 
   signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 

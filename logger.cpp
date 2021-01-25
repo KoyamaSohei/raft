@@ -9,14 +9,16 @@
 
 #include "builder.hpp"
 
-lmdb_raft_logger::lmdb_raft_logger(std::string _id) : raft_logger(_id) {}
+lmdb_raft_logger::lmdb_raft_logger(std::string _id,
+                                   std::set<std::string> _nodes)
+  : raft_logger(_id, _nodes) {}
 
 lmdb_raft_logger::~lmdb_raft_logger() {}
 
-void lmdb_raft_logger::init(std::set<std::string> nodes) {
+void lmdb_raft_logger::init() {
   MDB_txn *txn;
-  MDB_dbi dbi;
-  MDB_stat stat;
+  MDB_dbi log_dbi, state_dbi;
+  MDB_stat log_stat;
   std::string path = "log-" + id;
   int err;
 
@@ -35,23 +37,29 @@ void lmdb_raft_logger::init(std::set<std::string> nodes) {
   err = mdb_txn_begin(env, NULL, 0, &txn);
   assert(err == 0);
 
-  err = mdb_dbi_open(txn, log_db, MDB_CREATE, &dbi);
+  err = mdb_dbi_open(txn, log_db, MDB_CREATE, &log_dbi);
   if (err) {
     mdb_txn_abort(txn);
     abort();
   }
 
-  err = mdb_stat(txn, dbi, &stat);
+  err = mdb_dbi_open(txn, state_db, MDB_CREATE, &state_dbi);
   if (err) {
     mdb_txn_abort(txn);
     abort();
   }
 
-  if (stat.ms_entries == 0) {
+  err = mdb_stat(txn, log_dbi, &log_stat);
+  if (err) {
+    mdb_txn_abort(txn);
+    abort();
+  }
+
+  if (log_stat.ms_entries == 0) {
     // Start init log
 
     // index:0 ,term: 0
-    stored_log_num = 0;
+    stored_log_num = 1;
     std::string conf, uuid, command, log;
     build_conf_log(conf, 0, nodes, 0, nodes);
     build_command(command, SPECIAL_ENTRY_KEY, conf);
@@ -59,115 +67,91 @@ void lmdb_raft_logger::init(std::set<std::string> nodes) {
     build_log(log, 0, uuid, command);
 
     // save to log DB
-    save_log_str(0, log, txn);
+    set_log_str(0, log, txn);
 
     // save to state DB
-    MDB_dbi cdbi;
-    MDB_val cluster_value;
-    err = mdb_dbi_open(txn, state_db, MDB_CREATE, &cdbi);
+    MDB_val cluster_value = {sizeof(char) * (conf.size() + 1),
+                             (void *)conf.c_str()};
+    err = mdb_put(txn, state_dbi, &cluster_key, &cluster_value, 0);
 
     if (err) {
       mdb_txn_abort(txn);
       abort();
     }
 
-    cluster_value.mv_size = sizeof(char) * (conf.size() + 1);
-    cluster_value.mv_data = (void *)conf.c_str();
+    // set initial value
+    voted_for.clear();
+    current_term = 0;
 
-    err = mdb_put(txn, cdbi, &cluster_key, &cluster_value, 0);
+  } else {
+    // recover start
+    stored_log_num = log_stat.ms_entries;
 
+    // recover state
+    MDB_val current_term_value, voted_for_value, cluster_value;
+
+    err = mdb_get(txn, state_dbi, &current_term_key, &current_term_value);
     if (err) {
       mdb_txn_abort(txn);
       abort();
     }
-
-  } else {
-    printf("log (and clusters info) exists already, so ignored..\n");
-    stored_log_num = stat.ms_entries - 1;
-  }
-
-  err = mdb_txn_commit(txn);
-  if (err) {
-    mdb_txn_abort(txn);
-    abort();
-  }
-}
-
-void lmdb_raft_logger::bootstrap_state_from_log(int &current_term,
-                                                std::string &voted_for,
-                                                std::set<std::string> &nodes) {
-  MDB_txn *txn;
-  MDB_dbi dbi;
-  MDB_val current_term_value, voted_for_value, cluster_value;
-  int err;
-
-  err = mdb_txn_begin(env, NULL, 0, &txn);
-  assert(err == 0);
-
-  err = mdb_dbi_open(txn, state_db, MDB_CREATE, &dbi);
-  if (err) {
-    mdb_txn_abort(txn);
-    abort();
-  }
-
-  err = mdb_get(txn, dbi, &current_term_key, &current_term_value);
-  if (err) {
-    switch (err) {
-      case MDB_NOTFOUND:
-        current_term = 0;
-        break;
-      default:
-        mdb_txn_abort(txn);
-        abort();
-        break;
-    }
-  } else {
     current_term = *((int *)current_term_value.mv_data);
-  }
 
-  err = mdb_get(txn, dbi, &voted_for_key, &voted_for_value);
-  if (err) {
-    switch (err) {
-      case MDB_NOTFOUND:
-        voted_for = "";
-        break;
-      default:
-        mdb_txn_abort(txn);
-        abort();
-        break;
+    err = mdb_get(txn, state_dbi, &voted_for_key, &voted_for_value);
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
     }
-  } else {
     voted_for = std::string((char *)voted_for_value.mv_data);
+
+    err = mdb_get(txn, state_dbi, &cluster_key, &cluster_value);
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
+    }
+    std::string buf = std::string((char *)cluster_value.mv_data);
+
+    int prev_index, next_index;
+    std::set<std::string> prev_nodes, next_nodes;
+    parse_conf_log(prev_index, prev_nodes, next_index, next_nodes, buf);
+
+    nodes = peers = next_nodes;
+    assert(nodes.count(id));
+    peers.erase(id);
   }
-
-  err = mdb_get(txn, dbi, &cluster_key, &cluster_value);
-  if (err) {
-    mdb_txn_abort(txn);
-    abort();
-  }
-  std::string buf = std::string((char *)cluster_value.mv_data);
-
-  int prev_index, next_index;
-  std::set<std::string> prev_nodes, next_nodes;
-  parse_conf_log(prev_index, prev_nodes, next_index, next_nodes, buf);
-
-  nodes = next_nodes;
-
-  get_seq_from_set(buf, nodes);
 
   err = mdb_txn_commit(txn);
   if (err) {
     mdb_txn_abort(txn);
     abort();
   }
+
+  std::string buf;
+  get_seq_from_set(buf, nodes);
 
   printf("bootstrap: current_term is %d\n", current_term);
   printf("bootstrap: voted_for is %s\n", voted_for.c_str());
   printf("bootstrap: nodes are %s\n", buf.c_str());
 }
 
-void lmdb_raft_logger::save_current_term(int current_term) {
-  assert(0 <= current_term);
+std::string &lmdb_raft_logger::get_id() {
+  return id;
+}
+
+std::set<std::string> &lmdb_raft_logger::get_peers() {
+  return peers;
+}
+
+int lmdb_raft_logger::get_num_nodes() {
+  return nodes.size();
+}
+
+int lmdb_raft_logger::get_current_term() {
+  return current_term;
+}
+
+void lmdb_raft_logger::set_current_term(int new_term) {
+  assert(current_term < new_term);
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_val current_term_value;
@@ -182,7 +166,7 @@ void lmdb_raft_logger::save_current_term(int current_term) {
     abort();
   }
 
-  current_term_value = {sizeof(int), &current_term};
+  current_term_value = {sizeof(int), &new_term};
 
   err = mdb_put(txn, dbi, &current_term_key, &current_term_value, 0);
   if (err) {
@@ -195,9 +179,25 @@ void lmdb_raft_logger::save_current_term(int current_term) {
     mdb_txn_abort(txn);
     abort();
   }
+
+  current_term = new_term;
 }
 
-void lmdb_raft_logger::save_voted_for(std::string voted_for) {
+bool lmdb_raft_logger::exists_voted_for() {
+  return voted_for.size() > 0;
+}
+
+void lmdb_raft_logger::clear_voted_for() {
+  set_voted_for("");
+  voted_for.clear();
+}
+
+void lmdb_raft_logger::set_voted_for_self() {
+  set_voted_for(id);
+  voted_for.assign(id);
+}
+
+void lmdb_raft_logger::set_voted_for(const std::string &new_addr) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_val voted_for_value;
@@ -213,8 +213,8 @@ void lmdb_raft_logger::save_voted_for(std::string voted_for) {
   }
 
   // voted_for.size() is not include '\0' so +1
-  voted_for_value.mv_size = sizeof(char) * (voted_for.size() + 1);
-  voted_for_value.mv_data = (void *)voted_for.c_str();
+  voted_for_value.mv_size = sizeof(char) * (new_addr.size() + 1);
+  voted_for_value.mv_data = (void *)new_addr.c_str();
 
   err = mdb_put(txn, dbi, &voted_for_key, &voted_for_value, 0);
   if (err) {
@@ -227,10 +227,13 @@ void lmdb_raft_logger::save_voted_for(std::string voted_for) {
     mdb_txn_abort(txn);
     abort();
   }
+
+  voted_for.clear();
+  voted_for.assign(new_addr);
 }
 
-void lmdb_raft_logger::save_log_str(int index, std::string log_str,
-                                    MDB_txn *ptxn) {
+void lmdb_raft_logger::set_log_str(int index, std::string log_str,
+                                   MDB_txn *ptxn) {
   assert(0 <= index);
   assert(index <= stored_log_num + 1);
   MDB_txn *txn;
@@ -269,7 +272,7 @@ void lmdb_raft_logger::save_log_str(int index, std::string log_str,
     abort();
   }
 
-  assert(stored_log_num == (int)stat.ms_entries - 1);
+  assert(stored_log_num == (int)stat.ms_entries);
 
   err = mdb_txn_commit(txn);
   if (err) {
@@ -278,7 +281,7 @@ void lmdb_raft_logger::save_log_str(int index, std::string log_str,
   }
 }
 
-void lmdb_raft_logger::save_uuid(std::string uuid, MDB_txn *ptxn) {
+void lmdb_raft_logger::set_uuid(std::string uuid, MDB_txn *ptxn) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_val save_uuid_key, save_uuid_value;
@@ -318,7 +321,7 @@ void lmdb_raft_logger::save_uuid(std::string uuid, MDB_txn *ptxn) {
   }
 }
 
-int lmdb_raft_logger::get_uuid(std::string uuid, MDB_txn *ptxn) {
+bool lmdb_raft_logger::get_uuid(const std::string &uuid, MDB_txn *ptxn) {
   MDB_txn *txn;
   MDB_dbi dbi;
   MDB_val get_uuid_key, get_uuid_value;
@@ -344,7 +347,7 @@ int lmdb_raft_logger::get_uuid(std::string uuid, MDB_txn *ptxn) {
       mdb_txn_abort(txn);
       abort();
     }
-    return MDB_NOTFOUND;
+    return false;
   }
 
   if (err) {
@@ -357,12 +360,12 @@ int lmdb_raft_logger::get_uuid(std::string uuid, MDB_txn *ptxn) {
     mdb_txn_abort(txn);
     abort();
   }
-  return 0;
+  return true;
 }
 
 std::string lmdb_raft_logger::get_log_str(int index) {
   assert(0 <= index);
-  if (index > stored_log_num) {
+  if (index > stored_log_num - 1) {
     // not found
     return "";
   }
@@ -400,19 +403,20 @@ std::string lmdb_raft_logger::get_log_str(int index) {
   return std::string((char *)get_log_value.mv_data);
 }
 
-int lmdb_raft_logger::append_log(int term, std::string uuid,
-                                 std::string command) {
-  assert(0 <= term);
-  int index = stored_log_num + 1;
-  save_log(index, term, uuid, command);
+int lmdb_raft_logger::append_log(const std::string &uuid,
+                                 const std::string &command) {
+  int index = stored_log_num;
+  int term = current_term;
+  set_log(index, term, uuid, command);
   return index;
 }
 
-void lmdb_raft_logger::save_log(int index, int term, std::string uuid,
-                                std::string command) {
+void lmdb_raft_logger::set_log(const int index, const int term,
+                               const std::string &uuid,
+                               const std::string &command) {
   assert(0 <= index);
-  assert(index <= stored_log_num + 1);
-  if (index == stored_log_num + 1) {
+  assert(index <= stored_log_num);
+  if (index == stored_log_num) {
     // append log
     stored_log_num++;
   }
@@ -421,8 +425,8 @@ void lmdb_raft_logger::save_log(int index, int term, std::string uuid,
   MDB_txn *txn;
   int err = mdb_txn_begin(env, NULL, 0, &txn);
   assert(err == 0);
-  save_log_str(index, log, txn);
-  save_uuid(uuid, txn);
+  set_log_str(index, log, txn);
+  set_uuid(uuid, txn);
   err = mdb_txn_commit(txn);
   if (err) {
     mdb_txn_abort(txn);
@@ -434,7 +438,7 @@ void lmdb_raft_logger::save_log(int index, int term, std::string uuid,
 
 int lmdb_raft_logger::get_term(int index) {
   assert(0 <= index);
-  assert(index <= stored_log_num);
+  assert(index <= stored_log_num - 1);
   int term;
   std::string uuid, command;
   get_log(index, term, uuid, command);
@@ -444,13 +448,13 @@ int lmdb_raft_logger::get_term(int index) {
 void lmdb_raft_logger::get_log(int index, int &term, std::string &uuid,
                                std::string &command) {
   assert(0 <= index);
-  assert(index <= stored_log_num);
+  assert(index <= stored_log_num - 1);
   std::string log = get_log_str(index);
   parse_log(term, uuid, command, log);
 }
 
 void lmdb_raft_logger::get_last_log(int &index, int &term) {
-  index = stored_log_num;
+  index = stored_log_num - 1;
   std::string uuid, command;
   get_log(index, term, uuid, command);
   assert(0 <= index);
@@ -459,14 +463,12 @@ void lmdb_raft_logger::get_last_log(int &index, int &term) {
 
 bool lmdb_raft_logger::match_log(int index, int term) {
   assert(0 <= index);
-  if (stored_log_num < index) { return false; }
-  assert(index <= stored_log_num);
+  if (stored_log_num <= index) { return false; }
+  assert(index < stored_log_num);
   int t = get_term(index);
   return t == term;
 }
 
-bool lmdb_raft_logger::uuid_already_exists(std::string uuid) {
-  int err = get_uuid(uuid);
-  if (err == MDB_NOTFOUND) { return false; }
-  return true;
+bool lmdb_raft_logger::contains_uuid(const std::string &uuid) {
+  return get_uuid(uuid);
 }
