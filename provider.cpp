@@ -361,6 +361,7 @@ void raft_provider::become_candidate() {
     printf("request_vote to %s\n", node.c_str());
     request_vote_response resp;
     try {
+      printf("node_to_handle.count %d\n", node_to_handle.count(node));
       if (!node_to_handle.count(node)) {
         node_to_handle[node] = tl::provider_handle(
           get_engine().lookup(PROTOCOL_PREFIX + node), RAFT_PROVIDER_ID);
