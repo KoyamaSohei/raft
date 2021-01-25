@@ -79,6 +79,27 @@ void lmdb_raft_logger::init() {
       abort();
     }
 
+    current_term = 0;
+
+    MDB_val current_term_value = {sizeof(int), &current_term};
+
+    err = mdb_put(txn, state_dbi, &current_term_key, &current_term_value, 0);
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
+    }
+
+    voted_for = "";
+
+    MDB_val voted_for_value = {sizeof(char) * (voted_for.size() + 1),
+                               (void *)voted_for.c_str()};
+
+    err = mdb_put(txn, state_dbi, &voted_for_key, &voted_for_value, 0);
+    if (err) {
+      mdb_txn_abort(txn);
+      abort();
+    }
+
   } else {
     // recover start
     stored_log_num = log_stat.ms_entries;
