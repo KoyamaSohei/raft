@@ -149,6 +149,7 @@ TEST_F(logger_test, LAST_LOG_APPLIED) {
 TEST_F(logger_test, RECOVER) {
   logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo-bar-buz");
   logger = lmdb_raft_logger(ADDR, std::set<std::string>{ADDR});
+  logger.init();
   int i, t;
   logger.get_last_log(i, t);
   ASSERT_EQ(i, 1);
