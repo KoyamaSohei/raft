@@ -224,6 +224,7 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
   }();
 
   if (granted) {
+    assert(!logger->exists_voted_for());
     logger->set_voted_for(req_candidate_id);
     update_timeout_limit();
   }
