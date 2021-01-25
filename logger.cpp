@@ -385,7 +385,7 @@ bool lmdb_raft_logger::get_uuid(const std::string &uuid, MDB_txn *ptxn) {
   return true;
 }
 
-std::string lmdb_raft_logger::get_log_str(int index) {
+std::string lmdb_raft_logger::get_log_str(int index, MDB_txn *ptxn = NULL) {
   assert(0 <= index);
   if (index >= stored_log_num) {
     // not found
@@ -397,7 +397,7 @@ std::string lmdb_raft_logger::get_log_str(int index) {
   char get_log_key_buf[11];
   int err;
 
-  err = mdb_txn_begin(env, NULL, 0, &txn);
+  err = mdb_txn_begin(env, ptxn, 0, &txn);
   assert(err == 0);
 
   err = mdb_dbi_open(txn, log_db, 0, &dbi);

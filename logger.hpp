@@ -196,9 +196,10 @@ private:
   /**
    * get_log_str get log from LMDB
    * @param index
+   * @param ptxn parent transaction
    * @return log (stringified json)
    */
-  std::string get_log_str(int index);
+  std::string get_log_str(int index, MDB_txn *ptxn = NULL);
 
   /**
    * set_log_str save log into LMDB
