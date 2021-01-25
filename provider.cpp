@@ -113,6 +113,16 @@ void raft_provider::set_force_current_term(int term) {
   }
 }
 
+tl::provider_handle &raft_provider::get_handle(const std::string &node) {
+  if (node_to_handle.count(node)) { return node_to_handle[node]; }
+
+  std::string addr(PROTOCOL_PREFIX);
+  addr += node;
+  node_to_handle[node] =
+    tl::provider_handle(get_engine().lookup(addr), RAFT_PROVIDER_ID);
+  return node_to_handle[node];
+}
+
 void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
                                        int req_prev_index, int req_prev_term,
                                        std::vector<raft_entry> req_entries,
@@ -361,13 +371,8 @@ void raft_provider::become_candidate() {
     printf("request_vote to %s\n", node.c_str());
     request_vote_response resp;
     try {
-      printf("node_to_handle.count %d\n", node_to_handle.count(node));
-      if (!node_to_handle.count(node)) {
-        node_to_handle[node] = tl::provider_handle(
-          get_engine().lookup(PROTOCOL_PREFIX + node), RAFT_PROVIDER_ID);
-      }
-      resp = m_request_vote_rpc.on(node_to_handle[node])(
-        current_term, logger->get_id(), last_log_index, last_log_term);
+      resp = m_request_vote_rpc.on()(current_term, logger->get_id(),
+                                     last_log_index, last_log_term);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
@@ -433,11 +438,7 @@ void raft_provider::run_leader() {
     mu.unlock();
     append_entries_response resp;
     try {
-      if (!node_to_handle.count(node)) {
-        node_to_handle[node] = tl::provider_handle(
-          get_engine().lookup(PROTOCOL_PREFIX + node), RAFT_PROVIDER_ID);
-      }
-      resp = m_append_entries_rpc.on(node_to_handle[node])(
+      resp = m_append_entries_rpc.on(get_handle(node))(
         term, prev_index, prev_term, entries, commit_index, logger->get_id());
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
@@ -565,10 +566,6 @@ void raft_provider::transfer_leadership() {
   if (!target_has_latest_log) {
     //  Send Append Entries RPC
     try {
-      if (!node_to_handle.count(target)) {
-        node_to_handle[target] = tl::provider_handle(
-          get_engine().lookup(PROTOCOL_PREFIX + target), RAFT_PROVIDER_ID);
-      }
 
       int prev_index = next_index[target] - 1;
 
@@ -586,8 +583,8 @@ void raft_provider::transfer_leadership() {
       }
 
       append_entries_response resp = m_append_entries_rpc.on(
-        node_to_handle[target])(current_term, prev_index, prev_term, entries,
-                                commit_index, logger->get_id());
+        get_handle(target))(current_term, prev_index, prev_term, entries,
+                            commit_index, logger->get_id());
 
       if (resp.get_term() > current_term) {
         printf("target has greater term\n");
@@ -605,11 +602,7 @@ void raft_provider::transfer_leadership() {
   }
 
   try {
-    if (!node_to_handle.count(target)) {
-      node_to_handle[target] = tl::provider_handle(
-        get_engine().lookup(PROTOCOL_PREFIX + target), RAFT_PROVIDER_ID);
-    }
-    int err = m_timeout_now_rpc.on(node_to_handle[target])(
+    int err = m_timeout_now_rpc.on(get_handle(target))(
       current_term, last_log_index, last_log_term);
 
     if (err == RAFT_SUCCESS) {
