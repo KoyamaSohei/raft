@@ -191,7 +191,6 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
                                      std::string req_candidate_id,
                                      int req_last_log_index,
                                      int req_last_log_term) {
-  printf("try lock\n");
   mu.lock();
   int current_term = logger->get_current_term();
 
