@@ -81,11 +81,11 @@ int main(int argc, char **argv) {
   setup_nodes(argc, argv, self, nodes);
   setup_sigset(&ss);
 
-  lmdb_raft_logger logger(self);
+  lmdb_raft_logger logger(self, nodes);
   kvs_raft_fsm fsm;
 
   ABT_init(argc, argv);
-  logger.init(nodes);
+  logger.init();
 
   printf("try binding with %s%s\n", PROTOCOL_PREFIX, self);
   tl::engine my_engine(PROTOCOL_PREFIX + self, THALLIUM_SERVER_MODE, true, 2);
