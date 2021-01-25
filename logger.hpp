@@ -46,9 +46,22 @@ protected:
    */
   std::set<std::string> peers;
 
+  /**
+   * num of stored log[]. this is used for append log
+   * if call append_log when stored_log_num=N,
+   * index of new log will be N
+   * Note: index=0's log is nodes info,and commited from the beginning.
+   */
+  int stored_log_num;
+
 public:
   raft_logger(std::string _id, std::set<std::string> _nodes)
-    : id(_id), nodes(_nodes), peers(_nodes) {
+    : id(_id)
+    , voted_for("")
+    , current_term(0)
+    , nodes(_nodes)
+    , peers(_nodes)
+    , stored_log_num(0) {
     peers.erase(id);
   };
   virtual ~raft_logger(){};
@@ -56,7 +69,9 @@ public:
   /**
    * init initialize DB and Persistent State
    * location of log is depends on id.
-   * if log already exists, nodes will be overwritten with past log
+   * if log already exists, all states
+   * (voted_for,current_term,nodes,peers,and stored_log_num)
+   * will be overwritten with past log
    */
   virtual void init() = 0;
 
@@ -143,13 +158,6 @@ private:
 
   const char *log_db = "log_db";
   const char *uuid_db = "uuid_db";
-
-  /**
-   * num of stored log[]. this is used for append log
-   * if call append_log when stored_log_num=N,
-   * index of new log will be N
-   */
-  int stored_log_num;
 
   /**
    * get_log_str get log from LMDB

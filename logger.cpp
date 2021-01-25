@@ -79,10 +79,6 @@ void lmdb_raft_logger::init() {
       abort();
     }
 
-    // set initial value
-    voted_for.clear();
-    current_term = 0;
-
   } else {
     // recover start
     stored_log_num = log_stat.ms_entries;
