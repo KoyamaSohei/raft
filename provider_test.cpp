@@ -155,14 +155,6 @@ protected:
     std::cout << "server running at " << server_engine.self() << std::endl;
   }
 
-  void SetUp() {
-    logger = new mock_raft_logger(addr, std::set<std::string>{addr});
-    fsm = new mock_raft_fsm();
-    logger->init();
-    provider = new raft_provider(server_engine, logger, fsm);
-    provider->start();
-  }
-
   void SetUp(std::set<std::string> nodes) {
     logger = new mock_raft_logger(addr, nodes);
     fsm = new mock_raft_fsm();
@@ -235,10 +227,12 @@ protected:
 };
 
 TEST_F(provider_test, BECOME_FOLLOWER) {
+  SetUp(std::set<std::string>{addr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
 TEST_F(provider_test, BECOME_LEADER) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -247,6 +241,7 @@ TEST_F(provider_test, BECOME_LEADER) {
 }
 
 TEST_F(provider_test, QUERY_RPC) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -258,6 +253,7 @@ TEST_F(provider_test, QUERY_RPC) {
 }
 
 TEST_F(provider_test, REQUEST_RPC) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -278,6 +274,7 @@ TEST_F(provider_test, REQUEST_RPC) {
 }
 
 TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
+  SetUp(std::set<std::string>{addr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
@@ -287,6 +284,7 @@ TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -301,6 +299,7 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM_2) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -315,6 +314,7 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -330,6 +330,7 @@ TEST_F(provider_test, GET_LOWER_TERM) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM_2) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -344,6 +345,7 @@ TEST_F(provider_test, GET_LOWER_TERM_2) {
 }
 
 TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
+  SetUp(std::set<std::string>{addr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r =
@@ -354,6 +356,7 @@ TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
 }
 
 TEST_F(provider_test, CONFLICT_PREV_LOG) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -376,6 +379,7 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -397,6 +401,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -418,6 +423,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
+  SetUp(std::set<std::string>{addr});
   EXPECT_CALL(*logger, set_voted_for(caddr));
   EXPECT_CALL(*logger, set_current_term(1));
   request_vote_response r2 = request_vote(1, caddr, 1, 1);
@@ -427,6 +433,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -450,6 +457,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -473,6 +481,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -485,6 +494,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
 }
 
 TEST_F(provider_test, APPLY_ENTRIES) {
+  SetUp(std::set<std::string>{addr});
   EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
@@ -581,6 +591,7 @@ TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
 }
 
 TEST_F(provider_test, NODE_IS_NOT_LEADER) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -599,6 +610,7 @@ TEST_F(provider_test, NODE_IS_NOT_LEADER) {
 }
 
 TEST_F(provider_test, PUT_INVALID_UUID) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -610,6 +622,7 @@ TEST_F(provider_test, PUT_INVALID_UUID) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW) {
+  SetUp(std::set<std::string>{addr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -619,6 +632,7 @@ TEST_F(provider_test, TIMEOUT_NOW) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
+  SetUp(std::set<std::string>{addr});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -641,6 +655,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
+  SetUp(std::set<std::string>{addr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 0, 0);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
@@ -648,6 +663,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
+  SetUp(std::set<std::string>{addr});
   EXPECT_CALL(*logger, set_current_term(1));
   EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
@@ -664,6 +680,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
+  SetUp(std::set<std::string>{addr});
   EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
@@ -679,6 +696,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
+  SetUp(std::set<std::string>{addr});
   EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
@@ -694,6 +712,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
+  SetUp(std::set<std::string>{addr});
   EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
@@ -709,6 +728,7 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_WITH_HIGHER_LOG) {
+  SetUp(std::set<std::string>{addr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 1, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
