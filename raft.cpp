@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
   ABT_init(argc, argv);
   logger.init();
 
-  printf("try binding with %s%s\n", PROTOCOL_PREFIX, self);
+  printf("try binding with %s%s\n", PROTOCOL_PREFIX, self.c_str());
   tl::engine my_engine(PROTOCOL_PREFIX + self, THALLIUM_SERVER_MODE, true, 2);
   printf("Server running at address %s\n", ((string)my_engine.self()).c_str());
 
