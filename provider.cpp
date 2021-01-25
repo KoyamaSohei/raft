@@ -534,6 +534,7 @@ void raft_provider::start() {
 
 void raft_provider::transfer_leadership() {
   assert(get_state() == raft_state::leader);
+  assert(logger->get_num_nodes() > 1);
 
   int current_term = logger->get_current_term();
   int commit_index = get_commit_index();
