@@ -53,11 +53,9 @@ TEST_F(logger_test, DUMMY_IS_CLUSTER_INFO) {
   std::string uuid, command;
   logger.get_log(index, term, uuid, command);
   ASSERT_EQ(term, 0);
-  std::string key, value;
-  parse_command(key, value, command);
   int p, n;
   std::set<std::string> pn, nn;
-  parse_conf_log(p, pn, n, nn, value);
+  parse_conf_log(p, pn, n, nn, command);
   std::string pn_buf, nn_buf;
   get_seq_from_set(pn_buf, pn);
   get_seq_from_set(nn_buf, nn);
