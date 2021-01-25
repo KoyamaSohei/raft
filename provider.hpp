@@ -42,9 +42,14 @@ private:
   void set_last_applied(int index);
 
   // for each server, index of the next log entryto send to that server
-  std::map<std::string, int> next_index;
+  std::map<std::string, int> _next_index;
+  int get_next_index(const std::string &node);
+  void set_next_index(const std::string &node, int index);
+
   // for each server, index of highest log entryknown to be replicated on server
-  std::map<std::string, int> match_index;
+  std::map<std::string, int> _match_index;
+  int get_match_index(const std::string &node);
+  void set_match_index(const std::string &node, int index);
 
   // use this to tell client
   std::string leader_hint;

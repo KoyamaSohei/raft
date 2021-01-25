@@ -126,6 +126,30 @@ tl::provider_handle &raft_provider::get_handle(const std::string &node) {
   return _node_to_handle[node];
 }
 
+// match_index initialized to 0
+int raft_provider::get_match_index(const std::string &node) {
+  if (_match_index.count(node)) { return _match_index[node]; }
+  _match_index[node] = 0;
+  return _match_index[node];
+}
+
+void raft_provider::set_match_index(const std::string &node, int index) {
+  _match_index[node] = index;
+}
+
+// next_index initialized to leader last log index + 1
+int raft_provider::get_next_index(const std::string &node) {
+  if (_next_index.count(node)) { return _next_index[node]; }
+  int last_log, last_term;
+  logger->get_last_log(last_log, last_term);
+  _next_index[node] = last_log + 1;
+  return _match_index[node];
+}
+
+void raft_provider::set_next_index(const std::string &node, int index) {
+  _next_index[node] = index;
+}
+
 void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
                                        int req_prev_index, int req_prev_term,
                                        std::vector<raft_entry> req_entries,
@@ -496,13 +520,9 @@ void raft_provider::become_leader() {
   set_state(raft_state::leader);
   std::string uuid;
   generate_uuid(uuid);
-  int index = logger->append_log(uuid, "");
-  next_index.clear();
-  // next_index initialized to leader last log index + 1
-  for (std::string node : logger->get_peers()) { next_index[node] = index + 1; }
-  match_index.clear();
-  // match_index initialized to 0
-  for (std::string node : logger->get_peers()) { match_index[node] = 0; }
+  logger->append_log(uuid, "");
+  _next_index.clear();
+  _match_index.clear();
 }
 
 void raft_provider::run_leader() {
@@ -512,13 +532,13 @@ void raft_provider::run_leader() {
   logger->get_last_log(last_log_index, _);
 
   for (std::string node : logger->get_peers()) {
-    int prev_index = next_index[node] - 1;
+    int prev_index = get_next_index(node) - 1;
     assert(0 <= prev_index);
     int prev_term = logger->get_term(prev_index);
     std::vector<raft_entry> entries;
     int last_index =
-      std::min(last_log_index, next_index[node] + MAX_ENTRIES_NUM);
-    for (int idx = next_index[node]; idx <= last_index; idx++) {
+      std::min(last_log_index, get_next_index(node) + MAX_ENTRIES_NUM);
+    for (int idx = get_next_index(node); idx <= last_index; idx++) {
       int t;
       std::string uuid, command;
       logger->get_log(idx, t, uuid, command);
@@ -545,15 +565,15 @@ void raft_provider::run_leader() {
     }
 
     if (resp.is_success()) {
-      match_index[node] = last_index;
-      next_index[node] = last_index + 1;
+      set_match_index(node, last_index);
+      set_next_index(node, last_index + 1);
     } else {
-      next_index[node]--;
-      assert(next_index[node] > 0);
+      set_next_index(node, get_next_index(node) - 1);
+      assert(get_next_index(node) > 0);
     }
 
-    printf("node %s match: %d, next: %d\n", node.c_str(), match_index[node],
-           next_index[node]);
+    printf("node %s match: %d, next: %d\n", node.c_str(), get_match_index(node),
+           get_next_index(node));
   }
   // check if leader can commit N
   // N := sorted_match_index[num_nodes/2]
@@ -566,7 +586,7 @@ void raft_provider::run_leader() {
     std::vector<int> sorted_match_index{last_log_index};
 
     for (std::string node : logger->get_peers()) {
-      sorted_match_index.emplace_back(match_index[node]);
+      sorted_match_index.emplace_back(get_match_index(node));
     }
 
     std::sort(sorted_match_index.begin(), sorted_match_index.end());
@@ -633,9 +653,9 @@ void raft_provider::transfer_leadership() {
   int match_idx = 0;
 
   for (std::string node : logger->get_peers()) {
-    if (match_index[node] >= match_idx) {
+    if (get_match_index(node) >= match_idx) {
       target = node;
-      match_idx = match_index[node];
+      match_idx = get_match_index(node);
     }
   }
 
@@ -644,7 +664,7 @@ void raft_provider::transfer_leadership() {
     return;
   }
 
-  assert(match_index[target] == match_idx);
+  assert(get_match_index(target) == match_idx);
   assert(!target.empty());
 
   printf("begin transfer leadership to %s\n", target.c_str());
@@ -656,7 +676,7 @@ void raft_provider::transfer_leadership() {
 
   if (!target_has_latest_log) {
     //  Send Append Entries RPC
-    int prev_index = next_index[target] - 1;
+    int prev_index = get_next_index(target) - 1;
 
     assert(0 <= prev_index);
     assert(prev_index <= last_log_index);
@@ -664,7 +684,7 @@ void raft_provider::transfer_leadership() {
     int prev_term = logger->get_term(prev_index);
 
     std::vector<raft_entry> entries;
-    for (int idx = next_index[target]; idx <= last_log_index; idx++) {
+    for (int idx = get_next_index(target); idx <= last_log_index; idx++) {
       int t;
       std::string uuid, command;
       logger->get_log(idx, t, uuid, command);
