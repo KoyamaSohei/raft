@@ -118,7 +118,6 @@ tl::provider_handle &raft_provider::get_handle(const std::string &node) {
 
   std::string addr(PROTOCOL_PREFIX);
   addr += node;
-  printf("node addr is %s\n", addr.c_str());
   node_to_handle[node] =
     tl::provider_handle(get_engine().lookup(addr), RAFT_PROVIDER_ID);
   return node_to_handle[node];
