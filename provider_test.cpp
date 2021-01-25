@@ -514,7 +514,7 @@ TEST_F(provider_test, APPLY_ENTRIES) {
 }
 
 TEST_F(provider_test, NOT_DETERMINED_LEADER) {
-  SetUp(std::set<std::string>{addr, caddr});
+  SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -523,7 +523,7 @@ TEST_F(provider_test, NOT_DETERMINED_LEADER) {
 }
 
 TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
-  SetUp(std::set<std::string>{addr, caddr});
+  SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
@@ -537,7 +537,7 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
 }
 
 TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
-  SetUp(std::set<std::string>{addr, caddr});
+  SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_query_response r = client_query("hello");
   ASSERT_EQ(r.get_status(), RAFT_LEADER_NOT_FOUND);
@@ -553,7 +553,7 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
-  SetUp(std::set<std::string>{addr, caddr});
+  SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
@@ -573,7 +573,7 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
-  SetUp(std::set<std::string>{addr, caddr});
+  SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
@@ -643,7 +643,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
-  SetUp(std::set<std::string>{addr, caddr});
+  SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
