@@ -502,7 +502,7 @@ void raft_provider::run() {
     int t;
     std::string uuid, command;
     logger->get_log(index, t, uuid, command);
-    fsm->apply(command);
+    if (!uuid_is_special(uuid)) { fsm->apply(command); }
     set_last_applied(index);
   }
 

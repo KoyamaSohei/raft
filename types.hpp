@@ -167,6 +167,4 @@ public:
 
 #define UUID_LENGTH 37
 
-#define SPECIAL_ENTRY_KEY "__cluster"
-
 #endif

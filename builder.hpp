@@ -11,6 +11,22 @@
 void generate_uuid(std::string &uuid);
 
 /**
+ *  generate special uuid.
+ *  this uuid used with special(e.g. cluster config change) log entry.
+ *  and log content is NOT a command which fsm can apply.
+ *  if uuid is special, fsm don't apply that entry.
+ *  @param uuid dst e.g.) "77777777-2dac-4e40-ae2e-76797a271fe2"
+ */
+
+void generate_special_uuid(std::string &uuid);
+
+/**
+ *  check if uuid is special.
+ *  @param uuid dst e.g.) "77777777-2dac-4e40-ae2e-76797a271fe2"
+ */
+bool uuid_is_special(const std::string &uuid);
+
+/**
  *  parse key value command
  *  @param key key  e.g.) "foo"
  *  @param value value e.g.) "bar"
@@ -65,7 +81,6 @@ void build_log(std::string &dst, const int &term, const std::string &uuid,
 /**
  *  parse cluster change config log from this src.
  *  this special log is stored at `log_db` as a part of entry.
- *  key = SPECIAL_ENTRY_KEY, value = {this src}
  *  and this src also stored at `state_db` (to find  more efficiently)
  *  @param prev_index index on which prev cluster change commited
  *  @param prev_nodes nodes which belog to prev cluster
@@ -80,7 +95,6 @@ void parse_conf_log(int &prev_index, std::set<std::string> &prev_nodes,
 /**
  *  build cluster change config log to dst
  *  this special log is stored at `log_db` as a part of entry.
- *  key = SPECIAL_ENTRY_KEY, value = {this src}
  *  and this dst also stored at `state_db` (to find  more efficiently)
  *  @param dst        dst string
  *  @param prev_index index on which prev cluster change commited

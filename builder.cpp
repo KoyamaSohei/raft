@@ -13,6 +13,17 @@ void generate_uuid(std::string &uuid) {
   uuid.assign(sid);
 }
 
+void generate_special_uuid(std::string &uuid) {
+  generate_uuid(uuid);
+  for (int k = 0; k < 8; k++) { uuid[k] = '7'; }
+}
+
+bool uuid_is_special(const std::string &uuid) {
+  bool yes = true;
+  for (int k = 0; k < 8; k++) { yes &= uuid[k] == '7'; }
+  return yes;
+}
+
 void parse_command(std::string &key, std::string &value,
                    const std::string &src) {
   Json::CharReaderBuilder builder;

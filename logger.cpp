@@ -60,11 +60,10 @@ void lmdb_raft_logger::init() {
 
     // index:0 ,term: 0
     stored_log_num = 1;
-    std::string conf, uuid, command, log;
+    std::string conf, uuid, log;
     build_conf_log(conf, 0, nodes, 0, nodes);
-    build_command(command, SPECIAL_ENTRY_KEY, conf);
-    generate_uuid(uuid);
-    build_log(log, 0, uuid, command);
+    generate_special_uuid(uuid);
+    build_log(log, 0, uuid, conf);
 
     // save to log DB
     set_log_str(0, log, txn);
