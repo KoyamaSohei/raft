@@ -140,10 +140,10 @@ void raft_provider::set_match_index(const std::string &node, int index) {
 // next_index initialized to leader last log index + 1
 int raft_provider::get_next_index(const std::string &node) {
   if (_next_index.count(node)) { return _next_index[node]; }
-  int last_log, last_term;
-  logger->get_last_log(last_log, last_term);
-  _next_index[node] = last_log + 1;
-  return _match_index[node];
+  int last_index, last_term;
+  logger->get_last_log(last_index, last_term);
+  _next_index[node] = last_index + 1;
+  return _next_index[node];
 }
 
 void raft_provider::set_next_index(const std::string &node, int index) {
