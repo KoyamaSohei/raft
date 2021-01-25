@@ -60,7 +60,7 @@ public:
    */
   virtual void init() = 0;
 
-  virtual std::string &get_id() = 0;
+  virtual std::string get_id() = 0;
   virtual std::set<std::string> &get_peers() = 0;
   virtual int get_num_nodes() = 0;
 
@@ -187,7 +187,7 @@ public:
 
   void init();
 
-  std::string &get_id();
+  std::string get_id();
   std::set<std::string> &get_peers();
   int get_num_nodes();
 

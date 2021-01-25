@@ -134,7 +134,7 @@ void lmdb_raft_logger::init() {
   printf("bootstrap: nodes are %s\n", buf.c_str());
 }
 
-std::string &lmdb_raft_logger::get_id() {
+std::string lmdb_raft_logger::get_id() {
   return id;
 }
 
