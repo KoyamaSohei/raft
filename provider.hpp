@@ -51,7 +51,7 @@ private:
 
   // cache to resolve host
   std::map<std::string, tl::provider_handle> _node_to_handle;
-  const tl::provider_handle *get_handle(const std::string &node);
+  tl::provider_handle *get_handle(const std::string &node);
 
   // append_entries_rpc
   void append_entries_rpc(const tl::request &r, int req_term,

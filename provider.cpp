@@ -113,7 +113,7 @@ void raft_provider::set_force_current_term(int term) {
   }
 }
 
-const tl::provider_handle *raft_provider::get_handle(const std::string &node) {
+tl::provider_handle *raft_provider::get_handle(const std::string &node) {
   if (_node_to_handle.count(node)) { return &_node_to_handle[node]; }
 
   std::string addr(PROTOCOL_PREFIX);
