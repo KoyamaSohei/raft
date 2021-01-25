@@ -131,7 +131,7 @@ void lmdb_raft_logger::init() {
     last_conf_applied = *((int *)last_conf_applied_value.mv_data);
     assert(last_conf_applied < stored_log_num);
 
-    std::string buf = get_log_str(last_conf_applied);
+    std::string buf = get_log_str(last_conf_applied, txn);
 
     int prev_index, next_index;
     std::set<std::string> prev_nodes, next_nodes;
