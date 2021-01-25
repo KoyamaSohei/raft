@@ -191,7 +191,7 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
                                      std::string req_candidate_id,
                                      int req_last_log_index,
                                      int req_last_log_term) {
-  std::unique_lock<tl::mutex> lock(mu);
+  mu.lock();
   int current_term = logger->get_current_term();
 
   printf("request_vote_rpc from %s in term %d\n", req_candidate_id.c_str(),
@@ -217,7 +217,7 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
     logger->set_voted_for(req_candidate_id);
     update_timeout_limit();
   }
-
+  mu.unlock();
   try {
     r.respond(request_vote_response(current_term, granted));
   } catch (tl::exception &e) {
