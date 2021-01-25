@@ -147,17 +147,29 @@ TEST_F(logger_test, LAST_LOG_APPLIED) {
 }
 
 TEST_F(logger_test, RECOVER) {
-  logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo-bar-buz");
-  logger = lmdb_raft_logger(ADDR, std::set<std::string>{ADDR});
-  logger.init();
-  int i, t;
-  logger.get_last_log(i, t);
-  ASSERT_EQ(i, 1);
-  ASSERT_EQ(t, 0);
-  std::string uuid, cmd;
-  logger.get_log(i, t, uuid, cmd);
-  ASSERT_STREQ(uuid.c_str(), "046ccc3a-2dac-4e40-ae2e-76797a271fe2");
-  ASSERT_STREQ(cmd.c_str(), "foo-bar-buz");
+  std::string addr = "127.0.0.1:8888";
+
+  auto run1 = [&]() {
+    lmdb_raft_logger logger2(addr, std::set<std::string>{addr});
+    logger2.init();
+    logger2.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo-bar-buz");
+  };
+
+  auto run2 = [&]() {
+    lmdb_raft_logger logger3(addr, std::set<std::string>{addr});
+    logger3.init();
+    int i, t;
+    logger3.get_last_log(i, t);
+    ASSERT_EQ(i, 1);
+    ASSERT_EQ(t, 0);
+    std::string uuid, cmd;
+    logger3.get_log(i, t, uuid, cmd);
+    ASSERT_STREQ(uuid.c_str(), "046ccc3a-2dac-4e40-ae2e-76797a271fe2");
+    ASSERT_STREQ(cmd.c_str(), "foo-bar-buz");
+  };
+
+  run1();
+  run2();
 }
 
 } // namespace
