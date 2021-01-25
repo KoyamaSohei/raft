@@ -132,10 +132,14 @@ void lmdb_raft_logger::init() {
     assert(last_conf_applied < stored_log_num);
 
     std::string buf = get_log_str(last_conf_applied, txn);
+    int term;
+    std::string uuid, command;
+    parse_log(term, uuid, command, buf);
+    assert(uuid_is_special(uuid));
 
     int prev_index, next_index;
     std::set<std::string> prev_nodes, next_nodes;
-    parse_conf_log(prev_index, prev_nodes, next_index, next_nodes, buf);
+    parse_conf_log(prev_index, prev_nodes, next_index, next_nodes, command);
     assert(next_index == last_conf_applied);
     nodes = peers = next_nodes;
     assert(nodes.count(id));
