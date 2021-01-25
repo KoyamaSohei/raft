@@ -177,6 +177,15 @@ public:
   virtual int get_last_conf_applied() = 0;
 
   /**
+   * setadd_conf_log saves special entry to log.
+   * @param term term
+   * @param uuid special uuid
+   * @param new_server server which will be added into cluster.
+   */
+  virtual void set_add_conf_log(const int &term, const std::string &uuid,
+                                const std::string &new_server) = 0;
+
+  /**
    * set_remove_conf_log saves special entry to log.
    * @param term term
    * @param uuid special uuid
@@ -265,6 +274,9 @@ public:
   bool contains_uuid(const std::string &uuid);
 
   int get_last_conf_applied();
+
+  void set_add_conf_log(const int &term, const std::string &uuid,
+                        const std::string &new_server);
 
   void set_remove_conf_log(const int &term, const std::string &uuid,
                            const std::string &old_server);
