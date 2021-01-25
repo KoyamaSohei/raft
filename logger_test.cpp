@@ -129,4 +129,34 @@ TEST_F(logger_test, VOTED_FOR_SELF) {
   ASSERT_TRUE(logger.exists_voted_for());
 }
 
+TEST_F(logger_test, CURRENT_TERM) {
+  logger.set_current_term(100);
+  ASSERT_EQ(logger.get_current_term(), 100);
+}
+
+TEST_F(logger_test, GET_PEER) {
+  ASSERT_EQ(logger.get_peers().size(), 0);
+}
+
+TEST_F(logger_test, NUM_NODES) {
+  ASSERT_EQ(logger.get_num_nodes(), 1);
+}
+
+TEST_F(logger_test, LAST_LOG_APPLIED) {
+  ASSERT_EQ(logger.get_last_conf_applied(), 0);
+}
+
+TEST_F(logger_test, RECOVER) {
+  logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo-bar-buz");
+  logger = lmdb_raft_logger(ADDR, std::set<std::string>{ADDR});
+  int i, t;
+  logger.get_last_log(i, t);
+  ASSERT_EQ(i, 1);
+  ASSERT_EQ(t, 0);
+  std::string uuid, cmd;
+  logger.get_log(i, t, uuid, cmd);
+  ASSERT_STREQ(uuid.c_str(), "046ccc3a-2dac-4e40-ae2e-76797a271fe2");
+  ASSERT_STREQ(cmd.c_str(), "foo-bar-buz");
+}
+
 } // namespace
