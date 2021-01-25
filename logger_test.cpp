@@ -78,25 +78,6 @@ TEST_F(logger_test, APPEND_LOG) {
   ASSERT_STREQ(command.c_str(), "{\"key\":\"foo\",\"value\":\"bar\"}");
 }
 
-TEST_F(logger_test, BOOTSTRAP_FROM_EMPTY) {
-  int current_term;
-  std::string voted_for;
-  std::set<std::string> nodes;
-  ASSERT_EQ(current_term, 0);
-  ASSERT_STREQ(voted_for.c_str(), "");
-  ASSERT_EQ((int)nodes.size(), 1);
-  ASSERT_STREQ(nodes.begin()->c_str(), ADDR);
-}
-
-TEST_F(logger_test, BOOTSTRAP) {
-  logger.set_current_term(1);
-  logger.set_voted_for("127.0.0.1:12345");
-  int term;
-  ASSERT_EQ(term, 1);
-  ASSERT_TRUE(logger.exists_voted_for());
-  ASSERT_EQ(logger.get_num_nodes(), 1);
-}
-
 TEST_F(logger_test, MATCHLOG) {
   ASSERT_TRUE(logger.match_log(0, 0));
 }
