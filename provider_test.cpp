@@ -41,6 +41,8 @@ public:
     : raft_logger(_id, nodes), real_(_id, nodes) {
     ON_CALL(*this, init())
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::init));
+    ON_CALL(*this, clean_up())
+      .WillByDefault(Invoke(&real_, &lmdb_raft_logger::clean_up));
     ON_CALL(*this, get_id())
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::get_id));
     ON_CALL(*this, get_peers())
@@ -78,22 +80,9 @@ public:
     ON_CALL(*this, set_remove_conf_log(_, _, _))
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::set_remove_conf_log));
   }
-  ~mock_raft_logger() {
-    int err;
-    std::string dir_path = "log-" + id;
-    std::string data_path = dir_path + "/data.mdb";
-    std::string lock_path = dir_path + "/lock.mdb";
-
-    err = remove(data_path.c_str());
-    if (err) { abort(); }
-
-    err = remove(lock_path.c_str());
-    if (err) { abort(); }
-
-    err = rmdir(dir_path.c_str());
-    if (err) { abort(); }
-  }
+  ~mock_raft_logger() { real_.clean_up(); }
   MOCK_METHOD0(init, void());
+  MOCK_METHOD0(clean_up, void());
   MOCK_METHOD0(get_id, std::string());
   MOCK_METHOD0(get_peers, std::set<std::string> &());
   MOCK_METHOD0(get_num_nodes, int());

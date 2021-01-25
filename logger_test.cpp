@@ -14,21 +14,7 @@ protected:
   lmdb_raft_logger logger;
   logger_test() : logger(ADDR, std::set<std::string>{ADDR}) { logger.init(); }
 
-  ~logger_test() {
-    int err;
-    std::string dir_path = "log-" ADDR;
-    std::string data_path = dir_path + "/data.mdb";
-    std::string lock_path = dir_path + "/lock.mdb";
-
-    err = remove(data_path.c_str());
-    if (err) { printf("remove %s error, %d\n", data_path.c_str(), err); }
-
-    err = remove(lock_path.c_str());
-    if (err) { printf("remove %s error, %d\n", lock_path.c_str(), err); }
-
-    err = rmdir(dir_path.c_str());
-    if (err) { printf("rmdir %s error %d\n", dir_path.c_str(), err); }
-  }
+  ~logger_test() { logger.clean_up(); }
 };
 
 TEST_F(logger_test, EXIST_DIR) {
@@ -166,6 +152,7 @@ TEST_F(logger_test, RECOVER) {
     logger3.get_log(i, t, uuid, cmd);
     ASSERT_STREQ(uuid.c_str(), "046ccc3a-2dac-4e40-ae2e-76797a271fe2");
     ASSERT_STREQ(cmd.c_str(), "foo-bar-buz");
+    logger3.clean_up();
   };
 
   run1();

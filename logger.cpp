@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <lmdb.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <cassert>
 #include <string>
@@ -158,6 +159,21 @@ void lmdb_raft_logger::init() {
   printf("bootstrap: current_term is %d\n", current_term);
   printf("bootstrap: voted_for is %s\n", voted_for.c_str());
   printf("bootstrap: nodes are %s\n", buf.c_str());
+}
+
+void lmdb_raft_logger::clean_up() {
+  int err;
+  std::string dir_path = "log-" + id;
+  std::string data_path = dir_path + "/data.mdb";
+  std::string lock_path = dir_path + "/lock.mdb";
+  err = remove(data_path.c_str());
+  assert(err == 0 || errno == ENOENT);
+
+  err = remove(lock_path.c_str());
+  assert(err == 0 || errno == ENOENT);
+
+  err = rmdir(dir_path.c_str());
+  assert(err == 0 || errno == ENOENT);
 }
 
 std::string lmdb_raft_logger::get_id() {

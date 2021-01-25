@@ -80,6 +80,12 @@ public:
    */
   virtual void init() = 0;
 
+  /**
+   * clean_up clean up log.
+   * use this before restart node with initial state.
+   */
+  virtual void clean_up() = 0;
+
   virtual std::string get_id() = 0;
   virtual std::set<std::string> &get_peers() = 0;
   virtual int get_num_nodes() = 0;
@@ -229,6 +235,8 @@ public:
   ~lmdb_raft_logger();
 
   void init();
+
+  void clean_up();
 
   std::string get_id();
   std::set<std::string> &get_peers();
