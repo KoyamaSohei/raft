@@ -257,7 +257,7 @@ void lmdb_raft_logger::set_voted_for(const std::string &new_addr) {
 void lmdb_raft_logger::set_log_str(int index, std::string log_str,
                                    MDB_txn *ptxn) {
   assert(0 <= index);
-  assert(index <= stored_log_num + 1);
+  assert(index <= stored_log_num);
   MDB_txn *txn;
   MDB_stat stat;
   MDB_dbi dbi;
@@ -387,7 +387,7 @@ bool lmdb_raft_logger::get_uuid(const std::string &uuid, MDB_txn *ptxn) {
 
 std::string lmdb_raft_logger::get_log_str(int index) {
   assert(0 <= index);
-  if (index > stored_log_num - 1) {
+  if (index >= stored_log_num) {
     // not found
     return "";
   }
