@@ -128,9 +128,9 @@ protected:
   tl::abt scope;
   tl::engine server_engine;
   tl::engine client_engine;
-  mock_raft_logger *logger_ptr;
-  mock_raft_fsm fsm;
-  raft_provider provider;
+  mock_raft_logger *logger;
+  mock_raft_fsm *fsm;
+  raft_provider *provider;
   tl::remote_procedure m_echo_state_rpc;
   tl::remote_procedure m_request_vote_rpc;
   tl::remote_procedure m_append_entries_rpc;
@@ -144,7 +144,6 @@ protected:
     , caddr(ADDR + std::to_string(PORT + 1))
     , server_engine(PROTOCOL_PREFIX + addr, THALLIUM_SERVER_MODE, true, 2)
     , client_engine(PROTOCOL_PREFIX + caddr, THALLIUM_CLIENT_MODE)
-    , provider(server_engine, logger_ptr, &fsm)
     , m_echo_state_rpc(client_engine.define(ECHO_STATE_RPC_NAME))
     , m_request_vote_rpc(client_engine.define("request_vote"))
     , m_append_entries_rpc(client_engine.define("append_entries"))
@@ -156,9 +155,27 @@ protected:
     std::cout << "server running at " << server_engine.self() << std::endl;
   }
 
-  static void finalize(void *arg) { ((raft_provider *)arg)->finalize(); }
+  void SetUp() {
+    logger = new mock_raft_logger(addr, std::set<std::string>{addr});
+    fsm = new mock_raft_fsm();
+    logger->init();
+    provider = new raft_provider(server_engine, logger, fsm);
+    provider->start();
+  }
 
-  ~provider_test() {}
+  void SetUp(std::set<std::string> nodes) {
+    logger = new mock_raft_logger(addr, nodes);
+    fsm = new mock_raft_fsm();
+    logger->init();
+    provider = new raft_provider(server_engine, logger, fsm);
+    provider->start();
+  }
+
+  ~provider_test() {
+    delete provider;
+    delete logger;
+    delete fsm;
+  }
   void TearDown() {
     server_addr = tl::provider_handle();
     m_echo_state_rpc.deregister();
@@ -168,17 +185,7 @@ protected:
     m_client_request_rpc.deregister();
     m_client_query_rpc.deregister();
     client_engine.finalize();
-
-    ABT_xstream stream;
-    ABT_thread thread;
-
-    ABT_xstream_create(ABT_SCHED_NULL, &stream);
-    ABT_thread_create_on_xstream(stream, finalize, &provider,
-                                 ABT_THREAD_ATTR_NULL, &thread);
-    server_engine.wait_for_finalize();
-
-    ABT_thread_free(&thread);
-    ABT_xstream_free(&stream);
+    server_engine.finalize();
   }
   raft_state fetch_state() {
     int r = m_echo_state_rpc.on(server_addr)();
@@ -214,8 +221,8 @@ protected:
 
     usleep(INTERVAL);
     // to commit log in run_leader
-    provider.run();
-    provider.run();
+    provider->run();
+    provider->run();
 
     client_request_response resp = req.wait();
     return resp;
@@ -228,34 +235,22 @@ protected:
 };
 
 TEST_F(provider_test, BECOME_FOLLOWER) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
 TEST_F(provider_test, BECOME_LEADER) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
 TEST_F(provider_test, QUERY_RPC) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_query_response r = client_query("hello");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
@@ -263,34 +258,26 @@ TEST_F(provider_test, QUERY_RPC) {
 }
 
 TEST_F(provider_test, REQUEST_RPC) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
-  EXPECT_CALL(logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                                 "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(*logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                  "{\"key\":\"foo\",\"value\":\"bar\"}"));
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 2);
-  provider.run(); // applied "foo" "bar"
+  provider->run(); // applied "foo" "bar"
   client_query_response r2 = client_query("foo");
   ASSERT_EQ(r2.get_status(), RAFT_SUCCESS);
   ASSERT_STREQ(r2.get_response().c_str(), "bar");
 }
 
 TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
@@ -300,16 +287,12 @@ TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r =
     append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_TRUE(r.is_success());
@@ -318,17 +301,13 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM_2) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, set_voted_for(caddr));
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_voted_for(caddr));
+  EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r = request_vote(2, caddr, 1, 1);
   ASSERT_TRUE(r.is_vote_granted());
   ASSERT_EQ(r.get_term(), 2);
@@ -336,17 +315,13 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, set_voted_for(_)).Times(0);
-  EXPECT_CALL(logger, set_current_term(_)).Times(0);
+  EXPECT_CALL(*logger, set_voted_for(_)).Times(0);
+  EXPECT_CALL(*logger, set_current_term(_)).Times(0);
   append_entries_response r =
     append_entries(0, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_FALSE(r.is_success());
@@ -355,17 +330,13 @@ TEST_F(provider_test, GET_LOWER_TERM) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM_2) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, set_voted_for(_)).Times(0);
-  EXPECT_CALL(logger, set_current_term(_)).Times(0);
+  EXPECT_CALL(*logger, set_voted_for(_)).Times(0);
+  EXPECT_CALL(*logger, set_current_term(_)).Times(0);
   request_vote_response r = request_vote(0, caddr, 0, 0);
   ASSERT_FALSE(r.is_vote_granted());
   ASSERT_EQ(r.get_term(), 1);
@@ -373,38 +344,30 @@ TEST_F(provider_test, GET_LOWER_TERM_2) {
 }
 
 TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r =
     append_entries(2, 1, 1, std::vector<raft_entry>(), 0, caddr);
   ASSERT_EQ(r.get_term(), 2);
   ASSERT_FALSE(r.is_success());
-  provider.run();
+  provider->run();
 }
 
 TEST_F(provider_test, CONFLICT_PREV_LOG) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
-  EXPECT_CALL(logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                                 "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(*logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                  "{\"key\":\"foo\",\"value\":\"bar\"}"));
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 2);
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r2 =
     append_entries(2, 2, 2, std::vector<raft_entry>(), 0, caddr);
   ASSERT_FALSE(r2.is_success());
@@ -413,24 +376,20 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
-  EXPECT_CALL(logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                                 "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(*logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                  "{\"key\":\"foo\",\"value\":\"bar\"}"));
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 2);
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 1, 0);
   ASSERT_FALSE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -438,24 +397,20 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
-  EXPECT_CALL(logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                                 "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(*logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                  "{\"key\":\"foo\",\"value\":\"bar\"}"));
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 2);
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 1, 1);
   ASSERT_FALSE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -463,12 +418,8 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
-  EXPECT_CALL(logger, set_voted_for(caddr));
-  EXPECT_CALL(logger, set_current_term(1));
+  EXPECT_CALL(*logger, set_voted_for(caddr));
+  EXPECT_CALL(*logger, set_current_term(1));
   request_vote_response r2 = request_vote(1, caddr, 1, 1);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 1);
@@ -476,26 +427,22 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  EXPECT_CALL(logger, append_log(_, ""));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  EXPECT_CALL(*logger, append_log(_, ""));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
-  EXPECT_CALL(logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                                 "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(*logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                  "{\"key\":\"foo\",\"value\":\"bar\"}"));
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 2);
-  EXPECT_CALL(logger, set_voted_for(caddr));
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_voted_for(caddr));
+  EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 2, 1);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -503,26 +450,22 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  EXPECT_CALL(logger, append_log(_, ""));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  EXPECT_CALL(*logger, append_log(_, ""));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
-  EXPECT_CALL(logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                                 "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
+  EXPECT_CALL(*logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                                  "{\"key\":\"foo\",\"value\":\"bar\"}"));
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 2);
-  EXPECT_CALL(logger, set_voted_for(caddr));
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_voted_for(caddr));
+  EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 0, 2);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
@@ -530,14 +473,10 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   request_vote_response r2 = request_vote(1, caddr, 0, 0);
   ASSERT_FALSE(r2.is_vote_granted());
@@ -546,12 +485,8 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
 }
 
 TEST_F(provider_test, APPLY_ENTRIES) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
-  EXPECT_CALL(logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                              "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
@@ -559,9 +494,9 @@ TEST_F(provider_test, APPLY_ENTRIES) {
   ASSERT_EQ(r.get_term(), 1);
   ASSERT_TRUE(r.is_success());
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(2));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(2));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_query_response r2 = client_query("foo");
   ASSERT_EQ(r2.get_status(), RAFT_SUCCESS);
@@ -569,30 +504,20 @@ TEST_F(provider_test, APPLY_ENTRIES) {
 }
 
 TEST_F(provider_test, NOT_DETERMINED_LEADER) {
-  // dummy
-  mock_raft_logger logger(addr,
-                          std::set<std::string>{addr, "127.0.0.1:299999"});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
+  SetUp(std::set<std::string>{addr, caddr});
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
 }
 
 TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
-  // dummy
-  mock_raft_logger logger(addr,
-                          std::set<std::string>{addr, "127.0.0.1:299999"});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
+  SetUp(std::set<std::string>{addr, caddr});
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   append_entries_response r =
     append_entries(1, 0, 0, std::vector<raft_entry>(), 0, caddr);
@@ -602,20 +527,15 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
 }
 
 TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
-  // dummy
-  mock_raft_logger logger(addr,
-                          std::set<std::string>{addr, "127.0.0.1:299999"});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
+  SetUp(std::set<std::string>{addr, caddr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_query_response r = client_query("hello");
   ASSERT_EQ(r.get_status(), RAFT_LEADER_NOT_FOUND);
   ASSERT_STREQ(r.get_response().c_str(), "");
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   client_query_response r2 = client_query("hello");
   ASSERT_EQ(r2.get_status(), RAFT_LEADER_NOT_FOUND);
@@ -623,12 +543,7 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
-  // dummy
-  mock_raft_logger logger(addr,
-                          std::set<std::string>{addr, "127.0.0.1:299999"});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
+  SetUp(std::set<std::string>{addr, caddr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
@@ -636,9 +551,9 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   ASSERT_EQ(r.get_status(), RAFT_LEADER_NOT_FOUND);
   ASSERT_EQ(r.get_index(), 0);
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   client_request_response r2 =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
@@ -648,39 +563,30 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
-  // dummy
-  mock_raft_logger logger(addr,
-                          std::set<std::string>{addr, "127.0.0.1:299999"});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
+  SetUp(std::set<std::string>{addr, caddr});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   usleep(INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(2));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(2));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   usleep(INTERVAL);
-  provider.run();
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
 }
 
 TEST_F(provider_test, NODE_IS_NOT_LEADER) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(logger, set_current_term(2));
+  EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r =
     append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
   ASSERT_TRUE(r.is_success());
@@ -693,14 +599,10 @@ TEST_F(provider_test, NODE_IS_NOT_LEADER) {
 }
 
 TEST_F(provider_test, PUT_INVALID_UUID) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_request_response r =
     client_request("foobarbuz", "{\"key\":\"foo\",\"value\":\"bar\"}");
@@ -708,41 +610,30 @@ TEST_F(provider_test, PUT_INVALID_UUID) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
   int err = timeout_now(0, 0, 0);
   ASSERT_EQ(err, RAFT_SUCCESS);
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   int err = timeout_now(0, 1, 1);
   ASSERT_EQ(err, RAFT_NODE_IS_NOT_FOLLOWER);
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
+  SetUp(std::set<std::string>{addr, caddr});
   usleep(3 * INTERVAL);
-  EXPECT_CALL(logger, set_voted_for_self());
-  EXPECT_CALL(logger, set_current_term(1));
-  provider.run();
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   int err = timeout_now(0, 0, 0);
   ASSERT_EQ(err, RAFT_NODE_IS_NOT_FOLLOWER);
@@ -750,10 +641,6 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 0, 0);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
@@ -761,13 +648,9 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
-  EXPECT_CALL(logger, set_current_term(1));
-  EXPECT_CALL(logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                              "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, set_current_term(1));
+  EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
@@ -781,12 +664,8 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
-  EXPECT_CALL(logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                              "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
@@ -800,12 +679,8 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
-  EXPECT_CALL(logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                              "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
@@ -819,12 +694,8 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
-  EXPECT_CALL(logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                              "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
@@ -838,10 +709,6 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_WITH_HIGHER_LOG) {
-  mock_raft_logger logger(addr, std::set<std::string>{addr});
-  logger_ptr = &logger;
-  logger.init();
-  provider.start();
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 1, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
