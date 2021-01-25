@@ -133,4 +133,21 @@ TEST_F(logger_test, CONFLICT_UUID_2) {
                , "");
 }
 
+TEST_F(logger_test, VOTED_FOR) {
+  logger.set_voted_for("foo");
+  ASSERT_TRUE(logger.exists_voted_for());
+}
+
+TEST_F(logger_test, VOTED_FOR_CLEAR) {
+  logger.set_voted_for("foo");
+  ASSERT_TRUE(logger.exists_voted_for());
+  logger.clear_voted_for();
+  ASSERT_FALSE(logger.exists_voted_for());
+}
+
+TEST_F(logger_test, VOTED_FOR_SELF) {
+  logger.set_voted_for_self();
+  ASSERT_TRUE(logger.exists_voted_for());
+}
+
 } // namespace
