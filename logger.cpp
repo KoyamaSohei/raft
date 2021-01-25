@@ -579,6 +579,7 @@ bool lmdb_raft_logger::contains_uuid(const std::string &uuid) {
 }
 
 int lmdb_raft_logger::get_last_conf_applied() {
+  assert(last_conf_applied >= 0);
   return last_conf_applied;
 }
 
