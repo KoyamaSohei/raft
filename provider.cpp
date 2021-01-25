@@ -371,8 +371,8 @@ void raft_provider::become_candidate() {
     printf("request_vote to %s\n", node.c_str());
     request_vote_response resp;
     try {
-      resp = m_request_vote_rpc.on()(current_term, logger->get_id(),
-                                     last_log_index, last_log_term);
+      resp = m_request_vote_rpc.on(get_handle(node))(
+        current_term, logger->get_id(), last_log_index, last_log_term);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
