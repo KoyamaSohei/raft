@@ -118,6 +118,7 @@ tl::provider_handle &raft_provider::get_handle(const std::string &node) {
 
   std::string addr(PROTOCOL_PREFIX);
   addr += node;
+  printf("node addr is %s\n", addr.c_str());
   node_to_handle[node] =
     tl::provider_handle(get_engine().lookup(addr), RAFT_PROVIDER_ID);
   return node_to_handle[node];
@@ -201,6 +202,7 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
                                      std::string req_candidate_id,
                                      int req_last_log_index,
                                      int req_last_log_term) {
+  printf("try lock\n");
   mu.lock();
   int current_term = logger->get_current_term();
 
