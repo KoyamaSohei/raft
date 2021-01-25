@@ -617,6 +617,10 @@ void raft_provider::transfer_leadership() {
 
 bool raft_provider::remove_self_from_cluster() {
   mu.lock();
+  if (logger->get_num_nodes() == 1) {
+    mu.unlock();
+    return true;
+  }
   if (get_state() == raft_state::leader) {
     transfer_leadership();
     mu.unlock();
