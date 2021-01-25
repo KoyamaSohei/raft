@@ -228,7 +228,8 @@ protected:
   }
 
   remove_server_response remove_server(std::string old_server) {
-    remove_server_response resp = m_add_server_rpc.on(server_addr)(old_server);
+    remove_server_response resp =
+      m_remove_server_rpc.on(server_addr)(old_server);
     return resp;
   }
 };
@@ -790,6 +791,9 @@ TEST_F(provider_test, REMOVE_SERVER_ON_LEADER) {
   EXPECT_EQ(logger->get_last_conf_applied(), 2);
   EXPECT_EQ(logger->get_num_nodes(), 2);
   EXPECT_EQ(r.get_status(), RAFT_SUCCESS);
+  provider->run();
+  provider->run();
+
   EXPECT_CALL(*logger, set_remove_conf_log(1, _, addr)).Times(0);
   remove_server_response r2 = remove_server(addr);
   EXPECT_EQ(logger->get_last_conf_applied(), 2);
