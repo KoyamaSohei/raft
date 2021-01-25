@@ -155,11 +155,12 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
                                        std::vector<raft_entry> req_entries,
                                        int req_leader_commit,
                                        std::string req_leader_id) {
-  std::unique_lock<tl::mutex> lock(mu);
+  mu.lock();
 
   int current_term = logger->get_current_term();
 
   if (req_term < current_term) {
+    mu.unlock();
     try {
       r.respond(append_entries_response(current_term, false));
     } catch (tl::exception &e) {
@@ -194,6 +195,7 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
 
   bool is_match = logger->match_log(req_prev_index, req_prev_term);
   if (!is_match) {
+    mu.unlock();
     try {
       r.respond(append_entries_response(current_term, false));
     } catch (tl::exception &e) {
@@ -216,6 +218,7 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
     }
     set_commit_index(next_index);
   }
+  mu.unlock();
   try {
     r.respond(append_entries_response(current_term, true));
   } catch (tl::exception &e) {
