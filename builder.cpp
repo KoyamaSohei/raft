@@ -51,15 +51,18 @@ void build_command(std::string &dst, const std::string &key,
 
 void get_set_from_seq(std::set<std::string> &dst, const std::string &src) {
   dst.clear();
-  if (src.empty()) return;
-
-  std::string::size_type pos = 0, next;
-
-  do {
-    next = src.find(",", pos);
-    if (next - pos) { dst.insert(src.substr(pos, next - pos)); }
-    pos = next + 1;
-  } while (next != std::string::npos);
+  std::string buffer;
+  for (char c : src) {
+    if (c == ',') {
+      if (buffer.empty()) continue;
+      dst.insert(buffer);
+      buffer.clear();
+      continue;
+    }
+    buffer.push_back(c);
+  }
+  if (buffer.empty()) return;
+  dst.insert(buffer);
 }
 
 void get_seq_from_set(std::string &dst, const std::set<std::string> &src) {
