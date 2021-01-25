@@ -567,23 +567,22 @@ void raft_provider::transfer_leadership() {
 
   if (!target_has_latest_log) {
     //  Send Append Entries RPC
+    int prev_index = next_index[target] - 1;
+
+    assert(0 <= prev_index);
+    assert(prev_index <= last_log_index);
+
+    int prev_term = logger->get_term(prev_index);
+
+    std::vector<raft_entry> entries;
+    for (int idx = next_index[target]; idx <= last_log_index; idx++) {
+      int t;
+      std::string uuid, command;
+      logger->get_log(idx, t, uuid, command);
+      entries.emplace_back(idx, t, uuid, command);
+    }
+
     try {
-
-      int prev_index = next_index[target] - 1;
-
-      assert(0 <= prev_index);
-      assert(prev_index <= last_log_index);
-
-      int prev_term = logger->get_term(prev_index);
-
-      std::vector<raft_entry> entries;
-      for (int idx = next_index[target]; idx <= last_log_index; idx++) {
-        int t;
-        std::string uuid, command;
-        logger->get_log(idx, t, uuid, command);
-        entries.emplace_back(idx, t, uuid, command);
-      }
-
       append_entries_response resp = m_append_entries_rpc.on(
         get_handle(target))(current_term, prev_index, prev_term, entries,
                             commit_index, logger->get_id());
