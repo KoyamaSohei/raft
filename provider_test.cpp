@@ -130,6 +130,8 @@ protected:
   tl::remote_procedure m_timeout_now_rpc;
   tl::remote_procedure m_client_request_rpc;
   tl::remote_procedure m_client_query_rpc;
+  tl::remote_procedure m_add_server_rpc;
+  tl::remote_procedure m_remove_server_rpc;
   tl::provider_handle server_addr;
   provider_test()
     : PORT(rnd() % 1000 + 30000)
@@ -143,6 +145,8 @@ protected:
     , m_timeout_now_rpc(client_engine.define("timeout_now"))
     , m_client_request_rpc(client_engine.define(CLIENT_REQUEST_RPC_NAME))
     , m_client_query_rpc(client_engine.define(CLIENT_QUERY_RPC_NAME))
+    , m_add_server_rpc(client_engine.define("add_server"))
+    , m_remove_server_rpc(client_engine.define("remove_server"))
     , server_addr(tl::provider_handle(
         client_engine.lookup(PROTOCOL_PREFIX + addr), RAFT_PROVIDER_ID)) {
     std::cout << "server running at " << server_engine.self() << std::endl;
@@ -215,6 +219,16 @@ protected:
 
   client_query_response client_query(std::string query) {
     client_query_response resp = m_client_query_rpc.on(server_addr)(query);
+    return resp;
+  }
+
+  add_server_response add_server(std::string new_server) {
+    add_server_response resp = m_add_server_rpc.on(server_addr)(new_server);
+    return resp;
+  }
+
+  remove_server_response remove_server(std::string old_server) {
+    remove_server_response resp = m_add_server_rpc.on(server_addr)(old_server);
     return resp;
   }
 };
@@ -726,6 +740,61 @@ TEST_F(provider_test, TIMEOUT_NOW_WITH_HIGHER_LOG) {
   int err = timeout_now(1, 1, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
   ASSERT_EQ(fetch_state(), raft_state::follower);
+}
+
+TEST_F(provider_test, ADD_SERVER) {
+  SetUp(std::set<std::string>{addr});
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  usleep(3 * INTERVAL);
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(*logger, set_add_conf_log(1, _, caddr));
+  add_server_response r = add_server(caddr);
+  EXPECT_EQ(logger->get_last_conf_applied(), 2);
+  EXPECT_EQ(logger->get_num_nodes(), 2);
+  EXPECT_EQ(r.get_status(), RAFT_SUCCESS);
+}
+
+TEST_F(provider_test, REMOVE_SERVER) {
+  SetUp(std::set<std::string>{addr});
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  usleep(3 * INTERVAL);
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(*logger, set_add_conf_log(1, _, caddr));
+  add_server_response r = add_server(caddr);
+  EXPECT_EQ(logger->get_last_conf_applied(), 2);
+  EXPECT_EQ(logger->get_num_nodes(), 2);
+  EXPECT_EQ(r.get_status(), RAFT_SUCCESS);
+  EXPECT_CALL(*logger, set_remove_conf_log(1, _, caddr));
+  remove_server_response r2 = remove_server(caddr);
+  EXPECT_EQ(logger->get_last_conf_applied(), 3);
+  EXPECT_EQ(logger->get_num_nodes(), 1);
+  EXPECT_EQ(r2.get_status(), RAFT_SUCCESS);
+}
+
+TEST_F(provider_test, REMOVE_SERVER_ON_LEADER) {
+  SetUp(std::set<std::string>{addr});
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  usleep(3 * INTERVAL);
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(*logger, set_add_conf_log(1, _, caddr));
+  add_server_response r = add_server(caddr);
+  EXPECT_EQ(logger->get_last_conf_applied(), 2);
+  EXPECT_EQ(logger->get_num_nodes(), 2);
+  EXPECT_EQ(r.get_status(), RAFT_SUCCESS);
+  EXPECT_CALL(*logger, set_remove_conf_log(1, _, addr)).Times(0);
+  remove_server_response r2 = remove_server(addr);
+  EXPECT_EQ(logger->get_last_conf_applied(), 2);
+  EXPECT_EQ(logger->get_num_nodes(), 2);
+  EXPECT_EQ(r2.get_status(), RAFT_DENY_REQUEST);
 }
 
 } // namespace
