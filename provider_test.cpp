@@ -231,13 +231,29 @@ protected:
   }
 
   add_server_response add_server(std::string new_server) {
-    add_server_response resp = m_add_server_rpc.on(server_addr)(new_server);
+    printf("add server start\n");
+    tl::async_response req = m_add_server_rpc.on(server_addr).async(new_server);
+    printf("sleep\n");
+    usleep(INTERVAL);
+    printf("run 1\n");
+    provider->run();
+    printf("run 2\n");
+    usleep(INTERVAL);
+    add_server_response resp = req.wait();
     return resp;
   }
 
   remove_server_response remove_server(std::string old_server) {
-    remove_server_response resp =
-      m_remove_server_rpc.on(server_addr)(old_server);
+    printf("remove server start\n");
+    tl::async_response req =
+      m_remove_server_rpc.on(server_addr).async(old_server);
+    printf("sleep\n");
+    usleep(INTERVAL);
+    printf("run 1\n");
+    provider->run();
+    printf("run 2\n");
+    usleep(INTERVAL);
+    remove_server_response resp = req.wait();
     return resp;
   }
 };
@@ -766,91 +782,6 @@ TEST_F(provider_test, TIMEOUT_NOW_WITH_HIGHER_LOG) {
   int err = timeout_now(1, 1, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
   ASSERT_EQ(fetch_state(), raft_state::follower);
-}
-
-TEST_F(provider_test, ADD_SERVER) {
-  SetUp(std::set<std::string>{addr});
-  ASSERT_EQ(fetch_state(), raft_state::follower);
-  usleep(3 * INTERVAL);
-  EXPECT_CALL(*logger, set_voted_for_self());
-  EXPECT_CALL(*logger, set_current_term(1));
-  provider->run();
-  ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(*logger, set_add_conf_log(1, _, caddr));
-  add_server_response r = add_server(caddr);
-  ASSERT_EQ(logger->get_last_conf_applied(), 2);
-  ASSERT_EQ(logger->get_num_nodes(), 2);
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-}
-
-TEST_F(provider_test, REMOVE_SERVER) {
-  SetUp(std::set<std::string>{addr});
-  ASSERT_EQ(fetch_state(), raft_state::follower);
-  usleep(3 * INTERVAL);
-  EXPECT_CALL(*logger, set_voted_for_self());
-  EXPECT_CALL(*logger, set_current_term(1));
-  provider->run();
-  ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(*logger, set_add_conf_log(1, _, "127.0.0.1:28888"));
-  add_server_response r = add_server("127.0.0.1:28888");
-  ASSERT_EQ(logger->get_last_conf_applied(), 2);
-  ASSERT_EQ(logger->get_num_nodes(), 2);
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  provider->run();
-  EXPECT_CALL(*logger, set_remove_conf_log(1, _, "127.0.0.1:28888"));
-  remove_server_response r2 = remove_server("127.0.0.1:28888");
-  ASSERT_EQ(logger->get_last_conf_applied(), 3);
-  ASSERT_EQ(logger->get_num_nodes(), 1);
-  ASSERT_EQ(r2.get_status(), RAFT_SUCCESS);
-}
-
-TEST_F(provider_test, REMOVE_SERVER_ON_LEADER) {
-  SetUp(std::set<std::string>{addr});
-  ASSERT_EQ(fetch_state(), raft_state::follower);
-  usleep(3 * INTERVAL);
-  EXPECT_CALL(*logger, set_voted_for_self());
-  EXPECT_CALL(*logger, set_current_term(1));
-  provider->run();
-  ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(*logger, set_add_conf_log(1, _, "127.0.0.1:28888"));
-  add_server_response r = add_server("127.0.0.1:28888");
-  ASSERT_EQ(logger->get_last_conf_applied(), 2);
-  ASSERT_EQ(logger->get_num_nodes(), 2);
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  provider->run();
-  provider->run();
-
-  EXPECT_CALL(*logger, set_remove_conf_log(1, _, addr)).Times(0);
-  remove_server_response r2 = remove_server(addr);
-  ASSERT_EQ(logger->get_last_conf_applied(), 2);
-  ASSERT_EQ(logger->get_num_nodes(), 2);
-  ASSERT_EQ(r2.get_status(), RAFT_DENY_REQUEST);
-}
-
-TEST_F(provider_test, ADD_SERVER_ROLLBACK) {
-  SetUp(std::set<std::string>{addr});
-  ASSERT_EQ(fetch_state(), raft_state::follower);
-  usleep(3 * INTERVAL);
-  EXPECT_CALL(*logger, set_voted_for_self());
-  EXPECT_CALL(*logger, set_current_term(1));
-  provider->run();
-  ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(*logger, set_add_conf_log(1, _, "127.0.0.1:28888"));
-  add_server_response r = add_server("127.0.0.1:28888");
-  ASSERT_EQ(logger->get_last_conf_applied(), 2);
-  ASSERT_EQ(logger->get_num_nodes(), 2);
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  EXPECT_CALL(*logger, set_current_term(2));
-  EXPECT_CALL(*logger, set_log(2, 2, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
-  std::vector<raft_entry> ent;
-  ent.emplace_back(2, 2, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
-                   "{\"key\":\"foo\",\"value\":\"bar\"}");
-  append_entries_response r2 = append_entries(2, 1, 1, ent, 1, caddr);
-  ASSERT_EQ(r2.get_term(), 2);
-  ASSERT_TRUE(r2.is_success());
-  ASSERT_EQ(logger->get_last_conf_applied(), 0);
-  ASSERT_EQ(logger->get_num_nodes(), 1);
 }
 
 } // namespace
