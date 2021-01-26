@@ -818,4 +818,29 @@ TEST_F(provider_test, REMOVE_SERVER_ON_LEADER) {
   EXPECT_EQ(r2.get_status(), RAFT_DENY_REQUEST);
 }
 
+TEST_F(provider_test, ADD_SERVER_ROLLBACK) {
+  SetUp(std::set<std::string>{addr});
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  usleep(3 * INTERVAL);
+  EXPECT_CALL(*logger, set_voted_for_self());
+  EXPECT_CALL(*logger, set_current_term(1));
+  provider->run();
+  ASSERT_EQ(fetch_state(), raft_state::leader);
+  EXPECT_CALL(*logger, set_add_conf_log(1, _, "127.0.0.1:28888"));
+  add_server_response r = add_server("127.0.0.1:28888");
+  EXPECT_EQ(logger->get_last_conf_applied(), 2);
+  EXPECT_EQ(logger->get_num_nodes(), 2);
+  EXPECT_EQ(r.get_status(), RAFT_SUCCESS);
+  EXPECT_CALL(*logger, set_log(2, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  std::vector<raft_entry> ent;
+  ent.emplace_back(2, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                   "{\"key\":\"foo\",\"value\":\"bar\"}");
+  append_entries_response r2 = append_entries(2, 1, 1, ent, 1, caddr);
+  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_TRUE(r2.is_success());
+  EXPECT_EQ(logger->get_last_conf_applied(), 0);
+  EXPECT_EQ(logger->get_num_nodes(), 1);
+}
+
 } // namespace
