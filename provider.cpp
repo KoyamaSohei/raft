@@ -740,6 +740,10 @@ bool raft_provider::remove_self_from_cluster() {
       m_remove_server_rpc.on(get_handle(leader_hint))(logger->get_id());
     if (resp.get_status() == RAFT_SUCCESS) {
       printf("successfly  sending remove_server rpc,shutdown..\n");
+      std::string uuid;
+      generate_special_uuid(uuid);
+      logger->set_remove_conf_log(logger->get_current_term(), uuid,
+                                  logger->get_id());
       return true;
     }
     if (resp.get_status() == RAFT_NODE_IS_NOT_LEADER) {
