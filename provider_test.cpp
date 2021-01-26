@@ -210,14 +210,17 @@ protected:
 
   client_request_response client_request(std::string uuid,
                                          std::string command) {
+    printf("client_request start\n");
     tl::async_response req =
       m_client_request_rpc.on(server_addr).async(uuid, command);
-
+    printf("sleep\n");
     usleep(INTERVAL);
-    // to commit log in run_leader
+    printf("run 1\n");
     provider->run();
+    printf("run 2\n");
+    usleep(INTERVAL);
     provider->run();
-
+    printf("wait response\n ");
     client_request_response resp = req.wait();
     return resp;
   }
