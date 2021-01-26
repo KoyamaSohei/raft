@@ -270,17 +270,25 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
 void raft_provider::timeout_now_rpc(const tl::request &r, int req_term,
                                     int req_prev_index, int req_prev_term) {
   mu.lock();
+  if (req_term > logger->get_current_term()) {
+    set_force_current_term(req_term);
+    mu.unlock();
+    try {
+      r.respond(RAFT_INVALID_REQUEST);
+    } catch (tl::exception &e) {}
+    return;
+  }
+  if (req_term < logger->get_current_term()) {
+    mu.unlock();
+    try {
+      r.respond(RAFT_INVALID_REQUEST);
+    } catch (tl::exception &e) {}
+    return;
+  }
   if (get_state() != raft_state::follower) {
     mu.unlock();
     try {
       r.respond(RAFT_NODE_IS_NOT_FOLLOWER);
-    } catch (tl::exception &e) {}
-    return;
-  }
-  if (req_term != logger->get_current_term()) {
-    mu.unlock();
-    try {
-      r.respond(RAFT_INVALID_REQUEST);
     } catch (tl::exception &e) {}
     return;
   }
