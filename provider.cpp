@@ -37,6 +37,9 @@ void raft_provider::finalize() {
   _node_to_handle.clear();
   m_append_entries_rpc.deregister();
   m_request_vote_rpc.deregister();
+  m_timeout_now_rpc.deregister();
+  m_add_server_rpc.deregister();
+  m_remove_server_rpc.deregister();
   m_client_request_rpc.deregister();
   m_client_query_rpc.deregister();
   get_engine().finalize();
