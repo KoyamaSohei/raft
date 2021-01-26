@@ -578,7 +578,7 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   ASSERT_EQ(r.get_index(), 0);
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
-  EXPECT_CALL(*logger, set_current_term(1));
+  EXPECT_CALL(*logger, set_current_term(2));
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   client_request_response r2 =
