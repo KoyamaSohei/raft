@@ -594,7 +594,7 @@ TEST_F(provider_test, CLIENT_PUT_NODE_IS_NOT_LEADER) {
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r2.get_status(), RAFT_NODE_IS_NOT_LEADER);
   ASSERT_EQ(r2.get_index(), 0);
-  ASSERT_EQ(r2.get_leader_hint().c_str(), caddr.c_str());
+  ASSERT_STREQ(r2.get_leader_hint().c_str(), caddr.c_str());
 }
 
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
