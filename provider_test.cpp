@@ -796,6 +796,7 @@ TEST_F(provider_test, REMOVE_SERVER) {
   ASSERT_EQ(logger->get_last_conf_applied(), 2);
   ASSERT_EQ(logger->get_num_nodes(), 2);
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
+  provider->run();
   EXPECT_CALL(*logger, set_remove_conf_log(1, _, "127.0.0.1:28888"));
   remove_server_response r2 = remove_server("127.0.0.1:28888");
   ASSERT_EQ(logger->get_last_conf_applied(), 3);
