@@ -459,13 +459,14 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
   EXPECT_CALL(*logger, contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
   EXPECT_CALL(*logger, append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                   "{\"key\":\"foo\",\"value\":\"bar\"}"));
+  EXPECT_CALL(*logger, set_current_term(::testing::Ge(2)))
+    .Times(::testing::AnyNumber());
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
   ASSERT_EQ(r.get_index(), 2);
   EXPECT_CALL(*logger, set_voted_for(caddr));
-  EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 2, 1);
   ASSERT_TRUE(r2.is_vote_granted());
   ASSERT_EQ(r2.get_term(), 2);
