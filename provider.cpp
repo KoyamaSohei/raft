@@ -437,7 +437,7 @@ void raft_provider::remove_server_rpc(const tl::request &r,
     } catch (tl::exception &e) {}
     return;
   }
-  if (logger->get_last_conf_applied() < get_commit_index()) {
+  if (get_commit_index() < logger->get_last_conf_applied()) {
     mu.unlock();
     try {
       r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
