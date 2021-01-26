@@ -445,6 +445,12 @@ void raft_provider::remove_server_rpc(const tl::request &r,
     } catch (tl::exception &e) {}
     return;
   }
+  if (!logger->get_peers().count(old_server)) {
+    try {
+      r.respond(add_server_response(RAFT_INVALID_REQUEST, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
   std::string uuid;
   generate_special_uuid(uuid);
 
