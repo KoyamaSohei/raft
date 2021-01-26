@@ -486,7 +486,7 @@ void lmdb_raft_logger::set_log(const int index, const int term,
     int p_prev_index, p_next_index;
     std::set<std::string> p_prev_nodes, p_next_nodes;
     parse_conf_log(p_prev_index, p_prev_nodes, p_next_index, p_next_nodes,
-                   p_log);
+                   p_conf);
     assert(p_next_index == index);
 
     // roll back
