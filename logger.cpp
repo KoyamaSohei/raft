@@ -474,7 +474,7 @@ void lmdb_raft_logger::set_log(const int index, const int term,
 
   if (index == last_conf_applied) {
     // rollback config change
-
+    printf("rollback config start\n");
     int p_term;
     std::string p_uuid, p_conf;
 
