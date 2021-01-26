@@ -75,6 +75,8 @@ void lmdb_raft_logger::init() {
     err = mdb_put(txn, state_dbi, &last_conf_applied_key,
                   &last_conf_applied_value, 0);
 
+    last_conf_applied = 0;
+
     if (err) {
       mdb_txn_abort(txn);
       abort();
