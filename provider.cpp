@@ -463,6 +463,7 @@ void raft_provider::become_follower() {
 }
 
 void raft_provider::run_follower() {
+  printf("run follower\n");
   if (system_clock::now() > timeout_limit) {
     update_timeout_limit();
     become_candidate();
@@ -508,6 +509,7 @@ void raft_provider::become_candidate() {
 }
 
 void raft_provider::run_candidate() {
+  printf("run candidate\n");
   if (system_clock::now() > timeout_limit) {
     update_timeout_limit();
     become_candidate();
@@ -526,6 +528,7 @@ void raft_provider::become_leader() {
 }
 
 void raft_provider::run_leader() {
+  printf("run leader\n");
   int term = logger->get_current_term();
   int commit_index = get_commit_index();
   int last_log_index, _;
@@ -601,6 +604,7 @@ void raft_provider::run_leader() {
 }
 
 void raft_provider::run() {
+  printf("run\n");
   mu.lock();
 
   int last_applied = get_last_applied();
