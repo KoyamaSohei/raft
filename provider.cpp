@@ -510,7 +510,7 @@ void raft_provider::become_candidate() {
     }
     if (resp.is_vote_granted()) { vote++; }
   }
-  printf("number of votes is %d\n", vote);
+  printf("number of votes is %d/%d\n", vote, logger->get_num_nodes());
   if (vote * 2 > logger->get_num_nodes()) {
     become_leader();
     return;
