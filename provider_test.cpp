@@ -582,6 +582,21 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   ASSERT_EQ(r2.get_index(), 0);
 }
 
+TEST_F(provider_test, CLIENT_PUT_NODE_IS_NOT_LEADER) {
+  SetUp(std::set<std::string>{addr});
+  append_entries_response r =
+    append_entries(1, 0, 0, std::vector<raft_entry>(), 0, caddr);
+  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_EQ(fetch_state(), raft_state::follower);
+  client_request_response r2 =
+    client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+                   "{\"key\":\"foo\",\"value\":\"bar\"}");
+  ASSERT_EQ(r2.get_status(), RAFT_NODE_IS_NOT_LEADER);
+  ASSERT_EQ(r2.get_index(), 0);
+  ASSERT_EQ(r2.get_leader_hint().c_str(), caddr.c_str());
+}
+
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
   SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   ASSERT_EQ(fetch_state(), raft_state::follower);
