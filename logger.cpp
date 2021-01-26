@@ -176,6 +176,7 @@ void lmdb_raft_logger::clean_up() {
   err = remove(lock_path.c_str());
   assert(err == 0 || errno == ENOENT);
 
+  usleep(INTERVAL);
   err = rmdir(dir_path.c_str());
   assert(err == 0 || errno == ENOENT);
 }
