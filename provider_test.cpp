@@ -768,13 +768,13 @@ TEST_F(provider_test, REMOVE_SERVER) {
   EXPECT_CALL(*logger, set_current_term(1));
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(*logger, set_add_conf_log(1, _, caddr));
-  add_server_response r = add_server(caddr);
+  EXPECT_CALL(*logger, set_add_conf_log(1, _, "127.0.0.1:28888"));
+  add_server_response r = add_server("127.0.0.1:28888");
   EXPECT_EQ(logger->get_last_conf_applied(), 2);
   EXPECT_EQ(logger->get_num_nodes(), 2);
   EXPECT_EQ(r.get_status(), RAFT_SUCCESS);
-  EXPECT_CALL(*logger, set_remove_conf_log(1, _, caddr));
-  remove_server_response r2 = remove_server(caddr);
+  EXPECT_CALL(*logger, set_remove_conf_log(1, _, "127.0.0.1:28888"));
+  remove_server_response r2 = remove_server("127.0.0.1:28888");
   EXPECT_EQ(logger->get_last_conf_applied(), 3);
   EXPECT_EQ(logger->get_num_nodes(), 1);
   EXPECT_EQ(r2.get_status(), RAFT_SUCCESS);
@@ -788,8 +788,8 @@ TEST_F(provider_test, REMOVE_SERVER_ON_LEADER) {
   EXPECT_CALL(*logger, set_current_term(1));
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  EXPECT_CALL(*logger, set_add_conf_log(1, _, caddr));
-  add_server_response r = add_server(caddr);
+  EXPECT_CALL(*logger, set_add_conf_log(1, _, "127.0.0.1:28888"));
+  add_server_response r = add_server("127.0.0.1:28888");
   EXPECT_EQ(logger->get_last_conf_applied(), 2);
   EXPECT_EQ(logger->get_num_nodes(), 2);
   EXPECT_EQ(r.get_status(), RAFT_SUCCESS);
