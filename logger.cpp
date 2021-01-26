@@ -192,6 +192,10 @@ int lmdb_raft_logger::get_num_nodes() {
   return nodes.size();
 }
 
+bool lmdb_raft_logger::contains_self_in_nodes() {
+  return nodes.count(id) > 0;
+}
+
 int lmdb_raft_logger::get_current_term() {
   return current_term;
 }

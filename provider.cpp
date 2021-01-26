@@ -738,12 +738,35 @@ bool raft_provider::remove_self_from_cluster() {
     mu.unlock();
     return false;
   }
+  if (!logger->contains_self_in_nodes() &&
+      logger->get_last_conf_applied() <= get_commit_index()) {
+    mu.unlock();
+    printf("self id is not exists in nodes,shutdown...\n");
+    return true;
+  }
   if (leader_hint.empty()) {
     mu.unlock();
     printf("leader not found, please retry after elected new leader\n");
     return false;
   }
   mu.unlock();
-  // TODO
+  try {
+    remove_server_response resp =
+      m_remove_server_rpc.on(get_handle(leader_hint))(logger->get_id());
+    if (resp.get_status() == RAFT_SUCCESS) {
+      printf("successfly  sending remove_server rpc,please wait\n");
+      return false;
+    }
+    if (resp.get_status() == RAFT_NODE_IS_NOT_LEADER) {
+      leader_hint = resp.get_leader_hint();
+      printf("leader is seemed changed, please retry\n");
+      return false;
+    }
+    printf("error occured on leader, please retry\n");
+  } catch (tl::exception &e) {
+    printf("error occured on sending remove_server rpc, please retry\n");
+    return false;
+  }
+
   return false;
 }

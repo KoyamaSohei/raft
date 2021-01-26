@@ -89,6 +89,7 @@ public:
   virtual std::string get_id() = 0;
   virtual std::set<std::string> &get_peers() = 0;
   virtual int get_num_nodes() = 0;
+  virtual bool contains_self_in_nodes() = 0;
 
   virtual int get_current_term() = 0;
   virtual void set_current_term(int new_term) = 0;
@@ -250,6 +251,7 @@ public:
   std::string get_id();
   std::set<std::string> &get_peers();
   int get_num_nodes();
+  bool contains_self_in_nodes();
 
   int get_current_term();
   void set_current_term(int current_term);

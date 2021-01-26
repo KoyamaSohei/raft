@@ -51,6 +51,8 @@ public:
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::get_num_nodes));
     ON_CALL(*this, get_current_term())
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::get_current_term));
+    ON_CALL(*this, contains_self_in_nodes())
+      .WillByDefault(Invoke(&real_, &lmdb_raft_logger::contains_self_in_nodes));
     ON_CALL(*this, set_current_term(_))
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::set_current_term));
     ON_CALL(*this, exists_voted_for)
@@ -88,6 +90,7 @@ public:
   MOCK_METHOD0(get_id, std::string());
   MOCK_METHOD0(get_peers, std::set<std::string> &());
   MOCK_METHOD0(get_num_nodes, int());
+  MOCK_METHOD0(contains_self_in_nodes, bool());
   MOCK_METHOD0(get_current_term, int());
   MOCK_METHOD1(set_current_term, void(int));
   MOCK_METHOD0(exists_voted_for, bool());
