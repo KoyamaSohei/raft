@@ -71,7 +71,7 @@ void get_seq_from_set(std::string &dst, const std::set<std::string> &src) {
     dst += item;
     dst += ",";
   }
-  dst.pop_back();
+  if (!dst.empty()) { dst.pop_back(); }
 }
 
 void parse_log(int &term, std::string &uuid, std::string &command,
