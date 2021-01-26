@@ -670,6 +670,7 @@ void raft_provider::transfer_leadership() {
   printf("begin transfer leadership to %s\n", target.c_str());
 
   int match_term = logger->get_term(match_idx);
+  mu.unlock();
 
   try {
     int err = m_timeout_now_rpc.on(get_handle(target))(current_term, match_idx,
@@ -681,6 +682,7 @@ void raft_provider::transfer_leadership() {
       printf("error occured on transfer leadership, please retry\n");
     }
   } catch (tl::exception &e) {}
+  mu.lock();
   return;
 }
 
