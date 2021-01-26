@@ -478,7 +478,7 @@ void lmdb_raft_logger::set_log(const int index, const int term,
     int p_term;
     std::string p_uuid, p_conf;
 
-    std::string p_log = get_log_str(index);
+    std::string p_log = get_log_str(index, txn);
     parse_log(p_term, p_uuid, p_conf, p_log);
 
     assert(uuid_is_special(p_uuid));
