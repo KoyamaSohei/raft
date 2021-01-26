@@ -285,10 +285,7 @@ void raft_provider::timeout_now_rpc(const tl::request &r, int req_term,
     return;
   }
 
-  int last_log_index, last_log_term;
-  logger->get_last_log(last_log_index, last_log_term);
-
-  if (!(last_log_index == req_prev_index && last_log_term == req_prev_term)) {
+  if (!logger->match_log(req_prev_index, req_prev_term)) {
     mu.unlock();
     try {
       r.respond(RAFT_INVALID_REQUEST);
@@ -672,51 +669,11 @@ void raft_provider::transfer_leadership() {
 
   printf("begin transfer leadership to %s\n", target.c_str());
 
-  int last_log_index, last_log_term;
-  logger->get_last_log(last_log_index, last_log_term);
-
-  bool target_has_latest_log = match_idx == last_log_index;
-
-  if (!target_has_latest_log) {
-    //  Send Append Entries RPC
-    int prev_index = get_next_index(target) - 1;
-
-    assert(0 <= prev_index);
-    assert(prev_index <= last_log_index);
-
-    int prev_term = logger->get_term(prev_index);
-
-    std::vector<raft_entry> entries;
-    for (int idx = get_next_index(target); idx <= last_log_index; idx++) {
-      int t;
-      std::string uuid, command;
-      logger->get_log(idx, t, uuid, command);
-      entries.emplace_back(idx, t, uuid, command);
-    }
-
-    try {
-      append_entries_response resp = m_append_entries_rpc.on(
-        get_handle(target))(current_term, prev_index, prev_term, entries,
-                            commit_index, logger->get_id());
-
-      if (resp.get_term() > current_term) {
-        printf("target has greater term\n");
-        become_follower();
-        return;
-      }
-
-      if (resp.is_success()) { target_has_latest_log = true; }
-
-    } catch (tl::exception &e) {}
-  }
-  if (!target_has_latest_log) {
-    printf("target has NOT latest log,transfer leadership failed\n");
-    return;
-  }
+  int match_term = logger->get_term(match_idx);
 
   try {
-    int err = m_timeout_now_rpc.on(get_handle(target))(
-      current_term, last_log_index, last_log_term);
+    int err = m_timeout_now_rpc.on(get_handle(target))(current_term, match_idx,
+                                                       match_term);
 
     if (err == RAFT_SUCCESS) {
       printf("transfer leadership succeeded, please retry.\n");
