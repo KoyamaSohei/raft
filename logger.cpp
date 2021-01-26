@@ -592,10 +592,12 @@ int lmdb_raft_logger::get_last_conf_applied() {
   return last_conf_applied;
 }
 
-int lmdb_raft_logger::set_add_conf_log(const int &term, const std::string &uuid,
-                                       const std::string &new_server) {
+int lmdb_raft_logger::set_add_conf_log(const std::string &new_server) {
   assert(!nodes.count(new_server));
-  assert(uuid_is_special(uuid));
+  int term = current_term;
+  std::string uuid;
+  generate_special_uuid(uuid);
+
   std::set<std::string> prev_nodes(nodes), next_nodes(nodes);
   next_nodes.insert(new_server);
   int prev_index = last_conf_applied;
@@ -606,11 +608,11 @@ int lmdb_raft_logger::set_add_conf_log(const int &term, const std::string &uuid,
   return next_index;
 }
 
-int lmdb_raft_logger::set_remove_conf_log(const int &term,
-                                          const std::string &uuid,
-                                          const std::string &old_server) {
+int lmdb_raft_logger::set_remove_conf_log(const std::string &old_server) {
   assert(nodes.count(old_server));
-  assert(uuid_is_special(uuid));
+  int term = current_term;
+  std::string uuid;
+  generate_special_uuid(uuid);
 
   std::set<std::string> prev_nodes(nodes), next_nodes(nodes);
   next_nodes.erase(old_server);

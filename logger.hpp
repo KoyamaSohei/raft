@@ -179,23 +179,17 @@ public:
 
   /**
    * setadd_conf_log saves special entry to log.
-   * @param term term
-   * @param uuid special uuid
    * @param new_server server which will be added into cluster.
    * @return index log index
    */
-  virtual int set_add_conf_log(const int &term, const std::string &uuid,
-                               const std::string &new_server) = 0;
+  virtual int set_add_conf_log(const std::string &new_server) = 0;
 
   /**
    * set_remove_conf_log saves special entry to log.
-   * @param term term
-   * @param uuid special uuid
    * @param old_server server which will be removed from cluster.
    * @return index log index
    */
-  virtual int set_remove_conf_log(const int &term, const std::string &uuid,
-                                  const std::string &old_server) = 0;
+  virtual int set_remove_conf_log(const std::string &old_server) = 0;
 };
 
 class lmdb_raft_logger : public raft_logger {
@@ -279,11 +273,9 @@ public:
 
   int get_last_conf_applied();
 
-  int set_add_conf_log(const int &term, const std::string &uuid,
-                       const std::string &new_server);
+  int set_add_conf_log(const std::string &new_server);
 
-  int set_remove_conf_log(const int &term, const std::string &uuid,
-                          const std::string &old_server);
+  int set_remove_conf_log(const std::string &old_server);
 };
 
 #endif

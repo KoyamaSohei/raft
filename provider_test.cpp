@@ -79,9 +79,9 @@ public:
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::contains_uuid));
     ON_CALL(*this, get_last_conf_applied())
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::get_last_conf_applied));
-    ON_CALL(*this, set_add_conf_log(_, _, _))
+    ON_CALL(*this, set_add_conf_log(_))
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::set_add_conf_log));
-    ON_CALL(*this, set_remove_conf_log(_, _, _))
+    ON_CALL(*this, set_remove_conf_log(_))
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::set_remove_conf_log));
   }
   ~mock_raft_logger() { real_.clean_up(); }
@@ -109,11 +109,8 @@ public:
   MOCK_METHOD2(match_log, bool(const int index, const int term));
   MOCK_METHOD1(contains_uuid, bool(const std::string &uuid));
   MOCK_METHOD0(get_last_conf_applied, int());
-  MOCK_METHOD3(set_add_conf_log, int(const int &term, const std::string &uuid,
-                                     const std::string &new_server));
-  MOCK_METHOD3(set_remove_conf_log,
-               int(const int &term, const std::string &uuid,
-                   const std::string &old_server));
+  MOCK_METHOD1(set_add_conf_log, int(const std::string &new_server));
+  MOCK_METHOD1(set_remove_conf_log, int(const std::string &old_server));
 };
 
 class provider_test : public ::testing::Test {

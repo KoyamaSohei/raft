@@ -410,9 +410,7 @@ void raft_provider::add_server_rpc(const tl::request &r,
     } catch (tl::exception &e) {}
     return;
   }
-  std::string uuid;
-  generate_special_uuid(uuid);
-  logger->set_add_conf_log(logger->get_current_term(), uuid, new_server);
+  logger->set_add_conf_log(new_server);
   mu.unlock();
   try {
     r.respond(add_server_response(RAFT_SUCCESS, leader_hint));
@@ -450,8 +448,7 @@ void raft_provider::remove_server_rpc(const tl::request &r,
   std::string uuid;
   generate_special_uuid(uuid);
 
-  int index =
-    logger->set_remove_conf_log(logger->get_current_term(), uuid, old_server);
+  int index = logger->set_remove_conf_log(old_server);
 
   while (get_commit_index() < index && get_state() == raft_state::leader) {
     cond.wait(lock);
@@ -742,8 +739,7 @@ bool raft_provider::remove_self_from_cluster() {
       printf("successfly  sending remove_server rpc,shutdown..\n");
       std::string uuid;
       generate_special_uuid(uuid);
-      logger->set_remove_conf_log(logger->get_current_term(), uuid,
-                                  logger->get_id());
+      logger->set_remove_conf_log(logger->get_id());
       return true;
     }
     if (resp.get_status() == RAFT_NODE_IS_NOT_LEADER) {
