@@ -624,8 +624,10 @@ void raft_provider::run_leader() {
 }
 
 void raft_provider::run() {
-  printf("run\n");
   mu.lock();
+  if (!logger->contains_self_in_nodes()) {
+    printf("warning: self addr is not in nodes\n");
+  }
 
   int last_applied = get_last_applied();
   int commit_index = get_commit_index();
