@@ -7,8 +7,8 @@
 #include "builder.hpp"
 
 raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
-                             raft_fsm *_fsm)
-  : tl::provider<raft_provider>(e, RAFT_PROVIDER_ID)
+                             raft_fsm *_fsm, uint16_t provider_id)
+  : tl::provider<raft_provider>(e, provider_id)
   , _state(raft_state::follower)
   , logger(_logger)
   , fsm(_fsm)

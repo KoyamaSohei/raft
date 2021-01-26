@@ -108,7 +108,8 @@ private:
   void transfer_leadership();
 
 public:
-  raft_provider(tl::engine &e, raft_logger *logger, raft_fsm *fsm);
+  raft_provider(tl::engine &e, raft_logger *logger, raft_fsm *fsm,
+                uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
   void start();
