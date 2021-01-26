@@ -666,7 +666,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
   EXPECT_CALL(*logger, set_current_term(1));
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
-  int err = timeout_now(0, 1, 1);
+  int err = timeout_now(1, 1, 1);
   ASSERT_EQ(err, RAFT_NODE_IS_NOT_FOLLOWER);
 }
 
@@ -677,7 +677,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
   EXPECT_CALL(*logger, set_current_term(1));
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
-  int err = timeout_now(0, 0, 0);
+  int err = timeout_now(1, 0, 0);
   ASSERT_EQ(err, RAFT_NODE_IS_NOT_FOLLOWER);
   ASSERT_EQ(fetch_state(), raft_state::candidate);
 }
