@@ -109,11 +109,11 @@ public:
   MOCK_METHOD2(match_log, bool(const int index, const int term));
   MOCK_METHOD1(contains_uuid, bool(const std::string &uuid));
   MOCK_METHOD0(get_last_conf_applied, int());
-  MOCK_METHOD3(set_add_conf_log, void(const int &term, const std::string &uuid,
-                                      const std::string &new_server));
+  MOCK_METHOD3(set_add_conf_log, int(const int &term, const std::string &uuid,
+                                     const std::string &new_server));
   MOCK_METHOD3(set_remove_conf_log,
-               void(const int &term, const std::string &uuid,
-                    const std::string &old_server));
+               int(const int &term, const std::string &uuid,
+                   const std::string &old_server));
 };
 
 class provider_test : public ::testing::Test {

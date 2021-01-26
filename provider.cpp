@@ -422,30 +422,26 @@ void raft_provider::add_server_rpc(const tl::request &r,
 
 void raft_provider::remove_server_rpc(const tl::request &r,
                                       std::string old_server) {
-  mu.lock();
+  std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (!leader_hint.empty()) {
-      mu.unlock();
       try {
         r.respond(add_server_response(RAFT_LEADER_NOT_FOUND, ""));
       } catch (tl::exception &e) {}
       return;
     }
-    mu.unlock();
     try {
       r.respond(add_server_response(RAFT_NODE_IS_NOT_LEADER, leader_hint));
     } catch (tl::exception &e) {}
     return;
   }
   if (get_commit_index() < logger->get_last_conf_applied()) {
-    mu.unlock();
     try {
       r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
     } catch (tl::exception &e) {}
     return;
   }
   if (old_server == logger->get_id()) {
-    mu.unlock();
     try {
       r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
     } catch (tl::exception &e) {}
@@ -453,8 +449,20 @@ void raft_provider::remove_server_rpc(const tl::request &r,
   }
   std::string uuid;
   generate_special_uuid(uuid);
-  logger->set_remove_conf_log(logger->get_current_term(), uuid, old_server);
-  mu.unlock();
+
+  int index =
+    logger->set_remove_conf_log(logger->get_current_term(), uuid, old_server);
+
+  while (get_commit_index() < index && get_state() == raft_state::leader) {
+    cond.wait(lock);
+  }
+  if (get_state() != raft_state::leader) {
+    try {
+      r.respond(add_server_response(RAFT_NODE_IS_NOT_LEADER, leader_hint));
+    } catch (tl::exception &e) {}
+    return;
+  }
+
   try {
     r.respond(add_server_response(RAFT_SUCCESS, leader_hint));
   } catch (tl::exception &e) {}
