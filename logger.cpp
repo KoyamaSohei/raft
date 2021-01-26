@@ -487,6 +487,7 @@ void lmdb_raft_logger::set_log(const int index, const int term,
     std::set<std::string> p_prev_nodes, p_next_nodes;
     parse_conf_log(p_prev_index, p_prev_nodes, p_next_index, p_next_nodes,
                    p_conf);
+    printf("overwritten config %s \n", p_log.c_str());
     assert(p_next_index == index);
 
     // roll back
