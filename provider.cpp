@@ -739,8 +739,8 @@ bool raft_provider::remove_self_from_cluster() {
     remove_server_response resp =
       m_remove_server_rpc.on(get_handle(leader_hint))(logger->get_id());
     if (resp.get_status() == RAFT_SUCCESS) {
-      printf("successfly  sending remove_server rpc,please wait\n");
-      return false;
+      printf("successfly  sending remove_server rpc,shutdown..\n");
+      return true;
     }
     if (resp.get_status() == RAFT_NODE_IS_NOT_LEADER) {
       leader_hint = resp.get_leader_hint();
