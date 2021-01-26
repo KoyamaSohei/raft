@@ -831,10 +831,10 @@ TEST_F(provider_test, ADD_SERVER_ROLLBACK) {
   ASSERT_EQ(logger->get_last_conf_applied(), 2);
   ASSERT_EQ(logger->get_num_nodes(), 2);
   ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  EXPECT_CALL(*logger, set_log(2, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+  EXPECT_CALL(*logger, set_log(2, 2, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
-  ent.emplace_back(2, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+  ent.emplace_back(2, 2, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   append_entries_response r2 = append_entries(2, 1, 1, ent, 1, caddr);
   ASSERT_EQ(r2.get_term(), 2);
