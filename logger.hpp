@@ -60,26 +60,39 @@ protected:
   int last_conf_applied;
 
 public:
-  raft_logger(std::string _id, std::set<std::string> _nodes)
-    : id(_id)
-    , voted_for("")
-    , current_term(0)
-    , nodes(_nodes)
-    , peers(_nodes)
-    , stored_log_num(0) {
+  raft_logger(std::string _id)
+    : id(_id), voted_for(""), current_term(0), stored_log_num(0) {
     peers.erase(id);
   };
   virtual ~raft_logger(){};
 
   /**
    * init initialize DB and Persistent State
+   * if want nodes to join exists cluster, please use join() instead.
+   * location of log is depends on id.
+   * if want to restart with past log, please use bootstrap() instread.
+   * if log already exists, aborted.
+   */
+  virtual void init() = 0;
+
+  /**
+   *  join initialize DB and Persistent State
+   *  if want to start new cluster, please use init() instead.
+   *  location of log is depends on id.
+   *  if want to restart with past log, please use bootstrap() instread.
+   *  if log already exists, aborted.
+   */
+  virtual void join() = 0;
+
+  /**
+   * bootstrap recover DB and Persistent State
    * location of log is depends on id.
    * if log already exists, all states
    * (voted_for,current_term,nodes,peers,and stored_log_num,last_conf_applied)
    * will be overwritten with past log
+   * if log is empty, aborted.
    */
-  virtual void init() = 0;
-
+  virtual void bootstrap() = 0;
   /**
    * clean_up clean up log.
    * use this before restart node with initial state.
@@ -237,10 +250,12 @@ private:
   bool get_uuid(const std::string &uuid, MDB_txn *ptxn = NULL);
 
 public:
-  lmdb_raft_logger(std::string _id, std::set<std::string> _nodes);
+  lmdb_raft_logger(std::string _id);
   ~lmdb_raft_logger();
 
   void init();
+  void join();
+  void bootstrap();
 
   void clean_up();
 

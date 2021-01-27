@@ -58,14 +58,12 @@ int main(int argc, char **argv) {
       tl::provider_handle ph(e, RAFT_PROVIDER_ID);
       client_query_response resp = query.on(ph)(command);
 
-      int status = resp.get_status();
-
-      switch (status) {
+      switch (resp.status) {
         case RAFT_SUCCESS:
-          std::cout << resp.get_response() << std::endl;
+          std::cout << resp.response << std::endl;
           return 0;
         case RAFT_NODE_IS_NOT_LEADER:
-          next_addr = resp.get_leader_hint();
+          next_addr = resp.leader_hint;
           continue;
         case RAFT_LEADER_NOT_FOUND:
           std::cerr << "leader not found" << std::endl;
@@ -107,13 +105,11 @@ int main(int argc, char **argv) {
       tl::provider_handle ph(e, RAFT_PROVIDER_ID);
       client_request_response resp = request.on(ph)(uuid, command);
 
-      int status = resp.get_status();
-      switch (status) {
+      switch (resp.status) {
         case RAFT_SUCCESS:
-          std::cout << resp.get_index() << std::endl;
           return 0;
         case RAFT_NODE_IS_NOT_LEADER:
-          next_addr = resp.get_leader_hint();
+          next_addr = resp.leader_hint;
           continue;
         case RAFT_LEADER_NOT_FOUND:
           std::cerr << "leader not found" << std::endl;
