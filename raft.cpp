@@ -122,7 +122,68 @@ void run_join(std::string self, std::string target_id) {
 
   setup_sigset(&ss);
 
-  // TODO
+  ABT_init(0, NULL);
+
+  printf("try binding with %s%s\n", PROTOCOL_PREFIX, self.c_str());
+  tl::engine my_engine(PROTOCOL_PREFIX + self, THALLIUM_SERVER_MODE, true, 2);
+  printf("Server running at address %s\n", ((string)my_engine.self()).c_str());
+
+  tl::remote_procedure m_add_server_rpc(my_engine.define("add_server"));
+
+  while (1) {
+    tl::provider_handle ph(my_engine.lookup(target_id), RAFT_PROVIDER_ID);
+    add_server_response resp = m_add_server_rpc.on(ph)(self);
+    switch (resp.status) {
+      case RAFT_LEADER_NOT_FOUND:
+        printf("leader not found, please retry another addr\n");
+        exit(0);
+        break;
+      case RAFT_NODE_IS_NOT_LEADER:
+        target_id = resp.leader_hint;
+      case RAFT_DENY_REQUEST:
+        printf("deny request, please retry another addr\n");
+        exit(0);
+        break;
+    }
+    if (resp.status == RAFT_SUCCESS) { break; }
+    usleep(INTERVAL);
+  }
+
+  lmdb_raft_logger logger(self);
+  kvs_raft_fsm fsm;
+
+  logger.join();
+
+  raft_provider provider(my_engine, &logger, &fsm);
+
+  signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
+
+  ABT_xstream_create(ABT_SCHED_NULL, &sig_stream);
+  ABT_thread_create_on_xstream(sig_stream, signal_handler, &arg,
+                               ABT_THREAD_ATTR_NULL, &sig_thread);
+
+  provider.start();
+
+  ABT_xstream_create(ABT_SCHED_NULL, &tick_stream);
+  ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
+                               ABT_THREAD_ATTR_NULL, &tick_thread);
+
+  while (1) {
+    usleep(INTERVAL);
+    ABT_thread_get_state(tick_thread, &tick_state);
+    assert(tick_state == ABT_THREAD_STATE_TERMINATED);
+    ABT_thread_free(&tick_thread);
+    ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
+                                 ABT_THREAD_ATTR_NULL, &tick_thread);
+  }
+
+  my_engine.wait_for_finalize();
+
+  ABT_thread_free(&sig_thread);
+  ABT_thread_free(&tick_thread);
+
+  ABT_xstream_free(&sig_stream);
+  ABT_xstream_free(&tick_stream);
 }
 
 void run_bootstrap(std::string self) {
