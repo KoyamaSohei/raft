@@ -343,7 +343,6 @@ public:
   void set_current_term(int current_term);
 
   bool exists_voted_for();
-  void clear_voted_for();
   void set_voted_for_self();
   void set_voted_for(const std::string &new_addr);
 
