@@ -126,6 +126,7 @@ void run_join(std::string self, std::string target_id) {
         break;
       case RAFT_NODE_IS_NOT_LEADER:
         target_id = resp.leader_hint;
+        break;
       case RAFT_DENY_REQUEST:
         printf("deny request, please retry another addr\n");
         exit(0);
