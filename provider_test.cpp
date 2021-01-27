@@ -56,8 +56,6 @@ public:
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::set_current_term));
     ON_CALL(*this, exists_voted_for)
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::exists_voted_for));
-    ON_CALL(*this, clear_voted_for)
-      .WillByDefault(Invoke(&real_, &lmdb_raft_logger::clear_voted_for));
     ON_CALL(*this, set_voted_for_self)
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::set_voted_for_self));
     ON_CALL(*this, set_voted_for)
