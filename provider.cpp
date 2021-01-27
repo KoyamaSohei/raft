@@ -416,10 +416,9 @@ void raft_provider::remove_server_rpc(const tl::request &req,
   return;
 }
 
-void raft_provider::echo_state_rpc(const tl::request &r) {
-  try {
-    r.respond((int)get_state());
-  } catch (tl::exception &e) {}
+void raft_provider::echo_state_rpc(const tl::request &req) {
+  printf("echo state\n");
+  req.respond<int>((int)(get_state()));
 }
 
 void raft_provider::become_follower() {
