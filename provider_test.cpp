@@ -194,9 +194,11 @@ protected:
   }
 
   request_vote_response request_vote(int term, std::string candidate_id,
-                                     int last_log_index, int last_log_term) {
-    request_vote_response resp = m_request_vote_rpc.on(server_addr)(
-      term, candidate_id, last_log_index, last_log_term);
+                                     int last_log_index, int last_log_term,
+                                     bool has_disrupt_permission = false) {
+    request_vote_response resp =
+      m_request_vote_rpc.on(server_addr)(term, candidate_id, last_log_index,
+                                         last_log_term, has_disrupt_permission);
     return resp;
   }
 
