@@ -24,27 +24,17 @@ enum class raft_state {
   leader,
 };
 
-class raft_entry {
-private:
+struct raft_entry {
   int index;
   int term;
   std::string uuid;
   std::string command;
 
-public:
   raft_entry(int _index = 0, int _term = 0, std::string _uuid = "",
              std::string _command = "")
     : index(_index), term(_term), uuid(_uuid), command(_command) {
     assert(0 <= index);
   }
-
-  int get_index() { return index; }
-
-  int get_term() { return term; }
-
-  std::string get_uuid() { return uuid; }
-
-  std::string get_command() { return command; }
 
   template <typename A>
   void serialize(A& ar) {
@@ -55,20 +45,14 @@ public:
   }
 };
 
-class append_entries_response {
-private:
+struct append_entries_response {
   int term;
   bool success;
 
-public:
   append_entries_response(int _term = 1, bool _success = false)
     : term(_term), success(_success) {
     assert(0 <= term);
   }
-
-  int get_term() { return term; }
-
-  bool is_success() { return success; }
 
   template <typename A>
   void serialize(A& ar) {
@@ -77,20 +61,14 @@ public:
   }
 };
 
-class request_vote_response {
-private:
+struct request_vote_response {
   int term;
   bool vote_granted;
 
-public:
   request_vote_response(int _term = 1, bool _vote_granted = false)
     : term(_term), vote_granted(_vote_granted) {
     assert(0 <= term);
   }
-
-  int get_term() { return term; }
-
-  bool is_vote_granted() { return vote_granted; }
 
   template <typename A>
   void serialize(A& ar) {
@@ -115,48 +93,30 @@ public:
 #define RAFT_SUCCESS 0
 #define RAFT_FAILED 1
 
-class client_request_response {
-private:
+struct client_request_response {
   int status;
-  int index;
   std::string leader_hint;
 
-public:
-  client_request_response(int _status = RAFT_NOT_IMPLEMENTED, int _index = 0,
+  client_request_response(int _status = RAFT_NOT_IMPLEMENTED,
                           std::string _leader_hint = "")
-    : status(_status), index(_index), leader_hint(_leader_hint) {}
-
-  int get_status() { return status; }
-
-  int get_index() { return index; }
-
-  std::string get_leader_hint() { return leader_hint; }
+    : status(_status), leader_hint(_leader_hint) {}
 
   template <typename A>
   void serialize(A& ar) {
     ar& status;
-    ar& index;
     ar& leader_hint;
   }
 };
 
-class client_query_response {
-private:
+struct client_query_response {
   int status;
   std::string response;
   std::string leader_hint;
 
-public:
   client_query_response(int _status = RAFT_NOT_IMPLEMENTED,
                         std::string _response = "",
                         std::string _leader_hint = "")
     : status(_status), response(_response), leader_hint(_leader_hint) {}
-
-  int get_status() { return status; }
-
-  std::string get_response() { return response; }
-
-  std::string get_leader_hint() { return leader_hint; }
 
   template <typename A>
   void serialize(A& ar) {
@@ -166,19 +126,13 @@ public:
   }
 };
 
-class add_server_response {
-private:
+struct add_server_response {
   int status;
   std::string leader_hint;
 
-public:
   add_server_response(int _status = RAFT_NOT_IMPLEMENTED,
                       std::string _leader_hint = "")
     : status(_status), leader_hint(_leader_hint) {}
-
-  int get_status() { return status; }
-
-  std::string get_leader_hint() { return leader_hint; }
 
   template <typename A>
   void serialize(A& ar) {
@@ -187,19 +141,13 @@ public:
   }
 };
 
-class remove_server_response {
-private:
+struct remove_server_response {
   int status;
   std::string leader_hint;
 
-public:
   remove_server_response(int _status = RAFT_NOT_IMPLEMENTED,
                          std::string _leader_hint = "")
     : status(_status), leader_hint(_leader_hint) {}
-
-  int get_status() { return status; }
-
-  std::string get_leader_hint() { return leader_hint; }
 
   template <typename A>
   void serialize(A& ar) {

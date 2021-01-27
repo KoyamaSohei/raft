@@ -277,8 +277,8 @@ TEST_F(provider_test, QUERY_RPC) {
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_query_response r = client_query("hello");
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  ASSERT_STREQ(r.get_response().c_str(), "world");
+  ASSERT_EQ(r.status, RAFT_SUCCESS);
+  ASSERT_STREQ(r.response.c_str(), "world");
 }
 
 TEST_F(provider_test, REQUEST_RPC) {
@@ -294,12 +294,12 @@ TEST_F(provider_test, REQUEST_RPC) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 2);
+  ASSERT_EQ(r.status, RAFT_SUCCESS);
+
   provider->run(); // applied "foo" "bar"
   client_query_response r2 = client_query("foo");
-  ASSERT_EQ(r2.get_status(), RAFT_SUCCESS);
-  ASSERT_STREQ(r2.get_response().c_str(), "bar");
+  ASSERT_EQ(r2.status, RAFT_SUCCESS);
+  ASSERT_STREQ(r2.response.c_str(), "bar");
 }
 
 TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
@@ -308,8 +308,7 @@ TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_LEADER_NOT_FOUND);
-  ASSERT_EQ(r.get_index(), 0);
+  ASSERT_EQ(r.status, RAFT_LEADER_NOT_FOUND);
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM) {
@@ -322,8 +321,8 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
   EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r =
     append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
-  ASSERT_TRUE(r.is_success());
-  ASSERT_EQ(r.get_term(), 2);
+  ASSERT_TRUE(r.success);
+  ASSERT_EQ(r.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -337,8 +336,8 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
   EXPECT_CALL(*logger, set_voted_for(caddr));
   EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r = request_vote(2, caddr, 1, 1);
-  ASSERT_TRUE(r.is_vote_granted());
-  ASSERT_EQ(r.get_term(), 2);
+  ASSERT_TRUE(r.vote_granted);
+  ASSERT_EQ(r.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -353,8 +352,8 @@ TEST_F(provider_test, GET_LOWER_TERM) {
   EXPECT_CALL(*logger, set_current_term(_)).Times(0);
   append_entries_response r =
     append_entries(0, 0, 0, std::vector<raft_entry>(), 0, caddr);
-  ASSERT_FALSE(r.is_success());
-  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_FALSE(r.success);
+  ASSERT_EQ(r.term, 1);
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
@@ -368,8 +367,8 @@ TEST_F(provider_test, GET_LOWER_TERM_2) {
   EXPECT_CALL(*logger, set_voted_for(_)).Times(0);
   EXPECT_CALL(*logger, set_current_term(_)).Times(0);
   request_vote_response r = request_vote(0, caddr, 0, 0);
-  ASSERT_FALSE(r.is_vote_granted());
-  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_FALSE(r.vote_granted);
+  ASSERT_EQ(r.term, 1);
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
@@ -379,8 +378,8 @@ TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
   EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r =
     append_entries(2, 1, 1, std::vector<raft_entry>(), 0, caddr);
-  ASSERT_EQ(r.get_term(), 2);
-  ASSERT_FALSE(r.is_success());
+  ASSERT_EQ(r.term, 2);
+  ASSERT_FALSE(r.success);
   provider->run();
 }
 
@@ -397,13 +396,13 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 2);
+  ASSERT_EQ(r.status, RAFT_SUCCESS);
+
   EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r2 =
     append_entries(2, 2, 2, std::vector<raft_entry>(), 0, caddr);
-  ASSERT_FALSE(r2.is_success());
-  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_FALSE(r2.success);
+  ASSERT_EQ(r2.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -420,12 +419,12 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 2);
+  ASSERT_EQ(r.status, RAFT_SUCCESS);
+
   EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 1, 0);
-  ASSERT_FALSE(r2.is_vote_granted());
-  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_FALSE(r2.vote_granted);
+  ASSERT_EQ(r2.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -442,12 +441,12 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 2);
+  ASSERT_EQ(r.status, RAFT_SUCCESS);
+
   EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 1, 1);
-  ASSERT_FALSE(r2.is_vote_granted());
-  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_FALSE(r2.vote_granted);
+  ASSERT_EQ(r2.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -456,8 +455,8 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
   EXPECT_CALL(*logger, set_voted_for(caddr));
   EXPECT_CALL(*logger, set_current_term(1));
   request_vote_response r2 = request_vote(1, caddr, 1, 1);
-  ASSERT_TRUE(r2.is_vote_granted());
-  ASSERT_EQ(r2.get_term(), 1);
+  ASSERT_TRUE(r2.vote_granted);
+  ASSERT_EQ(r2.term, 1);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -477,12 +476,12 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 2);
+  ASSERT_EQ(r.status, RAFT_SUCCESS);
+
   EXPECT_CALL(*logger, set_voted_for(caddr));
   request_vote_response r2 = request_vote(2, caddr, 2, 1);
-  ASSERT_TRUE(r2.is_vote_granted());
-  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_TRUE(r2.vote_granted);
+  ASSERT_EQ(r2.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -500,13 +499,13 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_SUCCESS);
-  ASSERT_EQ(r.get_index(), 2);
+  ASSERT_EQ(r.status, RAFT_SUCCESS);
+
   EXPECT_CALL(*logger, set_voted_for(caddr));
   EXPECT_CALL(*logger, set_current_term(2));
   request_vote_response r2 = request_vote(2, caddr, 0, 2);
-  ASSERT_TRUE(r2.is_vote_granted());
-  ASSERT_EQ(r2.get_term(), 2);
+  ASSERT_TRUE(r2.vote_granted);
+  ASSERT_EQ(r2.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -518,8 +517,8 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   request_vote_response r2 = request_vote(1, caddr, 0, 0);
-  ASSERT_FALSE(r2.is_vote_granted());
-  ASSERT_EQ(r2.get_term(), 1);
+  ASSERT_FALSE(r2.vote_granted);
+  ASSERT_EQ(r2.term, 1);
   ASSERT_EQ(fetch_state(), raft_state::leader);
 }
 
@@ -531,16 +530,16 @@ TEST_F(provider_test, APPLY_ENTRIES) {
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
-  ASSERT_EQ(r.get_term(), 1);
-  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.term, 1);
+  ASSERT_TRUE(r.success);
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(2));
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_query_response r2 = client_query("foo");
-  ASSERT_EQ(r2.get_status(), RAFT_SUCCESS);
-  ASSERT_STREQ(r2.get_response().c_str(), "bar");
+  ASSERT_EQ(r2.status, RAFT_SUCCESS);
+  ASSERT_STREQ(r2.response.c_str(), "bar");
 }
 
 TEST_F(provider_test, NOT_DETERMINED_LEADER) {
@@ -561,8 +560,8 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   append_entries_response r =
     append_entries(1, 0, 0, std::vector<raft_entry>(), 0, caddr);
-  ASSERT_TRUE(r.is_success());
-  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.success);
+  ASSERT_EQ(r.term, 1);
   ASSERT_EQ(fetch_state(), raft_state::follower);
 }
 
@@ -570,16 +569,16 @@ TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
   SetUp(std::set<std::string>{addr, "127.0.0.1:28888"});
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_query_response r = client_query("hello");
-  ASSERT_EQ(r.get_status(), RAFT_LEADER_NOT_FOUND);
-  ASSERT_STREQ(r.get_response().c_str(), "");
+  ASSERT_EQ(r.status, RAFT_LEADER_NOT_FOUND);
+  ASSERT_STREQ(r.response.c_str(), "");
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self());
   EXPECT_CALL(*logger, set_current_term(1));
   provider->run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   client_query_response r2 = client_query("hello");
-  ASSERT_EQ(r2.get_status(), RAFT_LEADER_NOT_FOUND);
-  ASSERT_STREQ(r2.get_response().c_str(), "");
+  ASSERT_EQ(r2.status, RAFT_LEADER_NOT_FOUND);
+  ASSERT_STREQ(r2.response.c_str(), "");
 }
 
 TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
@@ -588,8 +587,8 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   client_request_response r =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_LEADER_NOT_FOUND);
-  ASSERT_EQ(r.get_index(), 0);
+  ASSERT_EQ(r.status, RAFT_LEADER_NOT_FOUND);
+
   usleep(3 * INTERVAL);
   EXPECT_CALL(*logger, set_voted_for_self()).Times(::testing::Between(1, 2));
   EXPECT_CALL(*logger, set_current_term(::testing::Ge(2)))
@@ -599,23 +598,22 @@ TEST_F(provider_test, CLIENT_PUT_LEADER_NOT_FOUND) {
   client_request_response r2 =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r2.get_status(), RAFT_LEADER_NOT_FOUND);
-  ASSERT_EQ(r2.get_index(), 0);
+  ASSERT_EQ(r2.status, RAFT_LEADER_NOT_FOUND);
 }
 
 TEST_F(provider_test, CLIENT_PUT_NODE_IS_NOT_LEADER) {
   SetUp(std::set<std::string>{addr});
   append_entries_response r =
     append_entries(1, 0, 0, std::vector<raft_entry>(), 0, caddr);
-  ASSERT_TRUE(r.is_success());
-  ASSERT_EQ(r.get_term(), 1);
+  ASSERT_TRUE(r.success);
+  ASSERT_EQ(r.term, 1);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_request_response r2 =
     client_request("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r2.get_status(), RAFT_NODE_IS_NOT_LEADER);
-  ASSERT_EQ(r2.get_index(), 0);
-  ASSERT_STREQ(r2.get_leader_hint().c_str(), caddr.c_str());
+  ASSERT_EQ(r2.status, RAFT_NODE_IS_NOT_LEADER);
+
+  ASSERT_STREQ(r2.leader_hint.c_str(), caddr.c_str());
 }
 
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
@@ -646,13 +644,13 @@ TEST_F(provider_test, NODE_IS_NOT_LEADER) {
   EXPECT_CALL(*logger, set_current_term(2));
   append_entries_response r =
     append_entries(2, 0, 0, std::vector<raft_entry>(), 0, caddr);
-  ASSERT_TRUE(r.is_success());
-  ASSERT_EQ(r.get_term(), 2);
+  ASSERT_TRUE(r.success);
+  ASSERT_EQ(r.term, 2);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   client_query_response r2 = client_query("hello");
-  ASSERT_EQ(r2.get_status(), RAFT_NODE_IS_NOT_LEADER);
-  ASSERT_STREQ(r2.get_response().c_str(), "");
-  ASSERT_STREQ(r2.get_leader_hint().c_str(), caddr.c_str());
+  ASSERT_EQ(r2.status, RAFT_NODE_IS_NOT_LEADER);
+  ASSERT_STREQ(r2.response.c_str(), "");
+  ASSERT_STREQ(r2.leader_hint.c_str(), caddr.c_str());
 }
 
 TEST_F(provider_test, PUT_INVALID_UUID) {
@@ -664,7 +662,7 @@ TEST_F(provider_test, PUT_INVALID_UUID) {
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_request_response r =
     client_request("foobarbuz", "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(r.get_status(), RAFT_INVALID_UUID);
+  ASSERT_EQ(r.status, RAFT_INVALID_UUID);
 }
 
 TEST_F(provider_test, TIMEOUT_NOW) {
@@ -717,8 +715,8 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM_2) {
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
-  ASSERT_EQ(r.get_term(), 1);
-  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.term, 1);
+  ASSERT_TRUE(r.success);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(0, 1, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
@@ -733,8 +731,8 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV) {
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
-  ASSERT_EQ(r.get_term(), 1);
-  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.term, 1);
+  ASSERT_TRUE(r.success);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 0, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
@@ -749,8 +747,8 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_2) {
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
-  ASSERT_EQ(r.get_term(), 1);
-  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.term, 1);
+  ASSERT_TRUE(r.success);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 1, 0);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);
@@ -765,8 +763,8 @@ TEST_F(provider_test, TIMEOUT_NOW_INVALID_PREV_3) {
   ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
   append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
-  ASSERT_EQ(r.get_term(), 1);
-  ASSERT_TRUE(r.is_success());
+  ASSERT_EQ(r.term, 1);
+  ASSERT_TRUE(r.success);
   ASSERT_EQ(fetch_state(), raft_state::follower);
   int err = timeout_now(1, 0, 1);
   ASSERT_EQ(err, RAFT_INVALID_REQUEST);

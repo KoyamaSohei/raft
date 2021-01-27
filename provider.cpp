@@ -153,22 +153,17 @@ void raft_provider::set_next_index(const std::string &node, int index) {
   _next_index[node] = index;
 }
 
-void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
-                                       int req_prev_index, int req_prev_term,
-                                       std::vector<raft_entry> req_entries,
-                                       int req_leader_commit,
-                                       std::string req_leader_id) {
+void raft_provider::append_entries_rpc(
+  const tl::request &req, int req_term, int req_prev_index, int req_prev_term,
+  const std::vector<raft_entry> &req_entries, int req_leader_commit,
+  const std::string &req_leader_id) {
   mu.lock();
 
   int current_term = logger->get_current_term();
 
   if (req_term < current_term) {
     mu.unlock();
-    try {
-      r.respond(append_entries_response(current_term, false));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
+    req.respond<append_entries_response>({current_term, false});
     return;
   }
 
@@ -199,39 +194,30 @@ void raft_provider::append_entries_rpc(const tl::request &r, int req_term,
   bool is_match = logger->match_log(req_prev_index, req_prev_term);
   if (!is_match) {
     mu.unlock();
-    try {
-      r.respond(append_entries_response(current_term, false));
-    } catch (tl::exception &e) {
-      printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-    }
+    req.respond<append_entries_response>({current_term, false});
     return;
   }
 
   for (raft_entry ent : req_entries) {
-    printf("entry received, idx: %d, term: %d, cmd: %s\n", ent.get_index(),
-           ent.get_term(), ent.get_command().c_str());
-    logger->set_log(ent.get_index(), ent.get_term(), ent.get_uuid(),
-                    ent.get_command());
+    printf("entry received, idx: %d, term: %d, cmd: %s\n", ent.index, ent.term,
+           ent.command.c_str());
+    logger->set_log(ent.index, ent.term, ent.uuid, ent.command);
   }
 
   if (req_leader_commit > get_commit_index()) {
     int next_index = req_leader_commit;
     if (!req_entries.empty()) {
-      next_index = std::min(next_index, req_entries.back().get_index());
+      next_index = std::min(next_index, req_entries.back().index);
     }
     set_commit_index(next_index);
   }
   mu.unlock();
-  try {
-    r.respond(append_entries_response(current_term, true));
-  } catch (tl::exception &e) {
-    printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-  }
+  req.respond<append_entries_response>({current_term, true});
   return;
 }
 
-void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
-                                     std::string req_candidate_id,
+void raft_provider::request_vote_rpc(const tl::request &req, int req_term,
+                                     const std::string &req_candidate_id,
                                      int req_last_log_index,
                                      int req_last_log_term) {
   mu.lock();
@@ -262,83 +248,66 @@ void raft_provider::request_vote_rpc(const tl::request &r, int req_term,
     update_timeout_limit();
   }
   mu.unlock();
-  try {
-    r.respond(request_vote_response(current_term, granted));
-  } catch (tl::exception &e) {
-    printf("error respond to %s\n", std::string(r.get_endpoint()).c_str());
-  }
+  req.respond<request_vote_response>({current_term, granted});
   return;
 }
 
-void raft_provider::timeout_now_rpc(const tl::request &r, int req_term,
+void raft_provider::timeout_now_rpc(const tl::request &req, int req_term,
                                     int req_prev_index, int req_prev_term) {
   mu.lock();
   if (req_term > logger->get_current_term()) {
     set_force_current_term(req_term);
     mu.unlock();
-    try {
-      r.respond(RAFT_INVALID_REQUEST);
-    } catch (tl::exception &e) {}
+    req.respond<int>(RAFT_INVALID_REQUEST);
     return;
   }
   if (req_term < logger->get_current_term()) {
     mu.unlock();
-    try {
-      r.respond(RAFT_INVALID_REQUEST);
-    } catch (tl::exception &e) {}
+    req.respond<int>(RAFT_INVALID_REQUEST);
     return;
   }
   if (get_state() != raft_state::follower) {
     mu.unlock();
-    try {
-      r.respond(RAFT_NODE_IS_NOT_FOLLOWER);
-    } catch (tl::exception &e) {}
+    req.respond<int>(RAFT_NODE_IS_NOT_FOLLOWER);
     return;
   }
 
   if (!logger->match_log(req_prev_index, req_prev_term)) {
     mu.unlock();
-    try {
-      r.respond(RAFT_INVALID_REQUEST);
-    } catch (tl::exception &e) {}
+    req.respond<int>(RAFT_INVALID_REQUEST);
     return;
   }
   update_timeout_limit();
   become_candidate();
-  int err = (get_state() == raft_state::leader) ? RAFT_SUCCESS : RAFT_FAILED;
+  if (get_state() == raft_state::leader) {
+    mu.unlock();
+    req.respond<int>(RAFT_SUCCESS);
+    return;
+  }
   mu.unlock();
-  try {
-    r.respond(err);
-  } catch (tl::exception &e) {}
+  req.respond<int>(RAFT_FAILED);
   return;
 }
 
-void raft_provider::client_request_rpc(const tl::request &r, std::string uuid,
-                                       std::string command) {
+void raft_provider::client_request_rpc(const tl::request &req,
+                                       const std::string &uuid,
+                                       const std::string &command) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (leader_hint.empty()) {
-      try {
-        r.respond(client_request_response(RAFT_LEADER_NOT_FOUND));
-      } catch (tl::exception &e) {}
+      req.respond<client_request_response>({RAFT_LEADER_NOT_FOUND});
       return;
     }
-    try {
-      r.respond(
-        client_request_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<client_request_response>(
+      {RAFT_NODE_IS_NOT_LEADER, leader_hint});
     return;
   }
   if (uuid.size() + 1 != UUID_LENGTH) {
-    try {
-      r.respond(client_request_response(RAFT_INVALID_UUID, 0));
-    } catch (tl::exception &e) {}
+    req.respond<client_request_response>(RAFT_INVALID_UUID);
     return;
   }
   if (logger->contains_uuid(uuid)) {
-    try {
-      r.respond(client_request_response(RAFT_DUPLICATE_UUID, 0));
-    } catch (tl::exception &e) {}
+    req.respond<client_request_response>({RAFT_DUPLICATE_UUID});
     return;
   }
   int index = logger->append_log(uuid, command);
@@ -348,107 +317,83 @@ void raft_provider::client_request_rpc(const tl::request &r, std::string uuid,
   }
 
   if (get_state() != raft_state::leader) {
-    try {
-      r.respond(
-        client_request_response(RAFT_NODE_IS_NOT_LEADER, 0, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<client_request_response>(
+      {RAFT_NODE_IS_NOT_LEADER, leader_hint});
     return;
   }
-  try {
-    r.respond(client_request_response(RAFT_SUCCESS, index));
-  } catch (tl::exception &e) {}
+  req.respond<client_request_response>({RAFT_SUCCESS});
+  return;
 }
 
-void raft_provider::client_query_rpc(const tl::request &r, std::string query) {
+void raft_provider::client_query_rpc(const tl::request &req,
+                                     const std::string &query) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (leader_hint.empty()) {
-      try {
-        r.respond(client_query_response(RAFT_LEADER_NOT_FOUND, ""));
-      } catch (tl::exception &e) {}
+      req.respond<client_query_response>({RAFT_LEADER_NOT_FOUND});
       return;
     }
-    try {
-      r.respond(
-        client_query_response(RAFT_NODE_IS_NOT_LEADER, "", leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<client_query_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
     return;
   }
-  try {
-    r.respond(client_query_response(RAFT_SUCCESS, fsm->resolve(query)));
-  } catch (tl::exception &e) {}
+  req.respond<client_query_response>({RAFT_SUCCESS, fsm->resolve(query)});
+  return;
 }
 
-void raft_provider::add_server_rpc(const tl::request &r,
-                                   std::string new_server) {
+void raft_provider::add_server_rpc(const tl::request &req,
+                                   const std::string &new_server) {
   mu.lock();
   if (get_state() != raft_state::leader) {
     if (!leader_hint.empty()) {
       mu.unlock();
-      try {
-        r.respond(add_server_response(RAFT_LEADER_NOT_FOUND, ""));
-      } catch (tl::exception &e) {}
+      req.respond<add_server_response>({RAFT_LEADER_NOT_FOUND});
       return;
     }
     mu.unlock();
-    try {
-      r.respond(add_server_response(RAFT_NODE_IS_NOT_LEADER, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<add_server_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
     return;
   }
   if (get_commit_index() < logger->get_last_conf_applied()) {
     mu.unlock();
-    try {
-      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<add_server_response>({RAFT_DENY_REQUEST, leader_hint});
     return;
   }
   if (new_server == logger->get_id()) {
     mu.unlock();
-    try {
-      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<add_server_response>({RAFT_DENY_REQUEST, leader_hint});
     return;
   }
   logger->set_add_conf_log(new_server);
   mu.unlock();
   try {
-    r.respond(add_server_response(RAFT_SUCCESS, leader_hint));
+    req.respond<add_server_response>({RAFT_SUCCESS, leader_hint});
   } catch (tl::exception &e) {}
   return;
 }
 
-void raft_provider::remove_server_rpc(const tl::request &r,
-                                      std::string old_server) {
+void raft_provider::remove_server_rpc(const tl::request &req,
+                                      const std::string &old_server) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (!leader_hint.empty()) {
-      try {
-        r.respond(add_server_response(RAFT_LEADER_NOT_FOUND, ""));
-      } catch (tl::exception &e) {}
+      req.respond<remove_server_response>({RAFT_LEADER_NOT_FOUND});
       return;
     }
-    try {
-      r.respond(add_server_response(RAFT_NODE_IS_NOT_LEADER, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<remove_server_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
     return;
   }
   if (get_commit_index() < logger->get_last_conf_applied()) {
     try {
-      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
+      req.respond<remove_server_response>({RAFT_DENY_REQUEST, leader_hint});
     } catch (tl::exception &e) {}
     return;
   }
   if (old_server == logger->get_id()) {
-    try {
-      r.respond(add_server_response(RAFT_DENY_REQUEST, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<remove_server_response>({RAFT_DENY_REQUEST, leader_hint});
     return;
   }
   if (!logger->get_peers().count(old_server)) {
-    try {
-      r.respond(add_server_response(RAFT_INVALID_REQUEST, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<remove_server_response>({RAFT_INVALID_REQUEST, leader_hint});
     return;
   }
   std::string uuid;
@@ -460,15 +405,11 @@ void raft_provider::remove_server_rpc(const tl::request &r,
     cond.wait(lock);
   }
   if (get_state() != raft_state::leader) {
-    try {
-      r.respond(add_server_response(RAFT_NODE_IS_NOT_LEADER, leader_hint));
-    } catch (tl::exception &e) {}
+    req.respond<remove_server_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
     return;
   }
 
-  try {
-    r.respond(add_server_response(RAFT_SUCCESS, leader_hint));
-  } catch (tl::exception &e) {}
+  req.respond<remove_server_response>({RAFT_SUCCESS, leader_hint});
   return;
 }
 
@@ -518,11 +459,11 @@ void raft_provider::become_candidate() {
     mu.lock();
     if (get_state() == raft_state::follower) { return; }
     assert(get_state() == raft_state::candidate);
-    if (resp.get_term() > current_term) {
+    if (resp.term > current_term) {
       become_follower();
       return;
     }
-    if (resp.is_vote_granted()) { vote++; }
+    if (resp.vote_granted) { vote++; }
   }
   printf("number of votes is %d/%d\n", vote, logger->get_num_nodes());
   if (vote * 2 > logger->get_num_nodes()) {
@@ -585,12 +526,12 @@ void raft_provider::run_leader() {
     if (get_state() == raft_state::follower) { return; }
     assert(get_state() == raft_state::leader);
 
-    if (resp.get_term() > logger->get_current_term()) {
+    if (resp.term > logger->get_current_term()) {
       become_follower();
       return;
     }
 
-    if (resp.is_success()) {
+    if (resp.success) {
       set_match_index(node, last_index);
       set_next_index(node, last_index + 1);
     } else {
@@ -741,15 +682,15 @@ bool raft_provider::remove_self_from_cluster() {
   try {
     remove_server_response resp =
       m_remove_server_rpc.on(get_handle(leader_hint))(logger->get_id());
-    if (resp.get_status() == RAFT_SUCCESS) {
+    if (resp.status == RAFT_SUCCESS) {
       printf("successfly  sending remove_server rpc,shutdown..\n");
       std::string uuid;
       generate_special_uuid(uuid);
       logger->set_remove_conf_log(logger->get_id());
       return true;
     }
-    if (resp.get_status() == RAFT_NODE_IS_NOT_LEADER) {
-      leader_hint = resp.get_leader_hint();
+    if (resp.status == RAFT_NODE_IS_NOT_LEADER) {
+      leader_hint = resp.leader_hint;
       printf("leader is seemed changed, please retry\n");
       return false;
     }

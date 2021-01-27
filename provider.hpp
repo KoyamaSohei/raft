@@ -59,42 +59,43 @@ private:
   tl::provider_handle &get_handle(const std::string &node);
 
   // append_entries_rpc
-  void append_entries_rpc(const tl::request &r, int req_term,
+  void append_entries_rpc(const tl::request &req, int req_term,
                           int req_prev_index, int req_prev_term,
-                          std::vector<raft_entry> req_entries,
-                          int req_leader_commit, std::string req_leader_id);
+                          const std::vector<raft_entry> &req_entries,
+                          int req_leader_commit,
+                          const std::string &req_leader_id);
   tl::remote_procedure m_append_entries_rpc;
 
   // request_vote rpc
-  void request_vote_rpc(const tl::request &r, int req_term,
-                        std::string req_candidate_id, int req_last_log_index,
-                        int req_last_log_term);
+  void request_vote_rpc(const tl::request &req, int req_term,
+                        const std::string &req_candidate_id,
+                        int req_last_log_index, int req_last_log_term);
   tl::remote_procedure m_request_vote_rpc;
 
   // timeout_now rpc
-  void timeout_now_rpc(const tl::request &r, int req_term, int req_prev_index,
+  void timeout_now_rpc(const tl::request &req, int req_term, int req_prev_index,
                        int req_prev_term);
   tl::remote_procedure m_timeout_now_rpc;
 
   // client request rpc
-  void client_request_rpc(const tl::request &r, std::string uuid,
-                          std::string command);
+  void client_request_rpc(const tl::request &req, const std::string &uuid,
+                          const std::string &command);
   tl::remote_procedure m_client_request_rpc;
 
   // client query rpc
-  void client_query_rpc(const tl::request &r, std::string query);
+  void client_query_rpc(const tl::request &req, const std::string &query);
   tl::remote_procedure m_client_query_rpc;
 
   // add server rpc
-  void add_server_rpc(const tl::request &r, std::string new_server);
+  void add_server_rpc(const tl::request &req, const std::string &new_server);
   tl::remote_procedure m_add_server_rpc;
 
   // remove server rpc
-  void remove_server_rpc(const tl::request &r, std::string old_server);
+  void remove_server_rpc(const tl::request &req, const std::string &old_server);
   tl::remote_procedure m_remove_server_rpc;
 
   // echo state rpc (for debug)
-  void echo_state_rpc(const tl::request &r);
+  void echo_state_rpc(const tl::request &req);
 
   void become_follower();
   void run_follower();
