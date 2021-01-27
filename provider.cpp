@@ -397,9 +397,6 @@ void raft_provider::remove_server_rpc(const tl::request &req,
     req.respond<remove_server_response>({RAFT_INVALID_REQUEST, leader_hint});
     return;
   }
-  std::string uuid;
-  generate_special_uuid(uuid);
-
   int index = logger->set_remove_conf_log(old_server);
 
   while (get_commit_index() < index && get_state() == raft_state::leader) {
