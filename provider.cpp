@@ -368,9 +368,7 @@ void raft_provider::add_server_rpc(const tl::request &req,
   }
   logger->set_add_conf_log(new_server);
   mu.unlock();
-  try {
-    req.respond<add_server_response>({RAFT_SUCCESS, leader_hint});
-  } catch (tl::exception &e) {}
+  req.respond<add_server_response>({RAFT_SUCCESS, leader_hint});
   return;
 }
 
