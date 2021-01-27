@@ -219,7 +219,8 @@ void raft_provider::append_entries_rpc(
 void raft_provider::request_vote_rpc(const tl::request &req, int req_term,
                                      const std::string &req_candidate_id,
                                      int req_last_log_index,
-                                     int req_last_log_term) {
+                                     int req_last_log_term,
+                                     bool has_disrupt_permission) {
   mu.lock();
   int current_term = logger->get_current_term();
 
@@ -239,6 +240,8 @@ void raft_provider::request_vote_rpc(const tl::request &req, int req_term,
     if (req_last_log_term < last_log_term) return false;
     if (req_last_log_term > last_log_term) return true;
     if (req_last_log_index < last_log_index) return false;
+    if (has_disrupt_permission) return true;
+    if (system_clock::now() < timeout_limit) { return false; }
     return true;
   }();
 
@@ -278,7 +281,7 @@ void raft_provider::timeout_now_rpc(const tl::request &req, int req_term,
     return;
   }
   update_timeout_limit();
-  become_candidate();
+  become_candidate(true);
   if (get_state() == raft_state::leader) {
     mu.unlock();
     req.respond<int>(RAFT_SUCCESS);
@@ -435,7 +438,7 @@ void raft_provider::run_follower() {
   }
 }
 
-void raft_provider::become_candidate() {
+void raft_provider::become_candidate(bool has_disrupt_permission) {
   printf("become candidate, and starting election...\n");
   set_state(raft_state::candidate);
 
@@ -451,7 +454,8 @@ void raft_provider::become_candidate() {
     request_vote_response resp;
     try {
       resp = m_request_vote_rpc.on(get_handle(node))(
-        current_term, logger->get_id(), last_log_index, last_log_term);
+        current_term, logger->get_id(), last_log_index, last_log_term,
+        has_disrupt_permission);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();

@@ -69,7 +69,8 @@ private:
   // request_vote rpc
   void request_vote_rpc(const tl::request &req, int req_term,
                         const std::string &req_candidate_id,
-                        int req_last_log_index, int req_last_log_term);
+                        int req_last_log_index, int req_last_log_term,
+                        bool has_disrupt_permission);
   tl::remote_procedure m_request_vote_rpc;
 
   // timeout_now rpc
@@ -100,7 +101,7 @@ private:
   void become_follower();
   void run_follower();
 
-  void become_candidate();
+  void become_candidate(bool has_disrupt_permission = false);
   void run_candidate();
 
   void become_leader();
