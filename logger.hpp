@@ -12,7 +12,6 @@
 /**
  *  raft_logger manages Persistent State.
  *  @param id       suffix of server address.  e.g 127.0.0.1:30000
- *  @param nodes    id of clusters. nodes must contains self id.
  *
  */
 class raft_logger {
@@ -42,7 +41,7 @@ protected:
   std::set<std::string> nodes;
 
   /**
-   * peers is subset of nodes . peers must NOT contains self id.
+   * peers is subset of nodes. peers must NOT contains self id.
    */
   std::set<std::string> peers;
 
