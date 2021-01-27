@@ -49,7 +49,9 @@ protected:
    * num of stored log[]. this is used for append log
    * if call append_log when stored_log_num=N,
    * index of new log will be N
-   * Note: index=0's log is nodes info,and commited from the beginning.
+   * Note: index=0's log is empty,and commited from the beginning.
+   * if node start with init(), index=1's log is special entry
+   * which has cluster info, and cluster consists of only self node.
    */
   int stored_log_num;
 
