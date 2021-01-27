@@ -223,8 +223,8 @@ void raft_provider::request_vote_rpc(const tl::request &req, int req_term,
   mu.lock();
   int current_term = logger->get_current_term();
 
-  printf("request_vote_rpc from %s in term %d\n", req_candidate_id.c_str(),
-         req_term);
+  printf("request_vote_rpc from %s in term %d with has_disrupt_permission %d\n",
+         req_candidate_id.c_str(), req_term, has_disrupt_permission);
 
   int last_log_index, last_log_term;
   logger->get_last_log(last_log_index, last_log_term);
