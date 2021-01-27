@@ -116,7 +116,8 @@ void run_join(std::string self, std::string target_id) {
   tl::remote_procedure m_add_server_rpc(my_engine.define("add_server"));
 
   while (1) {
-    tl::provider_handle ph(my_engine.lookup(target_id), RAFT_PROVIDER_ID);
+    tl::provider_handle ph(my_engine.lookup(PROTOCOL_PREFIX + target_id),
+                           RAFT_PROVIDER_ID);
     add_server_response resp = m_add_server_rpc.on(ph)(self);
     switch (resp.status) {
       case RAFT_LEADER_NOT_FOUND:
