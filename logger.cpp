@@ -382,15 +382,11 @@ void lmdb_raft_logger::set_current_term(int new_term) {
   }
 
   current_term = new_term;
+  voted_for = "";
 }
 
 bool lmdb_raft_logger::exists_voted_for() {
   return voted_for.size() > 0;
-}
-
-void lmdb_raft_logger::clear_voted_for() {
-  set_voted_for("");
-  voted_for.clear();
 }
 
 void lmdb_raft_logger::set_voted_for_self() {

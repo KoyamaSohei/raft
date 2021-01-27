@@ -99,17 +99,62 @@ public:
    */
   virtual void clean_up() = 0;
 
+  /**
+   * get_id returns self id
+   * @return self id
+   *
+   */
   virtual std::string get_id() = 0;
+
+  /**
+   * get_peers get nodes in cluster without self.
+   * @return peers
+   */
   virtual std::set<std::string> &get_peers() = 0;
+
+  /**
+   * get_num_nodes return number of nodes(include self)
+   * @return  number of nodes
+   */
   virtual int get_num_nodes() = 0;
+
+  /**
+   * contains_self_in_nodes check if node contain self id.
+   * if false, this node may disrupt other servers
+   * so we have to shutdown as soon as possible.
+   * @return if node contain self id.
+   */
   virtual bool contains_self_in_nodes() = 0;
 
+  /**
+   * get_current_term return current term.
+   * @return current_term
+   */
   virtual int get_current_term() = 0;
+
+  /**
+   * set_current_term save current term with new_term.
+   * @param new_term
+   */
   virtual void set_current_term(int new_term) = 0;
 
+  /**
+   * exists_voted_for check if already voted in this term.
+   * when call set_current_term, voted_for is cleared automatically.
+   *
+   * @return check if already voted in this term.
+   */
   virtual bool exists_voted_for() = 0;
-  virtual void clear_voted_for() = 0;
+
+  /**
+   * set_voted_for_self update voted_for with self id
+   */
   virtual void set_voted_for_self() = 0;
+
+  /**
+   * set_voted_for update voted_for with new_addr
+   * @param new_addr want to vote for
+   */
   virtual void set_voted_for(const std::string &new_addr) = 0;
 
   /**
