@@ -106,7 +106,7 @@ TEST_F(logger_test, VOTED_FOR) {
 TEST_F(logger_test, VOTED_FOR_CLEAR) {
   logger.set_voted_for("foo");
   ASSERT_TRUE(logger.exists_voted_for());
-  logger.clear_voted_for();
+  logger.set_current_term(2);
   ASSERT_FALSE(logger.exists_voted_for());
 }
 
