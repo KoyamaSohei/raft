@@ -430,7 +430,6 @@ void raft_provider::become_follower() {
 void raft_provider::run_follower() {
   printf("run follower\n");
   if (system_clock::now() > timeout_limit) {
-    update_timeout_limit();
     become_candidate();
     return;
   }
