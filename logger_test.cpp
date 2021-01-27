@@ -12,7 +12,7 @@ namespace {
 class logger_test : public ::testing::Test {
 protected:
   lmdb_raft_logger logger;
-  logger_test() : logger(ADDR, std::set<std::string>{ADDR}) { logger.init(); }
+  logger_test() : logger(ADDR) { logger.init(); }
 
   ~logger_test() { logger.clean_up(); }
 };
@@ -29,12 +29,12 @@ TEST_F(logger_test, EXIST_DIR) {
 TEST_F(logger_test, SET_DUMMY) {
   int i, t;
   logger.get_last_log(i, t);
-  ASSERT_EQ(i, 0);
+  ASSERT_EQ(i, 1);
   ASSERT_EQ(t, 0);
 }
 
 TEST_F(logger_test, DUMMY_IS_CLUSTER_INFO) {
-  int index = 0;
+  int index = 1;
   int term;
   std::string uuid, command;
   logger.get_log(index, term, uuid, command);
@@ -46,16 +46,16 @@ TEST_F(logger_test, DUMMY_IS_CLUSTER_INFO) {
   get_seq_from_set(pn_buf, pn);
   get_seq_from_set(nn_buf, nn);
   ASSERT_EQ(p, 0);
-  ASSERT_EQ(n, 0);
+  ASSERT_EQ(n, 1);
 
-  ASSERT_STREQ(pn_buf.c_str(), ADDR);
+  ASSERT_STREQ(pn_buf.c_str(), "");
   ASSERT_STREQ(nn_buf.c_str(), ADDR);
 }
 
 TEST_F(logger_test, APPEND_LOG) {
   int idx = logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                               "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(idx, 1);
+  ASSERT_EQ(idx, 2);
   int term;
   std::string uuid, command;
   logger.get_log(idx, term, uuid, command);
@@ -75,7 +75,7 @@ TEST_F(logger_test, MATCHLOG_NOTFOUND) {
 TEST_F(logger_test, UUID_ALREADY_EXISTS) {
   int idx = logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                               "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(idx, 1);
+  ASSERT_EQ(idx, 2);
   ASSERT_TRUE(logger.contains_uuid("046ccc3a-2dac-4e40-ae2e-76797a271fe2"));
   ASSERT_FALSE(logger.contains_uuid("146ccc3a-2dac-4e40-ae2e-76797a271fe2"));
 }
@@ -83,7 +83,7 @@ TEST_F(logger_test, UUID_ALREADY_EXISTS) {
 TEST_F(logger_test, CONFLICT_UUID) {
   int idx = logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                               "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(idx, 1);
+  ASSERT_EQ(idx, 2);
   ASSERT_DEATH(logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                  "{\"key\":\"foo\",\"value\":\"bar\"}");
                , "");
@@ -92,7 +92,7 @@ TEST_F(logger_test, CONFLICT_UUID) {
 TEST_F(logger_test, CONFLICT_UUID_2) {
   int idx = logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                               "{\"key\":\"foo\",\"value\":\"bar\"}");
-  ASSERT_EQ(idx, 1);
+  ASSERT_EQ(idx, 2);
   ASSERT_DEATH(logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                                  "{\"key\":\"foo\",\"value\":\"bar\"}");
                , "");
@@ -129,24 +129,26 @@ TEST_F(logger_test, NUM_NODES) {
 }
 
 TEST_F(logger_test, LAST_LOG_APPLIED) {
-  ASSERT_EQ(logger.get_last_conf_applied(), 0);
+  ASSERT_EQ(logger.get_last_conf_applied(), 1);
 }
 
 TEST_F(logger_test, RECOVER) {
   std::string addr = "127.0.0.1:8888";
 
   auto run1 = [&]() {
-    lmdb_raft_logger logger2(addr, std::set<std::string>{addr});
+    lmdb_raft_logger logger2(addr);
+    printf("logger2 init\n");
     logger2.init();
     logger2.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo-bar-buz");
   };
 
   auto run2 = [&]() {
-    lmdb_raft_logger logger3(addr, std::set<std::string>{addr});
-    logger3.init();
+    lmdb_raft_logger logger3(addr);
+    printf("logger3 bootstrap\n");
+    logger3.bootstrap();
     int i, t;
     logger3.get_last_log(i, t);
-    ASSERT_EQ(i, 1);
+    ASSERT_EQ(i, 2);
     ASSERT_EQ(t, 0);
     std::string uuid, cmd;
     logger3.get_log(i, t, uuid, cmd);
@@ -154,8 +156,10 @@ TEST_F(logger_test, RECOVER) {
     ASSERT_STREQ(cmd.c_str(), "foo-bar-buz");
     logger3.clean_up();
   };
-
+  printf("run1\n");
   run1();
+  usleep(INTERVAL);
+  printf("run2\n");
   run2();
 }
 
