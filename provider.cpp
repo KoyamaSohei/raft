@@ -106,7 +106,6 @@ void raft_provider::update_timeout_limit() {
 void raft_provider::set_force_current_term(int term) {
   assert(logger->get_current_term() < term);
   logger->set_current_term(term);
-  logger->clear_voted_for();
 
   switch (_state) {
     case raft_state::follower:
