@@ -251,6 +251,35 @@ public:
   virtual int set_remove_conf_log(const std::string &old_server) = 0;
 };
 
+/**
+ * lmdb_raft_logger is one of raft_logger implements, and depends on LMDB
+ * LMDB has 2 databases, log_db and state_db
+ *
+ * 1. log_db
+ * log_db store log entry.
+ * log entry consists of
+ *   - index (:int)
+ *   - term (:int)
+ *   - uuid (:string)
+ *   - command (:string)
+ * index is primary key.
+ * term is used for log matching in raft.
+ *   Note: According to https://raft.github.io/raft.pdf §5.3,
+ *   if two logs contain an entry with the same index and term,
+ *   then the logs are identical in all entries up through the given index.
+ * uuid is used to prevent duplicate requests
+ *   Note: if uuid is special, (special means that uuid begins '77777777-')
+ *   this log entry is special entry
+ *   special entry has cluster info (see 2. state_db)
+ * command is used for fsm,see fsm.hpp
+ *
+ * 2. state_db
+ * state_db store persistent state like below
+ *  - current_term (:int)
+ *  - voted_for (:string)
+ *  - last_conf_applied (:int)
+ *
+ */
 class lmdb_raft_logger : public raft_logger {
 private:
   MDB_env *env;
