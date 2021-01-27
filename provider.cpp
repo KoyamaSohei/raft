@@ -333,7 +333,8 @@ void raft_provider::client_query_rpc(const tl::request &req,
       req.respond<client_query_response>({RAFT_LEADER_NOT_FOUND});
       return;
     }
-    req.respond<client_query_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
+    req.respond<client_query_response>(
+      {RAFT_NODE_IS_NOT_LEADER, "", leader_hint});
     return;
   }
   req.respond<client_query_response>({RAFT_SUCCESS, fsm->resolve(query)});
