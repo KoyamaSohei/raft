@@ -114,7 +114,6 @@ void raft_provider::set_force_current_term(int term) {
     case raft_state::candidate:
     case raft_state::leader:
       _state = raft_state::follower;
-      update_timeout_limit();
       break;
   }
 }
