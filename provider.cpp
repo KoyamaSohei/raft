@@ -345,29 +345,33 @@ void raft_provider::client_query_rpc(const tl::request &req,
 
 void raft_provider::add_server_rpc(const tl::request &req,
                                    const std::string &new_server) {
-  mu.lock();
+  std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (!leader_hint.empty()) {
-      mu.unlock();
       req.respond<add_server_response>({RAFT_LEADER_NOT_FOUND});
       return;
     }
-    mu.unlock();
     req.respond<add_server_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
     return;
   }
   if (get_commit_index() < logger->get_last_conf_applied()) {
-    mu.unlock();
     req.respond<add_server_response>({RAFT_DENY_REQUEST, leader_hint});
     return;
   }
   if (new_server == logger->get_id()) {
-    mu.unlock();
     req.respond<add_server_response>({RAFT_DENY_REQUEST, leader_hint});
     return;
   }
-  logger->set_add_conf_log(new_server);
-  mu.unlock();
+  int index = logger->set_add_conf_log(new_server);
+  while (get_commit_index() < index && get_state() == raft_state::leader) {
+    cond.wait(lock);
+  }
+
+  if (get_state() != raft_state::leader) {
+    req.respond<add_server_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
+    return;
+  }
+
   req.respond<add_server_response>({RAFT_SUCCESS, leader_hint});
   return;
 }
