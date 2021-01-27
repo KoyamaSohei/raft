@@ -49,21 +49,6 @@ void usage(int argc, char **argv) {
   printf("%s init 127.0.0.1:30000\n", argv[0]);
 }
 
-void setup_nodes(int argc, char **argv, string &self, set<string> &nodes) {
-  if (argc != 3) {
-    usage(argc, argv);
-    exit(1);
-  }
-  self = argv[1];
-  get_set_from_seq(nodes, argv[2]);
-
-  if (!nodes.count(self)) {
-    printf("please add self address to nodes\n");
-    usage(argc, argv);
-    exit(1);
-  }
-}
-
 void run_init(std::string self) {
   ABT_xstream sig_stream, tick_stream;
   ABT_thread sig_thread, tick_thread;
