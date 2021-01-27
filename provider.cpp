@@ -347,7 +347,7 @@ void raft_provider::add_server_rpc(const tl::request &req,
                                    const std::string &new_server) {
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
-    if (!leader_hint.empty()) {
+    if (leader_hint.empty()) {
       req.respond<add_server_response>({RAFT_LEADER_NOT_FOUND});
       return;
     }
