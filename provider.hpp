@@ -26,7 +26,7 @@ private:
    * By Section5.1 Raft Basis,
    * > At any given time each server is in one of three states:
    *   leader, follower, or candidate.
-   * please DO NOT use this except for get_state() and set_state()
+   * please DO NOT use this except for get_state() or set_state()
    */
   raft_state _state;
 
