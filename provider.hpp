@@ -71,7 +71,17 @@ private:
    *    for detail, please refer "section 4.2.3 disruptive server"
    *    in https://github.com/ongardie/dissertation/blob/master/book.pdf
    *
+   *    Note exception:
+   *    if request vote rpc has has_disrupt_permission flag,
+   *    even if current time < timeout_limit,
+   *    grant vote
+   *    (of cause,candidate log must be valid for become leader)
    *
+   *    this exception is used for leadership transfer extension.
+   *    for detail,please refer
+   *    - "section 3.10 Leadership transfer extension"
+   *    - "section 4.2.3 disruptive server"
+   *    in https://github.com/ongardie/dissertation/blob/master/book.pdf
    */
   system_clock::time_point timeout_limit;
   void update_timeout_limit();
