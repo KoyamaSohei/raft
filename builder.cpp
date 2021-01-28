@@ -64,15 +64,6 @@ void get_set_from_seq(std::set<std::string> &dst, const std::string &src) {
   dst.insert(buffer);
 }
 
-void get_seq_from_set(std::string &dst, const std::set<std::string> &src) {
-  dst.clear();
-  for (std::string item : src) {
-    dst += item;
-    dst += ",";
-  }
-  if (!dst.empty()) { dst.pop_back(); }
-}
-
 void parse_log(int &term, std::string &uuid, std::string &command,
                const std::string &src) {
   std::stringstream ss;

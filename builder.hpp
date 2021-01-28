@@ -52,13 +52,6 @@ void build_command(std::string &dst, const std::string &key,
 void get_set_from_seq(std::set<std::string> &dst, const std::string &src);
 
 /**
- *  parse string sequence. sequence splits string with ','
- *  @param dst dst e.g.) "127.0.0.1,127.0.0.2"
- *  @param src src e.g.) {"127.0.0.1","127.0.0.2"}
- */
-void get_seq_from_set(std::string &dst, const std::set<std::string> &src);
-
-/**
  *  parse log from string.
  *  @param term     dst e.g.) 2
  *  @param uuid     dst e.g.) "046ccc3a-2dac-4e40-ae2e-76797a271fe2"
