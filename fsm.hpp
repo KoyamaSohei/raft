@@ -28,7 +28,7 @@ public:
 
 class kvs_raft_fsm : public raft_fsm {
 private:
-  std::map<std::string, std::string> data;
+  std::unordered_map<std::string, std::string> data;
 
 public:
   kvs_raft_fsm();
