@@ -92,17 +92,6 @@ protected:
    */
   int last_conf_applied;
 
-public:
-  raft_logger(std::string _id, raft_logger_mode mode)
-    : id(_id), voted_for(""), current_term(0), stored_log_num(0){};
-  virtual ~raft_logger(){};
-
-  /**
-   * clean_up clean up log.
-   * use this before restart node with initial state.
-   */
-  virtual void clean_up() = 0;
-
   /**
    * get_id returns self id
    * @return self id
@@ -252,6 +241,18 @@ public:
    * @return index log index
    */
   virtual int set_remove_conf_log(const std::string &old_server) = 0;
+
+public:
+  raft_logger(std::string _id, raft_logger_mode mode)
+    : id(_id), voted_for(""), current_term(0), stored_log_num(0){};
+  virtual ~raft_logger(){};
+
+  /**
+   * clean_up clean up log.
+   * use this before restart node with initial state.
+   * usually, this method is used for testing.
+   */
+  virtual void clean_up() = 0;
 };
 
 /**
