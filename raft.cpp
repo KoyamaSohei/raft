@@ -29,8 +29,7 @@ void *signal_handler(void *arg) {
   while (!ok) {
     sigwait(((signal_handler_arg_t *)arg)->ss, &num);
     std::cout << "Signal received " << num << std::endl;
-    bool ok =
-      ((signal_handler_arg_t *)arg)->provider->remove_self_from_cluster();
+    ok = ((signal_handler_arg_t *)arg)->provider->remove_self_from_cluster();
   }
 }
 
@@ -62,7 +61,7 @@ void run_init(std::string self) {
 
     signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 
-    if (pthread_create(&signal_thread, NULL, signal_handler, NULL)) {
+    if (pthread_create(&signal_thread, NULL, signal_handler, (void *)&arg)) {
       printf("error creating thread.");
       abort();
     }
@@ -116,7 +115,7 @@ void run_join(std::string self, std::string target_id) {
 
     signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 
-    if (pthread_create(&signal_thread, NULL, signal_handler, NULL)) {
+    if (pthread_create(&signal_thread, NULL, signal_handler, (void *)&arg)) {
       printf("error creating thread.");
       abort();
     }
@@ -146,7 +145,7 @@ void run_bootstrap(std::string self) {
 
     signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
 
-    if (pthread_create(&signal_thread, NULL, signal_handler, NULL)) {
+    if (pthread_create(&signal_thread, NULL, signal_handler, (void *)&arg)) {
       printf("error creating thread.");
       abort();
     }
