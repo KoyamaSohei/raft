@@ -304,7 +304,7 @@ void lmdb_raft_logger::bootstrap() {
 
   printf("bootstrap: current_term is %d\n", current_term);
   printf("bootstrap: voted_for is %s\n", voted_for.c_str());
-  printf("bootstrap: latest conf is %s\n", command);
+  printf("bootstrap: latest conf is %s\n", command.c_str());
   printf("bootstrap: stored_log_num is %d\n", stored_log_num);
   printf("bootstrap: last_conf_applied is %d\n", last_conf_applied);
 

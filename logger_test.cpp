@@ -42,14 +42,8 @@ TEST_F(logger_test, DUMMY_IS_CLUSTER_INFO) {
   int p, n;
   std::set<std::string> pn, nn;
   parse_conf_log(p, pn, n, nn, command);
-  std::string pn_buf, nn_buf;
-  get_seq_from_set(pn_buf, pn);
-  get_seq_from_set(nn_buf, nn);
   ASSERT_EQ(p, 0);
   ASSERT_EQ(n, 1);
-
-  ASSERT_STREQ(pn_buf.c_str(), "");
-  ASSERT_STREQ(nn_buf.c_str(), ADDR);
 }
 
 TEST_F(logger_test, APPEND_LOG) {
