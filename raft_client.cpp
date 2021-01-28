@@ -20,6 +20,27 @@ void usage(int argc, char **argv) {
     argv[0]);
 }
 
+/**
+ *  parse string sequence. sequence splits string with ','
+ *  @param dst dst e.g.) {"127.0.0.1","127.0.0.2"}
+ *  @param src src e.g.) "127.0.0.1,127.0.0.2"
+ */
+void get_set_from_seq(std::set<std::string> &dst, const std::string &src) {
+  dst.clear();
+  std::string buffer;
+  for (char c : src) {
+    if (c == ',') {
+      if (buffer.empty()) continue;
+      dst.insert(buffer);
+      buffer.clear();
+      continue;
+    }
+    buffer.push_back(c);
+  }
+  if (buffer.empty()) return;
+  dst.insert(buffer);
+}
+
 int main(int argc, char **argv) {
   tl::engine my_engine(PROTOCOL_PREFIX, THALLIUM_CLIENT_MODE);
   tl::remote_procedure request = my_engine.define(CLIENT_REQUEST_RPC_NAME);

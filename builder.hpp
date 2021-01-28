@@ -26,11 +26,4 @@ void generate_special_uuid(std::string &uuid);
  */
 bool uuid_is_special(const std::string &uuid);
 
-/**
- *  parse string sequence. sequence splits string with ','
- *  @param dst dst e.g.) {"127.0.0.1","127.0.0.2"}
- *  @param src src e.g.) "127.0.0.1,127.0.0.2"
- */
-void get_set_from_seq(std::set<std::string> &dst, const std::string &src);
-
 #endif

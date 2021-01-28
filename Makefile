@@ -7,13 +7,13 @@ all:: raft.out raft_client.out test.out
 raft.out: provider.cpp raft.cpp logger.cpp builder.cpp
 	$(CC) $(CFLAGS)  provider.cpp raft.cpp logger.cpp fsm.cpp builder.cpp $(LDFLAGS) -o raft.out
 
-raft_client.out: raft_client.cpp builder.cpp
-	$(CC) $(CFLAGS) raft_client.cpp builder.cpp $(LDFLAGS) -o raft_client.out
+raft_client.out: raft_client.cpp builder.cpp fsm.cpp
+	$(CC) $(CFLAGS) raft_client.cpp builder.cpp fsm.cpp $(LDFLAGS) -o raft_client.out
 
 test.out: *.cpp
 	$(CC) $(CFLAGS) `pkg-config --cflags gtest gmock` \
 	-coverage \
-	builder_test.cpp fsm_test.cpp logger_test.cpp provider_test.cpp raft_test.cpp \
+	fsm_test.cpp logger_test.cpp provider_test.cpp raft_test.cpp \
 	provider.cpp logger.cpp fsm.cpp builder.cpp \
 	$(LDFLAGS) `pkg-config --libs gtest gmock` \
 	-o test.out
