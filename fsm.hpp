@@ -38,6 +38,16 @@ public:
   virtual std::string resolve(std::string query) = 0;
 };
 
+/**
+ *  raft_fsm manages very simple Key Value Store.
+ *  data is managed with std::unordered_map.
+ *  command is serialized json, like below
+ *  "{\"key\":\"foo\",\"value\":\"bar\"}"
+ *  in this case, raft_fsm exec data["foo"]="bar"
+ *  query is string, line below
+ *  "foo"
+ *  in this case, raft_fsm returns data["foo"]
+ */
 class kvs_raft_fsm : public raft_fsm {
 private:
   std::unordered_map<std::string, std::string> data;
