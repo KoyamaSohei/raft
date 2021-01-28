@@ -20,9 +20,21 @@ public:
   raft_fsm(){};
   virtual ~raft_fsm(){};
 
-  // apply command
+  /**
+   *  apply applies command.
+   *  Important!:
+   *    some commands may be EMPTY.
+   *    (e.g. on become leader, leader append empty log)
+   *    apply() have to handle empty command.
+   *  @param command
+   */
   virtual void apply(std::string command) = 0;
-  // resolve query
+
+  /**
+   *  resolve resolves query
+   *  @param query
+   *  @return answer
+   */
   virtual std::string resolve(std::string query) = 0;
 };
 
