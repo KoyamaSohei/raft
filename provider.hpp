@@ -11,10 +11,39 @@
 #include "logger.hpp"
 #include "types.hpp"
 
+/**
+ * raft_provider handle rpc and manages node state.
+ * raft_provider depends on thallium::provider
+ * refer: https://mochi.readthedocs.io/en/latest/thallium/09_providers.html
+ * for detail about raft
+ * refer: https://raft.github.io/raft.pdf
+ *
+ */
 class raft_provider : public tl::provider<raft_provider> {
 private:
+  /**
+   * _state is node state.
+   * By Section5.1 Raft Basis,
+   * > At any given time each server is in one of three states:
+   *   leader, follower, or candidate.
+   * please DO NOT use this except for get_state() and set_state()
+   */
   raft_state _state;
+
+  /**
+   * get_state() get _state.
+   * before call get_state(),
+   * please call mu.lock() and enter critical section.
+   * @return raft_state
+   */
   raft_state get_state();
+
+  /**
+   * get_state() set _state.
+   * before call set_state(),
+   * please call mu.lock() and enter critical section.
+   * @param new_state
+   */
   void set_state(raft_state new_state);
 
   system_clock::time_point timeout_limit;
