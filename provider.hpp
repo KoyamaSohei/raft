@@ -48,6 +48,10 @@ private:
 
   /**
    * timeout_limit is used for 3 ways.
+   * for detail,
+   * please refer page 4 "rules for servers"
+   * in https://raft.github.io/raft.pdf
+   *
    * 1. in follower state,
    *    if current time > timeout_limit,
    *    - become candidate
@@ -64,7 +68,7 @@ private:
    *    NOT granted vote for that request.
    *    because recentry received rpc from current leader.
    *    this is used for prevent to make orphan node to leader.
-   *    for detail, please refer section 4.2.3 disruptive server
+   *    for detail, please refer "section 4.2.3 disruptive server"
    *    in https://github.com/ongardie/dissertation/blob/master/book.pdf
    *
    *
