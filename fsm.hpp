@@ -5,6 +5,16 @@
 
 #include "types.hpp"
 
+/**
+ *  raft_fsm manages Finite State Machine.
+ *  After log is committed, raft_provider will apply that log to raft_fsm.
+ *  raft_fsm parse commands and apply them.
+ *  And, raft_provider ask raft_fsm to resolve query.
+ *  raft_fsm resolve query with current state,
+ *  which is consist of already applied log.
+ *  command query, and query's answer type is std::string,
+ *  but its content depends on the implementation.
+ */
 class raft_fsm {
 public:
   raft_fsm(){};
