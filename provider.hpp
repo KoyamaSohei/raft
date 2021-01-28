@@ -47,7 +47,7 @@ private:
   void set_state(raft_state new_state);
 
   /**
-   * timeout_limit is used for 2 ways.
+   * timeout_limit is used for 3 ways.
    * 1. in follower state,
    *    if current time > timeout_limit,
    *    - become candidate
@@ -58,6 +58,16 @@ private:
    *    - become candidate again
    *    - increment current term
    *    - start election again
+   * 3. in follower state,
+   *    if received request vote rpc but
+   *    current time < timeout_limit,
+   *    NOT granted vote for that request.
+   *    because recentry received rpc from current leader.
+   *    this is used for prevent to make orphan node to leader.
+   *    for detail, please refer section 4.2.3 disruptive server
+   *    in https://github.com/ongardie/dissertation/blob/master/book.pdf
+   *
+   *
    */
   system_clock::time_point timeout_limit;
   void update_timeout_limit();
