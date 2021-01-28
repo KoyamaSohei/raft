@@ -91,6 +91,21 @@ protected:
    */
   int last_conf_applied;
 
+public:
+  raft_logger(std::string _id, raft_logger_mode mode)
+    : id(_id), voted_for(""), current_term(0), stored_log_num(0) {
+    switch (mode) {
+      case raft_logger_mode::init:
+        init();
+        break;
+      case raft_logger_mode::join:
+        join();
+        break;
+      case raft_logger_mode::bootstrap:
+        bootstrap();
+        break;
+    }
+  };
   /**
    * get_id returns self id
    * @return self id
@@ -249,22 +264,6 @@ protected:
    * usually, this method is used for testing.
    */
   virtual void clean_up() = 0;
-
-public:
-  raft_logger(std::string _id, raft_logger_mode mode)
-    : id(_id), voted_for(""), current_term(0), stored_log_num(0) {
-    switch (mode) {
-      case raft_logger_mode::init:
-        init();
-        break;
-      case raft_logger_mode::join:
-        join();
-        break;
-      case raft_logger_mode::bootstrap:
-        bootstrap();
-        break;
-    }
-  };
 };
 
 /**
