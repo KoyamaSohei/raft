@@ -13,9 +13,8 @@
  *  raft_logger manages Persistent State.
  *  @param id       suffix of server address.  e.g 127.0.0.1:30000
  *  @param mode     logger mode. please see init() join() and bootstrap()
- *                  child class of raft_logger must
- *                  - call init(),join(),bootstrap() on constructor.
- *                  - implements init(),join(),bootstrap()
+ *                  child class of raft_logger must implements
+ *                  init(),join(),bootstrap()
  */
 class raft_logger {
 private:
@@ -253,7 +252,19 @@ protected:
 
 public:
   raft_logger(std::string _id, raft_logger_mode mode)
-    : id(_id), voted_for(""), current_term(0), stored_log_num(0){};
+    : id(_id), voted_for(""), current_term(0), stored_log_num(0) {
+    switch (mode) {
+      case raft_logger_mode::init:
+        init();
+        break;
+      case raft_logger_mode::join:
+        join();
+        break;
+      case raft_logger_mode::bootstrap:
+        bootstrap();
+        break;
+    }
+  };
 };
 
 /**
