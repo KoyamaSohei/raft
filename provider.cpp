@@ -39,7 +39,13 @@ raft_provider::~raft_provider() {
   ABT_thread_create_on_xstream(tick_stream, tick_loop, this,
                                ABT_THREAD_ATTR_NULL, &tick_thread);
 
-  while (logger->contains_self_in_nodes()) {
+  while (1) {
+    mu.lock();
+    if (!logger->contains_self_in_nodes()) {
+      mu.unlock();
+      break;
+    }
+    mu.unlock();
     usleep(INTERVAL);
     ABT_thread_get_state(tick_thread, &tick_state);
     assert(tick_state == ABT_THREAD_STATE_TERMINATED);
