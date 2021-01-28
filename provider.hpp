@@ -46,6 +46,19 @@ private:
    */
   void set_state(raft_state new_state);
 
+  /**
+   * timeout_limit is used for 2 ways.
+   * 1. in follower state,
+   *    if current time > timeout_limit,
+   *    - become candidate
+   *    - increment current term
+   *    - start election
+   * 2. in candidate state,
+   *    if current time > timeout_limit,
+   *    - become candidate again
+   *    - increment current term
+   *    - start election again
+   */
   system_clock::time_point timeout_limit;
   void update_timeout_limit();
 
