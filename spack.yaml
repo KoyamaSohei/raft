@@ -2,7 +2,6 @@ spack:
   specs:
     - mochi-thallium
     - lmdb
-    - jsoncpp
     - googletest
     - lconv
     - libuuid

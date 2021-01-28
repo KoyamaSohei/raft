@@ -1,7 +1,11 @@
 #include "builder.hpp"
 
-#include <json/json.h>
 #include <uuid/uuid.h>
+
+#include <cereal/archives/json.hpp>
+#include <cereal/cereal.hpp>
+#include <cereal/types/set.hpp>
+#include <sstream>
 
 #include "types.hpp"
 
@@ -26,27 +30,22 @@ bool uuid_is_special(const std::string &uuid) {
 
 void parse_command(std::string &key, std::string &value,
                    const std::string &src) {
-  Json::CharReaderBuilder builder;
-  Json::Value root;
-  Json::String err_str;
-  const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-  int ok =
-    reader->parse(src.c_str(), src.c_str() + src.length(), &root, &err_str);
-  if (!ok) {
-    printf("%s\n", err_str.c_str());
-    abort();
+  std::stringstream ss;
+  { ss << src; }
+  {
+    cereal::JSONInputArchive archive(ss);
+    archive(CEREAL_NVP(key), (value));
   }
-  key.assign(root["key"].asString());
-  value.assign(root["value"].asString());
 }
 
 void build_command(std::string &dst, const std::string &key,
                    const std::string &value) {
-  Json::Value root;
-  Json::StreamWriterBuilder builder;
-  root["key"] = key;
-  root["value"] = value;
-  dst.assign(Json::writeString(builder, root));
+  std::ostringstream ss;
+  {
+    cereal::JSONOutputArchive archive(ss);
+    archive(CEREAL_NVP(key), CEREAL_NVP(value));
+  }
+  dst = ss.str();
 }
 
 void get_set_from_seq(std::set<std::string> &dst, const std::string &src) {
@@ -76,67 +75,45 @@ void get_seq_from_set(std::string &dst, const std::set<std::string> &src) {
 
 void parse_log(int &term, std::string &uuid, std::string &command,
                const std::string &src) {
-  Json::CharReaderBuilder builder;
-  Json::Value root;
-  Json::String err_str;
-  const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-  int ok =
-    reader->parse(src.c_str(), src.c_str() + src.length(), &root, &err_str);
-  if (!ok) {
-    printf("%s\n", err_str.c_str());
-    abort();
+  std::stringstream ss;
+  { ss << src; }
+  {
+    cereal::JSONInputArchive archive(ss);
+    archive(CEREAL_NVP(term), CEREAL_NVP(uuid), CEREAL_NVP(command));
   }
-  term = root["term"].asInt();
-  uuid.assign(root["uuid"].asString());
-  command.assign(root["command"].asString());
 }
 
 void build_log(std::string &dst, const int &term, const std::string &uuid,
                const std::string &command) {
-  Json::Value root;
-  Json::StreamWriterBuilder builder;
-  root["term"] = term;
-  root["uuid"] = uuid;
-  root["command"] = command;
-  dst.assign(Json::writeString(builder, root));
+  std::stringstream ss;
+  {
+    cereal::JSONOutputArchive archive(ss);
+    archive(CEREAL_NVP(term), CEREAL_NVP(uuid), CEREAL_NVP(command));
+  }
+  dst = ss.str();
 }
 
 void parse_conf_log(int &prev_index, std::set<std::string> &prev_nodes,
                     int &next_index, std::set<std::string> &next_nodes,
                     const std::string &src) {
-  Json::CharReaderBuilder builder;
-  Json::Value root;
-  Json::String err_str;
-  const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-  int ok =
-    reader->parse(src.c_str(), src.c_str() + src.length(), &root, &err_str);
-  if (!ok) {
-    printf("%s\n", err_str.c_str());
-    abort();
+  std::stringstream ss;
+  { ss << src; }
+  {
+    cereal::JSONInputArchive archive(ss);
+    archive(CEREAL_NVP(prev_index), CEREAL_NVP(prev_nodes),
+            CEREAL_NVP(next_index), CEREAL_NVP(next_nodes));
   }
-  prev_index = root["prev_index"].asInt();
-  next_index = root["next_index"].asInt();
-  std::string prev_str(root["prev_nodes"].asString());
-  std::string next_str(root["next_nodes"].asString());
-  get_set_from_seq(prev_nodes, prev_str);
-  get_set_from_seq(next_nodes, next_str);
 }
 
 void build_conf_log(std::string &dst, const int &prev_index,
                     const std::set<std::string> &prev_nodes,
                     const int &next_index,
                     const std::set<std::string> &next_nodes) {
-  Json::Value root;
-  Json::StreamWriterBuilder builder;
-  std::string prev_str, next_str;
-
-  get_seq_from_set(prev_str, prev_nodes);
-  get_seq_from_set(next_str, next_nodes);
-
-  root["prev_index"] = prev_index;
-  root["prev_nodes"] = prev_str;
-  root["next_index"] = next_index;
-  root["next_nodes"] = next_str;
-
-  dst.assign(Json::writeString(builder, root));
+  std::stringstream ss;
+  {
+    cereal::JSONOutputArchive archive(ss);
+    archive(CEREAL_NVP(prev_index), CEREAL_NVP(prev_nodes),
+            CEREAL_NVP(next_index), CEREAL_NVP(next_nodes));
+  }
+  dst = ss.str();
 }
