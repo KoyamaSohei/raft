@@ -37,9 +37,9 @@ private:
   lmdb_raft_logger real_;
 
 public:
-  mock_raft_logger(std::string _id) : raft_logger(_id), real_(_id) {
-    ON_CALL(*this, init())
-      .WillByDefault(Invoke(&real_, &lmdb_raft_logger::init));
+  mock_raft_logger(std::string _id)
+    : raft_logger(_id, raft_logger_mode::init)
+    , real_(_id, raft_logger_mode::init) {
     ON_CALL(*this, clean_up())
       .WillByDefault(Invoke(&real_, &lmdb_raft_logger::clean_up));
     ON_CALL(*this, get_id())
@@ -128,19 +128,24 @@ private:
                           const std::string &req_leader_id) {
     req.respond<append_entries_response>({req_term, true});
   }
+  void remove_server_rpc(const tl::request &req,
+                         const std::string &old_server) {
+    req.respond<remove_server_response>({RAFT_SUCCESS, ""});
+  }
 
 public:
   tl::remote_procedure m_request_vote_rpc;
   tl::remote_procedure m_append_entries_rpc;
+  tl::remote_procedure m_remove_server_rpc;
   mock_raft_provider(tl::engine &e,
                      uint16_t _provider_id = RAFT_PROVIDER_ID + 1)
     : tl::provider<mock_raft_provider>(e, _provider_id)
     , m_request_vote_rpc(
         define("request_vote", &mock_raft_provider::request_vote_rpc))
     , m_append_entries_rpc(
-        define("append_entries", &mock_raft_provider::append_entries_rpc)) {
-    //
-  }
+        define("append_entries", &mock_raft_provider::append_entries_rpc))
+    , m_remove_server_rpc(
+        define("remove_server", &mock_raft_provider::remove_server_rpc)) {}
 };
 
 class provider_test : public ::testing::Test {
@@ -148,7 +153,6 @@ protected:
   std::random_device rnd;
   int PORT;
   std::string addr, caddr;
-  tl::abt scope;
   tl::engine server_engine;
   tl::engine client_engine;
   mock_raft_logger logger;
@@ -185,8 +189,6 @@ protected:
     , server_addr(tl::provider_handle(
         client_engine.lookup(PROTOCOL_PREFIX + addr), RAFT_PROVIDER_ID)) {
     std::cout << "server running at " << server_engine.self() << std::endl;
-    logger.init();
-    provider.start();
   }
 
   void TearDown() {
@@ -199,8 +201,10 @@ protected:
     m_remove_server_rpc.deregister();
     m_client_request_rpc.deregister();
     m_client_query_rpc.deregister();
+    bool ok = provider.remove_self_from_cluster();
+    ASSERT_TRUE(ok);
+    printf("client engine finalize");
     client_engine.finalize();
-    server_engine.finalize();
   }
   raft_state fetch_state() {
     int r = m_echo_state_rpc.on(server_addr)();

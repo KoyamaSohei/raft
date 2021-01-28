@@ -4,34 +4,12 @@
 #include <cassert>
 #include <iostream>
 #include <thallium.hpp>
+#include <thread>
 
 #include "builder.hpp"
 #include "provider.hpp"
 
 using namespace std;
-
-struct signal_handler_arg_t {
-  sigset_t *ss;
-  raft_provider *provider;
-};
-
-void signal_handler(void *arg) {
-  int num;
-  while (1) {
-    sigwait(((signal_handler_arg_t *)arg)->ss, &num);
-    std::cout << "Signal received " << num << std::endl;
-    bool ok =
-      ((signal_handler_arg_t *)arg)->provider->remove_self_from_cluster();
-    if (ok) { break; }
-  }
-
-  ((signal_handler_arg_t *)arg)->provider->finalize();
-  exit(0);
-}
-
-void tick_loop(void *provider) {
-  ((raft_provider *)provider)->run();
-}
 
 void setup_sigset(sigset_t *ss) {
   sigemptyset(ss);
@@ -50,18 +28,11 @@ void usage(int argc, char **argv) {
 }
 
 void run_init(std::string self) {
-  ABT_xstream sig_stream, tick_stream;
-  ABT_thread sig_thread, tick_thread;
-  ABT_thread_state tick_state;
   static sigset_t ss;
-
-  setup_sigset(&ss);
-
-  lmdb_raft_logger logger(self);
+  lmdb_raft_logger logger(self, raft_logger_mode::init);
   kvs_raft_fsm fsm;
 
-  ABT_init(0, NULL);
-  logger.init();
+  setup_sigset(&ss);
 
   printf("try binding with %s%s\n", PROTOCOL_PREFIX, self.c_str());
   tl::engine my_engine(PROTOCOL_PREFIX + self, THALLIUM_SERVER_MODE, true, 2);
@@ -69,45 +40,26 @@ void run_init(std::string self) {
 
   raft_provider provider(my_engine, &logger, &fsm);
 
-  signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
-
-  ABT_xstream_create(ABT_SCHED_NULL, &sig_stream);
-  ABT_thread_create_on_xstream(sig_stream, signal_handler, &arg,
-                               ABT_THREAD_ATTR_NULL, &sig_thread);
-
-  provider.start();
-
-  ABT_xstream_create(ABT_SCHED_NULL, &tick_stream);
-  ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
-                               ABT_THREAD_ATTR_NULL, &tick_thread);
-
-  while (1) {
-    usleep(INTERVAL);
-    ABT_thread_get_state(tick_thread, &tick_state);
-    assert(tick_state == ABT_THREAD_STATE_TERMINATED);
-    ABT_thread_free(&tick_thread);
-    ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
-                                 ABT_THREAD_ATTR_NULL, &tick_thread);
-  }
-
-  my_engine.wait_for_finalize();
-
-  ABT_thread_free(&sig_thread);
-  ABT_thread_free(&tick_thread);
-
-  ABT_xstream_free(&sig_stream);
-  ABT_xstream_free(&tick_stream);
+  thread signal_handler([&] {
+    int num;
+    bool ok = false;
+    while (1) {
+      if (ok) {
+        printf("this node will be shutdown,please wait..\n");
+        break;
+      }
+      printf("signal wait\n");
+      sigwait(&ss, &num);
+      printf("Signal received %d\n", num);
+      ok = provider.remove_self_from_cluster();
+    }
+  });
 }
 
 void run_join(std::string self, std::string target_id) {
-  ABT_xstream sig_stream, tick_stream;
-  ABT_thread sig_thread, tick_thread;
-  ABT_thread_state tick_state;
   static sigset_t ss;
 
   setup_sigset(&ss);
-
-  ABT_init(0, NULL);
 
   printf("try binding with %s%s\n", PROTOCOL_PREFIX, self.c_str());
   tl::engine my_engine(PROTOCOL_PREFIX + self, THALLIUM_SERVER_MODE, true, 2);
@@ -136,56 +88,34 @@ void run_join(std::string self, std::string target_id) {
     usleep(INTERVAL);
   }
 
-  lmdb_raft_logger logger(self);
+  lmdb_raft_logger logger(self, raft_logger_mode::join);
   kvs_raft_fsm fsm;
-
-  logger.join();
 
   raft_provider provider(my_engine, &logger, &fsm);
 
-  signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
-
-  ABT_xstream_create(ABT_SCHED_NULL, &sig_stream);
-  ABT_thread_create_on_xstream(sig_stream, signal_handler, &arg,
-                               ABT_THREAD_ATTR_NULL, &sig_thread);
-
-  provider.start();
-
-  ABT_xstream_create(ABT_SCHED_NULL, &tick_stream);
-  ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
-                               ABT_THREAD_ATTR_NULL, &tick_thread);
-
-  while (1) {
-    usleep(INTERVAL);
-    ABT_thread_get_state(tick_thread, &tick_state);
-    assert(tick_state == ABT_THREAD_STATE_TERMINATED);
-    ABT_thread_free(&tick_thread);
-    ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
-                                 ABT_THREAD_ATTR_NULL, &tick_thread);
-  }
-
-  my_engine.wait_for_finalize();
-
-  ABT_thread_free(&sig_thread);
-  ABT_thread_free(&tick_thread);
-
-  ABT_xstream_free(&sig_stream);
-  ABT_xstream_free(&tick_stream);
+  thread signal_handler([&] {
+    int num;
+    bool ok = false;
+    while (1) {
+      if (ok) {
+        printf("this node will be shutdown,please wait..\n");
+        break;
+      }
+      printf("signal wait\n");
+      sigwait(&ss, &num);
+      printf("Signal received %d\n", num);
+      ok = provider.remove_self_from_cluster();
+    }
+  });
 }
 
 void run_bootstrap(std::string self) {
-  ABT_xstream sig_stream, tick_stream;
-  ABT_thread sig_thread, tick_thread;
-  ABT_thread_state tick_state;
   static sigset_t ss;
 
   setup_sigset(&ss);
 
-  lmdb_raft_logger logger(self);
+  lmdb_raft_logger logger(self, raft_logger_mode::bootstrap);
   kvs_raft_fsm fsm;
-
-  ABT_init(0, NULL);
-  logger.bootstrap();
 
   printf("try binding with %s%s\n", PROTOCOL_PREFIX, self.c_str());
   tl::engine my_engine(PROTOCOL_PREFIX + self, THALLIUM_SERVER_MODE, true, 2);
@@ -193,34 +123,20 @@ void run_bootstrap(std::string self) {
 
   raft_provider provider(my_engine, &logger, &fsm);
 
-  signal_handler_arg_t arg{.ss = &ss, .provider = &provider};
-
-  ABT_xstream_create(ABT_SCHED_NULL, &sig_stream);
-  ABT_thread_create_on_xstream(sig_stream, signal_handler, &arg,
-                               ABT_THREAD_ATTR_NULL, &sig_thread);
-
-  provider.start();
-
-  ABT_xstream_create(ABT_SCHED_NULL, &tick_stream);
-  ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
-                               ABT_THREAD_ATTR_NULL, &tick_thread);
-
-  while (1) {
-    usleep(INTERVAL);
-    ABT_thread_get_state(tick_thread, &tick_state);
-    assert(tick_state == ABT_THREAD_STATE_TERMINATED);
-    ABT_thread_free(&tick_thread);
-    ABT_thread_create_on_xstream(tick_stream, tick_loop, &provider,
-                                 ABT_THREAD_ATTR_NULL, &tick_thread);
-  }
-
-  my_engine.wait_for_finalize();
-
-  ABT_thread_free(&sig_thread);
-  ABT_thread_free(&tick_thread);
-
-  ABT_xstream_free(&sig_stream);
-  ABT_xstream_free(&tick_stream);
+  thread signal_handler([&] {
+    int num;
+    bool ok = false;
+    while (1) {
+      if (ok) {
+        printf("this node will be shutdown,please wait..\n");
+        break;
+      }
+      printf("signal wait\n");
+      sigwait(&ss, &num);
+      printf("Signal received %d\n", num);
+      ok = provider.remove_self_from_cluster();
+    }
+  });
 }
 
 int main(int argc, char **argv) {

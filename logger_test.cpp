@@ -12,7 +12,7 @@ namespace {
 class logger_test : public ::testing::Test {
 protected:
   lmdb_raft_logger logger;
-  logger_test() : logger(ADDR) { logger.init(); }
+  logger_test() : logger(ADDR, raft_logger_mode::init) {}
 
   ~logger_test() { logger.clean_up(); }
 };
@@ -136,16 +136,14 @@ TEST_F(logger_test, RECOVER) {
   std::string addr = "127.0.0.1:8888";
 
   auto run1 = [&]() {
-    lmdb_raft_logger logger2(addr);
+    lmdb_raft_logger logger2(addr, raft_logger_mode::init);
     printf("logger2 init\n");
-    logger2.init();
     logger2.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2", "foo-bar-buz");
   };
 
   auto run2 = [&]() {
-    lmdb_raft_logger logger3(addr);
+    lmdb_raft_logger logger3(addr, raft_logger_mode::bootstrap);
     printf("logger3 bootstrap\n");
-    logger3.bootstrap();
     int i, t;
     logger3.get_last_log(i, t);
     ASSERT_EQ(i, 2);

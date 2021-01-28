@@ -10,7 +10,20 @@
 
 #include "builder.hpp"
 
-lmdb_raft_logger::lmdb_raft_logger(std::string _id) : raft_logger(_id) {}
+lmdb_raft_logger::lmdb_raft_logger(std::string _id, raft_logger_mode mode)
+  : raft_logger(_id, mode) {
+  switch (mode) {
+    case raft_logger_mode::init:
+      init();
+      break;
+    case raft_logger_mode::join:
+      join();
+      break;
+    case raft_logger_mode::bootstrap:
+      bootstrap();
+      break;
+  }
+}
 
 lmdb_raft_logger::~lmdb_raft_logger() {}
 

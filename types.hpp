@@ -158,4 +158,10 @@ struct remove_server_response {
 
 #define UUID_LENGTH 37
 
+enum class raft_logger_mode {
+  init,
+  join,
+  bootstrap,
+};
+
 #endif

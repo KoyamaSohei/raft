@@ -25,12 +25,43 @@ raft_provider::raft_provider(tl::engine &e, raft_logger *_logger,
   , m_add_server_rpc(define("add_server", &raft_provider::add_server_rpc))
   , m_remove_server_rpc(
       define("remove_server", &raft_provider::remove_server_rpc)) {
+
   define(ECHO_STATE_RPC_NAME, &raft_provider::echo_state_rpc);
-  // Block RPC until start
-  mu.lock();
+  update_timeout_limit();
 }
 
-raft_provider::~raft_provider() {}
+raft_provider::~raft_provider() {
+  ABT_xstream tick_stream;
+  ABT_thread tick_thread;
+  ABT_thread_state tick_state;
+
+  ABT_xstream_create(ABT_SCHED_NULL, &tick_stream);
+  ABT_thread_create_on_xstream(tick_stream, tick_loop, this,
+                               ABT_THREAD_ATTR_NULL, &tick_thread);
+
+  while (logger->contains_self_in_nodes()) {
+    usleep(INTERVAL);
+    ABT_thread_get_state(tick_thread, &tick_state);
+    assert(tick_state == ABT_THREAD_STATE_TERMINATED);
+    ABT_thread_free(&tick_thread);
+    ABT_thread_create_on_xstream(tick_stream, tick_loop, this,
+                                 ABT_THREAD_ATTR_NULL, &tick_thread);
+  }
+
+  printf("cancel thread\n");
+  assert(ABT_thread_cancel(tick_thread) == ABT_SUCCESS);
+
+  printf("join and free thread\n");
+  assert(ABT_thread_free(&tick_thread) == ABT_SUCCESS);
+
+  printf("join and free ES\n");
+  assert(ABT_xstream_free(&tick_stream) == ABT_SUCCESS);
+
+  printf("finalize\n");
+  finalize();
+  printf("wait_for_finalize\n");
+  get_engine().wait_for_finalize();
+}
 
 void raft_provider::finalize() {
   leader_hint.clear();
@@ -570,7 +601,9 @@ void raft_provider::run_leader() {
 void raft_provider::run() {
   mu.lock();
   if (!logger->contains_self_in_nodes()) {
+    mu.unlock();
     printf("warning: self addr is not in nodes\n");
+    return;
   }
 
   int last_applied = get_last_applied();
@@ -603,12 +636,6 @@ void raft_provider::run() {
          last_applied);
   mu.unlock();
   cond.notify_all();
-}
-
-void raft_provider::start() {
-  update_timeout_limit();
-  // begin to accept rpc
-  mu.unlock();
 }
 
 void raft_provider::transfer_leadership() {
@@ -659,6 +686,7 @@ void raft_provider::transfer_leadership() {
 bool raft_provider::remove_self_from_cluster() {
   mu.lock();
   if (logger->get_num_nodes() == 1) {
+    logger->set_remove_conf_log(logger->get_id());
     mu.unlock();
     return true;
   }
@@ -699,4 +727,8 @@ bool raft_provider::remove_self_from_cluster() {
   }
 
   return false;
+}
+
+void raft_provider::tick_loop(void *provider) {
+  ((raft_provider *)provider)->run();
 }

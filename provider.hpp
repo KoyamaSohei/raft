@@ -108,15 +108,15 @@ private:
   void run_leader();
 
   void transfer_leadership();
+  void finalize();
+
+  static void tick_loop(void *provider);
 
 public:
   raft_provider(tl::engine &e, raft_logger *logger, raft_fsm *fsm,
                 uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
-  void start();
-  void finalize();
   bool remove_self_from_cluster();
 };
-
 #endif
