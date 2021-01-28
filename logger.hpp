@@ -242,9 +242,6 @@ protected:
    */
   virtual int set_remove_conf_log(const std::string &old_server) = 0;
 
-public:
-  raft_logger(std::string _id, raft_logger_mode mode)
-    : id(_id), voted_for(""), current_term(0), stored_log_num(0){};
   virtual ~raft_logger(){};
 
   /**
@@ -253,6 +250,10 @@ public:
    * usually, this method is used for testing.
    */
   virtual void clean_up() = 0;
+
+public:
+  raft_logger(std::string _id, raft_logger_mode mode)
+    : id(_id), voted_for(""), current_term(0), stored_log_num(0){};
 };
 
 /**
