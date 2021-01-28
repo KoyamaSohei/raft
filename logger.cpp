@@ -6,9 +6,60 @@
 #include <unistd.h>
 
 #include <cassert>
+#include <cereal/archives/json.hpp>
+#include <cereal/cereal.hpp>
+#include <cereal/types/set.hpp>
 #include <string>
 
 #include "builder.hpp"
+
+void raft_logger::parse_log(int &term, std::string &uuid, std::string &command,
+                            const std::string &src) {
+  std::stringstream ss;
+  { ss << src; }
+  {
+    cereal::JSONInputArchive archive(ss);
+    archive(CEREAL_NVP(term), CEREAL_NVP(uuid), CEREAL_NVP(command));
+  }
+}
+
+void raft_logger::build_log(std::string &dst, const int &term,
+                            const std::string &uuid,
+                            const std::string &command) {
+  std::stringstream ss;
+  {
+    cereal::JSONOutputArchive archive(ss);
+    archive(CEREAL_NVP(term), CEREAL_NVP(uuid), CEREAL_NVP(command));
+  }
+  dst = ss.str();
+}
+
+void raft_logger::parse_conf_log(int &prev_index,
+                                 std::set<std::string> &prev_nodes,
+                                 int &next_index,
+                                 std::set<std::string> &next_nodes,
+                                 const std::string &src) {
+  std::stringstream ss;
+  { ss << src; }
+  {
+    cereal::JSONInputArchive archive(ss);
+    archive(CEREAL_NVP(prev_index), CEREAL_NVP(prev_nodes),
+            CEREAL_NVP(next_index), CEREAL_NVP(next_nodes));
+  }
+}
+
+void raft_logger::build_conf_log(std::string &dst, const int &prev_index,
+                                 const std::set<std::string> &prev_nodes,
+                                 const int &next_index,
+                                 const std::set<std::string> &next_nodes) {
+  std::stringstream ss;
+  {
+    cereal::JSONOutputArchive archive(ss);
+    archive(CEREAL_NVP(prev_index), CEREAL_NVP(prev_nodes),
+            CEREAL_NVP(next_index), CEREAL_NVP(next_nodes));
+  }
+  dst = ss.str();
+}
 
 lmdb_raft_logger::lmdb_raft_logger(std::string _id, raft_logger_mode mode)
   : raft_logger(_id, mode) {
