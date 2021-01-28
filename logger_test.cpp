@@ -33,19 +33,6 @@ TEST_F(logger_test, SET_DUMMY) {
   ASSERT_EQ(t, 0);
 }
 
-TEST_F(logger_test, DUMMY_IS_CLUSTER_INFO) {
-  int index = 1;
-  int term;
-  std::string uuid, command;
-  logger.get_log(index, term, uuid, command);
-  ASSERT_EQ(term, 0);
-  int p, n;
-  std::set<std::string> pn, nn;
-  parse_conf_log(p, pn, n, nn, command);
-  ASSERT_EQ(p, 0);
-  ASSERT_EQ(n, 1);
-}
-
 TEST_F(logger_test, APPEND_LOG) {
   int idx = logger.append_log("046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                               "{\"key\":\"foo\",\"value\":\"bar\"}");
