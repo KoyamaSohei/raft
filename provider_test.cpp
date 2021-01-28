@@ -563,12 +563,12 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
 }
 
 TEST_F(provider_test, APPLY_ENTRIES) {
-  EXPECT_CALL(logger, set_log(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+  EXPECT_CALL(logger, set_log(2, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                               "{\"key\":\"foo\",\"value\":\"bar\"}"));
   std::vector<raft_entry> ent;
-  ent.emplace_back(1, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
+  ent.emplace_back(2, 1, "046ccc3a-2dac-4e40-ae2e-76797a271fe2",
                    "{\"key\":\"foo\",\"value\":\"bar\"}");
-  append_entries_response r = append_entries(1, 0, 0, ent, 1, caddr);
+  append_entries_response r = append_entries(1, 1, 0, ent, 1, caddr);
   ASSERT_EQ(r.term, 1);
   ASSERT_TRUE(r.success);
   usleep(3 * INTERVAL);
