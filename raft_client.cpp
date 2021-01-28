@@ -6,6 +6,7 @@
 #include <set>
 
 #include "builder.hpp"
+#include "fsm.hpp"
 #include "types.hpp"
 
 void usage(int argc, char **argv) {
@@ -88,7 +89,7 @@ int main(int argc, char **argv) {
     }
 
     std::string command, uuid;
-    build_command(command, argv[2], argv[3]);
+    kvs_raft_fsm::build_command(command, argv[2], argv[3]);
     generate_uuid(uuid);
 
     get_set_from_seq(nodes, argv[4]);

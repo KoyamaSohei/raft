@@ -28,26 +28,6 @@ bool uuid_is_special(const std::string &uuid) {
   return yes;
 }
 
-void parse_command(std::string &key, std::string &value,
-                   const std::string &src) {
-  std::stringstream ss;
-  { ss << src; }
-  {
-    cereal::JSONInputArchive archive(ss);
-    archive(CEREAL_NVP(key), (value));
-  }
-}
-
-void build_command(std::string &dst, const std::string &key,
-                   const std::string &value) {
-  std::ostringstream ss;
-  {
-    cereal::JSONOutputArchive archive(ss);
-    archive(CEREAL_NVP(key), CEREAL_NVP(value));
-  }
-  dst = ss.str();
-}
-
 void get_set_from_seq(std::set<std::string> &dst, const std::string &src) {
   dst.clear();
   std::string buffer;

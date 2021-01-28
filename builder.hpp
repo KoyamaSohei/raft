@@ -27,24 +27,6 @@ void generate_special_uuid(std::string &uuid);
 bool uuid_is_special(const std::string &uuid);
 
 /**
- *  parse key value command
- *  @param key key  e.g.) "foo"
- *  @param value value e.g.) "bar"
- *  @param src src e.g.) "{\"key\":\"foo\",\"value\":\"bar\"}"
- */
-void parse_command(std::string &key, std::string &value,
-                   const std::string &src);
-
-/**
- *  build key value command
- *  @param dst dst e.g.) "{\"key\":\"foo\",\"value\":\"bar\"}"
- *  @param key key  e.g.) "foo"
- *  @param value value e.g.) "bar"
- */
-void build_command(std::string &dst, const std::string &key,
-                   const std::string &value);
-
-/**
  *  parse string sequence. sequence splits string with ','
  *  @param dst dst e.g.) {"127.0.0.1","127.0.0.2"}
  *  @param src src e.g.) "127.0.0.1,127.0.0.2"

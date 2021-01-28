@@ -44,9 +44,30 @@ private:
 
 public:
   kvs_raft_fsm();
+
   ~kvs_raft_fsm();
+
   void apply(std::string command);
+
   std::string resolve(std::string query);
+
+  /**
+   *  build key value command
+   *  @param dst dst e.g.) "{\"key\":\"foo\",\"value\":\"bar\"}"
+   *  @param key key  e.g.) "foo"
+   *  @param value value e.g.) "bar"
+   */
+  static void build_command(std::string &dst, const std::string &key,
+                            const std::string &value);
+
+  /**
+   *  parse key value command
+   *  @param key key  e.g.) "foo"
+   *  @param value value e.g.) "bar"
+   *  @param src src e.g.) "{\"key\":\"foo\",\"value\":\"bar\"}"
+   */
+  static void parse_command(std::string &key, std::string &value,
+                            const std::string &src);
 };
 
 #endif
