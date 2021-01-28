@@ -279,6 +279,8 @@ protected:
     ASSERT_EQ(fetch_state(), raft_state::follower);
   }
 
+  void remove_dummy_server() { logger.set_remove_conf_log(caddr); }
+
   client_query_response client_query(std::string query) {
     client_query_response resp = m_client_query_rpc.on(server_addr)(query);
     return resp;
@@ -575,6 +577,8 @@ TEST_F(provider_test, APPLY_ENTRIES) {
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(2));
   provider.run();
+  provider.run();
+  provider.run();
   ASSERT_EQ(fetch_state(), raft_state::leader);
   client_query_response r2 = client_query("foo");
   ASSERT_EQ(r2.status, RAFT_SUCCESS);
@@ -586,6 +590,7 @@ TEST_F(provider_test, NOT_DETERMINED_LEADER) {
   usleep(3 * INTERVAL);
   provider.run();
   ASSERT_NE(fetch_state(), raft_state::leader);
+  remove_dummy_server();
 }
 
 TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
@@ -597,6 +602,7 @@ TEST_F(provider_test, BECOME_FOLLOWER_FROM_CANDIDATE) {
   ASSERT_FALSE(r.success);
   ASSERT_EQ(r.term, 3);
   ASSERT_EQ(fetch_state(), raft_state::follower);
+  remove_dummy_server();
 }
 
 TEST_F(provider_test, CLIENT_GET_LEADER_NOT_FOUND) {
@@ -639,6 +645,7 @@ TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
   usleep(INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
+  remove_dummy_server();
 }
 
 TEST_F(provider_test, NODE_IS_NOT_LEADER) {
@@ -697,6 +704,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
   int err = timeout_now(3, 0, 0);
   ASSERT_EQ(err, RAFT_NODE_IS_NOT_FOLLOWER);
   ASSERT_EQ(fetch_state(), raft_state::candidate);
+  remove_dummy_server();
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_INVALID_TERM) {
