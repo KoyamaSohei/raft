@@ -418,9 +418,7 @@ void raft_provider::remove_server_rpc(const tl::request &req,
     return;
   }
   if (get_commit_index() < logger->get_last_conf_applied()) {
-    try {
-      req.respond<remove_server_response>({RAFT_DENY_REQUEST, leader_hint});
-    } catch (tl::exception &e) {}
+    req.respond<remove_server_response>({RAFT_DENY_REQUEST, leader_hint});
     return;
   }
   if (old_server == logger->get_id()) {
