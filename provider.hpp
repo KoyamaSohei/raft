@@ -85,7 +85,7 @@ private:
    */
   system_clock::time_point timeout_limit;
   /**
-   * update_timeout_limit calls when
+   * update_timeout_limit is called
    * - before become follower
    * - before become candidate
    * - after recerive entry from append entries rpc
