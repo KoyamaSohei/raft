@@ -691,6 +691,18 @@ void raft_provider::transfer_leadership() {
   return;
 }
 
+void raft_provider::wait_add_self_into_cluster() {
+  while (1) {
+    mu.lock();
+    if (logger->contains_self_in_nodes()) {
+      mu.unlock();
+      return;
+    }
+    mu.unlock();
+    usleep(INTERVAL);
+  }
+}
+
 bool raft_provider::remove_self_from_cluster() {
   mu.lock();
   if (logger->get_num_nodes() == 1) {

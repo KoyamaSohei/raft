@@ -206,6 +206,7 @@ public:
                 uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
+  void wait_add_self_into_cluster();
   bool remove_self_from_cluster();
 };
 #endif

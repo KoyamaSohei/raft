@@ -119,6 +119,8 @@ void run_join(std::string self, std::string target_id) {
       printf("error creating thread.");
       abort();
     }
+
+    provider.wait_add_self_into_cluster();
   }
 
   if (pthread_join(signal_thread, NULL)) {
