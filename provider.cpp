@@ -575,7 +575,7 @@ void raft_provider::run_leader() {
       mu.lock();
       continue;
     } catch (const tl::timeout &e) {
-      printf("timout at node %s\n", node.c_str());
+      printf("timeout at node %s\n", node.c_str());
       mu.lock();
       continue;
     }
