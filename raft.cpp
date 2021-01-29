@@ -85,29 +85,6 @@ void run_join(std::string self, std::string target_id) {
     printf("Server running at address %s\n",
            ((string)my_engine.self()).c_str());
 
-    tl::remote_procedure m_add_server_rpc(my_engine.define("add_server"));
-
-    while (1) {
-      tl::provider_handle ph(my_engine.lookup(PROTOCOL_PREFIX + target_id),
-                             RAFT_PROVIDER_ID);
-      add_server_response resp = m_add_server_rpc.on(ph)(self);
-      switch (resp.status) {
-        case RAFT_LEADER_NOT_FOUND:
-          printf("leader not found, please retry another addr\n");
-          exit(0);
-          break;
-        case RAFT_NODE_IS_NOT_LEADER:
-          target_id = resp.leader_hint;
-          break;
-        case RAFT_DENY_REQUEST:
-          printf("deny request, please retry another addr\n");
-          exit(0);
-          break;
-      }
-      if (resp.status == RAFT_SUCCESS) { break; }
-      usleep(INTERVAL);
-    }
-
     lmdb_raft_logger logger(self, raft_logger_mode::join);
     kvs_raft_fsm fsm;
 

@@ -207,7 +207,7 @@ public:
                 uint16_t provider_id = RAFT_PROVIDER_ID);
   ~raft_provider();
   void run();
-  void wait_add_self_into_cluster();
+  void wait_add_self_into_cluster(std::string target_hint);
   bool remove_self_from_cluster();
 };
 #endif

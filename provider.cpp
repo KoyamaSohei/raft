@@ -735,7 +735,27 @@ void raft_provider::transfer_leadership() {
   return;
 }
 
-void raft_provider::wait_add_self_into_cluster() {
+void raft_provider::wait_add_self_into_cluster(std::string target_hint) {
+  while (1) {
+    tl::provider_handle ph(get_engine().lookup(PROTOCOL_PREFIX + target_hint),
+                           RAFT_PROVIDER_ID);
+    add_server_response resp = m_add_server_rpc.on(ph)(logger->get_id());
+    switch (resp.status) {
+      case RAFT_LEADER_NOT_FOUND:
+        printf("leader not found, please retry another addr\n");
+        exit(0);
+        break;
+      case RAFT_NODE_IS_NOT_LEADER:
+        target_hint = resp.leader_hint;
+        break;
+      case RAFT_DENY_REQUEST:
+        printf("deny request, please retry another addr\n");
+        exit(0);
+        break;
+    }
+    if (resp.status == RAFT_SUCCESS) { break; }
+    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+  }
   while (1) {
     mu.lock();
     if (logger->contains_self_in_nodes()) {
