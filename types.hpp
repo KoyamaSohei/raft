@@ -9,7 +9,7 @@
 #include <thallium/serialization/stl/string.hpp>
 #include <thallium/serialization/stl/vector.hpp>
 
-#define INTERVAL 500000
+#define INTERVAL 2000000
 #define TIMEOUT_SPAN 2
 #define RAFT_PROVIDER_ID 999
 #define MAX_ENTRIES_NUM 100
