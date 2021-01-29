@@ -508,7 +508,7 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
                                    last_log_term, has_disrupt_permission));
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
-    }
+    } catch (const tl::timeout &e) { printf("timeout request \n"); }
   }
 
   for (int i = 0; i < (int)req.size(); i++) {
@@ -524,7 +524,7 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
       if (resp.vote_granted) { vote++; }
     } catch (const tl::exception &e) {
       printf("error occured at receive response\n");
-    }
+    } catch (const tl::timeout &e) { printf("timeout response \n"); }
   }
 
   mu.lock();
@@ -590,7 +590,7 @@ void raft_provider::run_leader() {
       last_indexs.emplace_back(last_index);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
-    }
+    } catch (const tl::timeout &e) { printf("timeout request \n"); }
     mu.lock();
   }
 
@@ -619,7 +619,7 @@ void raft_provider::run_leader() {
              get_match_index(node), get_next_index(node));
     } catch (const tl::exception &e) {
       printf("error occured at receive response\n");
-    }
+    } catch (const tl::timeout &e) { printf("timeout response \n"); }
   }
   mu.lock();
 
