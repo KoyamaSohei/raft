@@ -99,8 +99,18 @@ private:
    */
   system_clock::time_point last_entry_recerived;
 
-  // Mutex
+  /**
+   * mu is mutex.
+   * please call mu.lock() before access ANY variables,state,etc.
+   * also, mu.lock() is called beginning run() and
+   * mu.unlock() is called ending run().
+   * this is to avoid changing the state in the middle of the run().
+   * please mu.unlock() before call ANY rpc and
+   * mu.lock() again if rpc ended.
+   * this is to avoid waiting rpc response in critical section.
+   */
   tl::mutex mu;
+
   tl::condition_variable cond;
 
   void set_force_current_term(int term);
