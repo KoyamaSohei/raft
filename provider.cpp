@@ -496,21 +496,17 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
   int vote = 1;
 
   std::string id(logger->get_id());
-  std::vector<std::string> peers;
-  for (std::string node : logger->get_peers()) { peers.emplace_back(node); }
-
-  int num_peers = peers.size();
 
   mu.unlock();
   std::vector<tl::async_response> req;
 
-  for (int i = 0; i < num_peers; i++) {
+  for (std::string node : logger->get_peers()) {
     try {
-      req.push_back(m_request_vote_rpc.on(get_handle(peers[i]))
+      req.push_back(m_request_vote_rpc.on(get_handle(node))
                       .async(current_term, id, last_log_index, last_log_term,
                              has_disrupt_permission));
     } catch (const tl::exception &e) {
-      printf("error occured at node %s\n", peers[i].c_str());
+      printf("error occured at node %s\n", node.c_str());
     }
   }
 
@@ -526,7 +522,7 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
       }
       if (resp.vote_granted) { vote++; }
     } catch (const tl::exception &e) {
-      printf("error occured at node %s\n", peers[i].c_str());
+      printf("error occured at receive response\n");
     }
   }
 
