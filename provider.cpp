@@ -128,10 +128,10 @@ void raft_provider::update_timeout_limit() {
   int span = 0;
   switch (_state) {
     case raft_state::follower:
-      span = 2;
+      span = TIMEOUT_SPAN;
       break;
     case raft_state::candidate:
-      span = 2 + rand() % 10;
+      span = TIMEOUT_SPAN + rand() % TIMEOUT_SPAN;
       break;
     case raft_state::leader:
       abort();
@@ -225,6 +225,7 @@ void raft_provider::append_entries_rpc(
 
   assert(get_state() == raft_state::follower);
   update_timeout_limit();
+  last_entry_recerived = system_clock::now();
 
   bool is_match = logger->match_log(req_prev_index, req_prev_term);
   if (!is_match) {
@@ -267,6 +268,11 @@ void raft_provider::request_vote_rpc(const tl::request &req, int req_term,
 
   bool granted = [&]() -> bool {
     if (req_term < current_term) return false;
+    if (!has_disrupt_permission &&
+        system_clock::now() - last_entry_recerived <
+          std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL)) {
+      return false;
+    }
     if (req_term > current_term) {
       set_force_current_term(req_term);
       current_term = req_term;
@@ -275,8 +281,6 @@ void raft_provider::request_vote_rpc(const tl::request &req, int req_term,
     if (req_last_log_term < last_log_term) return false;
     if (req_last_log_term > last_log_term) return true;
     if (req_last_log_index < last_log_index) return false;
-    if (has_disrupt_permission) return true;
-    if (system_clock::now() < timeout_limit) { return false; }
     return true;
   }();
 

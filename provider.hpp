@@ -47,7 +47,7 @@ private:
   void set_state(raft_state new_state);
 
   /**
-   * timeout_limit is used for 3 ways.
+   * timeout_limit is used for 2 ways.
    * for detail,
    * please refer page 4 "rules for servers"
    * in https://raft.github.io/raft.pdf
@@ -62,28 +62,9 @@ private:
    *    - become candidate again
    *    - increment current term
    *    - start election again
-   * 3. in follower state,
-   *    if received request vote rpc but
-   *    current time < timeout_limit,
-   *    NOT granted vote for that request.
-   *    because recentry received rpc from current leader.
-   *    this is used for prevent to make orphan node to leader.
-   *    for detail, please refer "section 4.2.3 disruptive server"
-   *    in https://github.com/ongardie/dissertation/blob/master/book.pdf
-   *
-   *    Note exception:
-   *    if request vote rpc has has_disrupt_permission flag,
-   *    even if current time < timeout_limit,
-   *    grant vote
-   *    (of cause,candidate log must be valid for become leader)
-   *
-   *    this exception is used for leadership transfer extension.
-   *    for detail,please refer
-   *    - "section 3.10 Leadership transfer extension"
-   *    - "section 4.2.3 disruptive server"
-   *    in https://github.com/ongardie/dissertation/blob/master/book.pdf
    */
   system_clock::time_point timeout_limit;
+
   /**
    * update_timeout_limit is called
    * - before become follower
@@ -91,6 +72,32 @@ private:
    * - after recerive entry from append entries rpc
    */
   void update_timeout_limit();
+
+  /**
+   *  last_entry_recerived handles the letest time
+   *  which append entries rpc received on.
+   *  in follower state,
+   *  if received request vote rpc but
+   *  current time - last_entry_recerived < TIMEOUT,
+   *  NOT granted vote for that request.
+   *  because recently received rpc from current leader.
+   *  this is used for prevent to make orphan node to leader.
+   *  for detail, please refer "section 4.2.3 disruptive server"
+   *  in https://github.com/ongardie/dissertation/blob/master/book.pdf
+   *
+   *  Note exception:
+   *  if request vote rpc has has_disrupt_permission flag,
+   *  even if current time < timeout_limit,
+   *  grant vote
+   *  (of cause,candidate log must be valid for become leader)
+   *
+   *  this exception is used for leadership transfer extension.
+   *  for detail,please refer
+   *  - "section 3.10 Leadership transfer extension"
+   *  - "section 4.2.3 disruptive server"
+   *  in https://github.com/ongardie/dissertation/blob/master/book.pdf
+   */
+  system_clock::time_point last_entry_recerived;
 
   // Mutex
   tl::mutex mu;
