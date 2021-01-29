@@ -512,6 +512,7 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
       continue;
     } catch (const tl::timeout &e) {
       printf("timeout at node %s\n", node.c_str());
+      reset_handle(node);
       mu.lock();
       continue;
     }
@@ -583,6 +584,7 @@ void raft_provider::run_leader() {
       continue;
     } catch (const tl::timeout &e) {
       printf("timeout at node %s\n", node.c_str());
+      reset_handle(node);
       mu.lock();
       continue;
     }
@@ -716,6 +718,7 @@ void raft_provider::transfer_leadership() {
     printf("error occured at node %s\n", target.c_str());
   } catch (const tl::timeout &e) {
     printf("timeout at node %s\n", target.c_str());
+    reset_handle(target);
   }
   mu.lock();
   return;
@@ -777,6 +780,7 @@ bool raft_provider::remove_self_from_cluster() {
     return false;
   } catch (tl::timeout &e) {
     printf("timeout on sending remove_server rpc, please retry\n");
+    reset_handle(leader_hint);
     return false;
   }
 
