@@ -84,6 +84,12 @@ private:
    *    in https://github.com/ongardie/dissertation/blob/master/book.pdf
    */
   system_clock::time_point timeout_limit;
+  /**
+   * update_timeout_limit calls when
+   * - before become follower
+   * - before become candidate
+   * - after recerive entry from append entries rpc
+   */
   void update_timeout_limit();
 
   // Mutex
