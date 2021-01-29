@@ -9,7 +9,8 @@
 #include <thallium/serialization/stl/string.hpp>
 #include <thallium/serialization/stl/vector.hpp>
 
-#define INTERVAL 2000000
+#define RPC_TIMEOUT 500000
+#define INTERVAL 4 * RPC_TIMEOUT
 #define TIMEOUT_SPAN 2
 #define RAFT_PROVIDER_ID 999
 #define MAX_ENTRIES_NUM 100

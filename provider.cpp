@@ -488,9 +488,10 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
     printf("request_vote to %s\n", node.c_str());
     request_vote_response resp;
     try {
-      resp = m_request_vote_rpc.on(get_handle(node))(
-        current_term, logger->get_id(), last_log_index, last_log_term,
-        has_disrupt_permission);
+      resp = m_request_vote_rpc.on(get_handle(node))
+               .timed(std::chrono::microseconds(RPC_TIMEOUT), current_term,
+                      logger->get_id(), last_log_index, last_log_term,
+                      has_disrupt_permission);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
@@ -555,8 +556,9 @@ void raft_provider::run_leader() {
     mu.unlock();
     append_entries_response resp;
     try {
-      resp = m_append_entries_rpc.on(get_handle(node))(
-        term, prev_index, prev_term, entries, commit_index, logger->get_id());
+      resp = m_append_entries_rpc.on(get_handle(node))
+               .timed(std::chrono::microseconds(RPC_TIMEOUT), term, prev_index,
+                      prev_term, entries, commit_index, logger->get_id());
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
@@ -679,8 +681,9 @@ void raft_provider::transfer_leadership() {
   mu.unlock();
 
   try {
-    int err = m_timeout_now_rpc.on(get_handle(target))(current_term, match_idx,
-                                                       match_term);
+    int err = m_timeout_now_rpc.on(get_handle(target))
+                .timed(std::chrono::microseconds(RPC_TIMEOUT), current_term,
+                       match_idx, match_term);
 
     if (err == RAFT_SUCCESS) {
       printf("transfer leadership succeeded, please retry.\n");
@@ -730,7 +733,8 @@ bool raft_provider::remove_self_from_cluster() {
   mu.unlock();
   try {
     remove_server_response resp =
-      m_remove_server_rpc.on(get_handle(leader_hint))(logger->get_id());
+      m_remove_server_rpc.on(get_handle(leader_hint))
+        .timed(std::chrono::microseconds(RPC_TIMEOUT), logger->get_id());
     if (resp.status == RAFT_SUCCESS) {
       printf("successfly  sending remove_server rpc,shutdown..\n");
       logger->set_remove_conf_log(logger->get_id());
