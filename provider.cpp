@@ -272,18 +272,25 @@ void raft_provider::request_vote_rpc(const tl::request &req, int req_term,
     if (!has_disrupt_permission &&
         system_clock::now() - last_entry_recerived <
           std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL)) {
+      printf("leader may be alive, so not voted\n");
       return false;
     }
     if (req_term > current_term) {
       set_force_current_term(req_term);
       current_term = req_term;
+      printf("overwrite term and clear voted_for\n");
     }
-    if (logger->exists_voted_for()) return false;
+    if (logger->exists_voted_for()) {
+      printf("already voted\n");
+      return false;
+    }
     if (req_last_log_term < last_log_term) return false;
     if (req_last_log_term > last_log_term) return true;
     if (req_last_log_index < last_log_index) return false;
     return true;
   }();
+
+  printf("voted granted: %d\n", granted);
 
   if (granted) {
     assert(!logger->exists_voted_for());
