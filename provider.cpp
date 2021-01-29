@@ -495,28 +495,43 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
 
   int vote = 1;
 
-  for (std::string node : logger->get_peers()) {
-    mu.unlock();
-    printf("request_vote to %s\n", node.c_str());
-    request_vote_response resp;
+  std::string id(logger->get_id());
+  std::vector<std::string> peers;
+  for (std::string node : logger->get_peers()) { peers.emplace_back(node); }
+
+  int num_peers = peers.size();
+
+  mu.unlock();
+  std::vector<tl::async_response> req;
+
+  for (int i = 0; i < num_peers; i++) {
     try {
-      resp = m_request_vote_rpc.on(get_handle(node))(
-        current_term, logger->get_id(), last_log_index, last_log_term,
-        has_disrupt_permission);
+      req.push_back(m_request_vote_rpc.on(get_handle(peers[i]))
+                      .async(current_term, id, last_log_index, last_log_term,
+                             has_disrupt_permission));
     } catch (const tl::exception &e) {
-      printf("error occured at node %s\n", node.c_str());
-      mu.lock();
-      continue;
+      printf("error occured at node %s\n", peers[i].c_str());
     }
-    mu.lock();
-    if (get_state() == raft_state::follower) { return; }
-    assert(get_state() == raft_state::candidate);
-    if (resp.term > current_term) {
-      become_follower();
-      return;
-    }
-    if (resp.vote_granted) { vote++; }
   }
+
+  for (int i = 0; i < (int)req.size(); i++) {
+    std::vector<tl::async_response>::iterator itr;
+    try {
+      request_vote_response resp =
+        tl::async_response::wait_any(req.begin(), req.end(), itr);
+      if (resp.term > current_term) {
+        mu.lock();
+        become_follower();
+        return;
+      }
+      if (resp.vote_granted) { vote++; }
+    } catch (const tl::exception &e) {
+      printf("error occured at node %s\n", peers[i].c_str());
+    }
+  }
+
+  mu.lock();
+
   printf("number of votes is %d/%d\n", vote, logger->get_num_nodes());
   if (vote * 2 > logger->get_num_nodes()) {
     become_leader();
