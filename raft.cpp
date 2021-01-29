@@ -97,7 +97,7 @@ void run_join(std::string self, std::string target_id) {
       abort();
     }
 
-    provider.wait_add_self_into_cluster();
+    provider.wait_add_self_into_cluster(target_id);
   }
 
   if (pthread_join(signal_thread, NULL)) {
