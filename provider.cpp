@@ -496,6 +496,10 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
       printf("error occured at node %s\n", node.c_str());
       mu.lock();
       continue;
+    } catch (const tl::timeout &e) {
+      printf("timeout at node %s\n", node.c_str());
+      mu.lock();
+      continue;
     }
     mu.lock();
     if (get_state() == raft_state::follower) { return; }
@@ -561,6 +565,10 @@ void raft_provider::run_leader() {
                       prev_term, entries, commit_index, logger->get_id());
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
+      mu.lock();
+      continue;
+    } catch (const tl::timeout &e) {
+      printf("timout at node %s\n", node.c_str());
       mu.lock();
       continue;
     }
@@ -690,7 +698,11 @@ void raft_provider::transfer_leadership() {
     } else {
       printf("error occured on transfer leadership, please retry\n");
     }
-  } catch (tl::exception &e) {}
+  } catch (tl::exception &e) {
+    printf("error occured at node %s\n", target.c_str());
+  } catch (const tl::timeout &e) {
+    printf("timeout at node %s\n", target.c_str());
+  }
   mu.lock();
   return;
 }
@@ -748,6 +760,9 @@ bool raft_provider::remove_self_from_cluster() {
     printf("error occured on leader, please retry\n");
   } catch (tl::exception &e) {
     printf("error occured on sending remove_server rpc, please retry\n");
+    return false;
+  } catch (tl::timeout &e) {
+    printf("timeout on sending remove_server rpc, please retry\n");
     return false;
   }
 
