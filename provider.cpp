@@ -165,6 +165,13 @@ tl::provider_handle &raft_provider::get_handle(const std::string &node) {
   return _node_to_handle[node];
 }
 
+void raft_provider::reset_handle(const std::string &node) {
+  std::string addr(PROTOCOL_PREFIX);
+  addr += node;
+  _node_to_handle[node] =
+    tl::provider_handle(get_engine().lookup(addr), RAFT_PROVIDER_ID);
+}
+
 // match_index initialized to 0
 int raft_provider::get_match_index(const std::string &node) {
   if (_match_index.count(node)) { return _match_index[node]; }

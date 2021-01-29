@@ -146,6 +146,7 @@ private:
   // cache to resolve host
   std::map<std::string, tl::provider_handle> _node_to_handle;
   tl::provider_handle &get_handle(const std::string &node);
+  void reset_handle(const std::string &node);
 
   // append_entries_rpc
   void append_entries_rpc(const tl::request &req, int req_term,
