@@ -160,16 +160,14 @@ tl::provider_handle &raft_provider::get_handle(const std::string &node) {
 
   std::string addr(PROTOCOL_PREFIX);
   addr += node;
+  printf("look up %s\n", addr.c_str());
   _node_to_handle[node] =
     tl::provider_handle(get_engine().lookup(addr), RAFT_PROVIDER_ID);
   return _node_to_handle[node];
 }
 
 void raft_provider::reset_handle(const std::string &node) {
-  std::string addr(PROTOCOL_PREFIX);
-  addr += node;
-  _node_to_handle[node] =
-    tl::provider_handle(get_engine().lookup(addr), RAFT_PROVIDER_ID);
+  _node_to_handle.erase(node);
 }
 
 // match_index initialized to 0
