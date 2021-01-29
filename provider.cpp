@@ -561,6 +561,11 @@ void raft_provider::run_leader() {
   int last_log_index, _;
   logger->get_last_log(last_log_index, _);
 
+  std::string id(logger->get_id());
+  std::vector<tl::async_response> req;
+  std::vector<std::string> peers;
+  std::vector<int> last_indexs;
+
   for (std::string node : logger->get_peers()) {
     int prev_index = get_next_index(node) - 1;
     assert(0 <= prev_index);
@@ -574,37 +579,48 @@ void raft_provider::run_leader() {
       logger->get_log(idx, t, uuid, command);
       entries.emplace_back(idx, t, uuid, command);
     }
-
     mu.unlock();
-    append_entries_response resp;
     try {
-      resp = m_append_entries_rpc.on(get_handle(node))(
-        term, prev_index, prev_term, entries, commit_index, logger->get_id());
+      req.emplace_back(
+        m_append_entries_rpc.on(get_handle(node))
+          .async(term, prev_index, prev_term, entries, commit_index, id));
+      peers.emplace_back(node);
+      last_indexs.emplace_back(last_index);
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
-      mu.lock();
-      continue;
     }
     mu.lock();
-    if (get_state() == raft_state::follower) { return; }
-    assert(get_state() == raft_state::leader);
-
-    if (resp.term > logger->get_current_term()) {
-      become_follower();
-      return;
-    }
-
-    if (resp.success) {
-      set_match_index(node, last_index);
-      set_next_index(node, last_index + 1);
-    } else {
-      set_next_index(node, get_next_index(node) - 1);
-      assert(get_next_index(node) > 0);
-    }
-
-    printf("node %s match: %d, next: %d\n", node.c_str(), get_match_index(node),
-           get_next_index(node));
   }
+
+  mu.unlock();
+
+  for (int i = 0; i < (int)req.size(); i++) {
+    std::vector<tl::async_response>::iterator itr;
+    try {
+      append_entries_response resp =
+        tl::async_response::wait_any(req.begin(), req.end(), itr);
+      if (resp.term > term) {
+        mu.lock();
+        become_follower();
+        return;
+      }
+      std::string node(peers[itr - req.begin()]);
+      int last_index = last_indexs[itr - req.begin()];
+      if (resp.success) {
+        set_match_index(node, last_index);
+        set_next_index(node, last_index + 1);
+      } else {
+        set_next_index(node, get_next_index(node) - 1);
+        assert(get_next_index(node) > 0);
+      }
+      printf("node %s match: %d, next: %d\n", node.c_str(),
+             get_match_index(node), get_next_index(node));
+    } catch (const tl::exception &e) {
+      printf("error occured at receive response\n");
+    }
+  }
+  mu.lock();
+
   // check if leader can commit N
   // N := sorted_match_index[num_nodes/2]
   //
