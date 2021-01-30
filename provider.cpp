@@ -398,6 +398,7 @@ void raft_provider::client_query_rpc(const tl::request &req,
 
 void raft_provider::add_server_rpc(const tl::request &req,
                                    const std::string &new_server) {
+  printf("add server rpc received\n");
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (leader_hint.empty()) {
@@ -431,6 +432,7 @@ void raft_provider::add_server_rpc(const tl::request &req,
 
 void raft_provider::remove_server_rpc(const tl::request &req,
                                       const std::string &old_server) {
+  printf("remove server rpc received\n");
   std::unique_lock<tl::mutex> lock(mu);
   if (get_state() != raft_state::leader) {
     if (!leader_hint.empty()) {
