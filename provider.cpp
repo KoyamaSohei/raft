@@ -368,6 +368,7 @@ void raft_provider::client_request_rpc(const tl::request &req,
   int index = logger->append_log(uuid, command);
 
   while (get_commit_index() < index && get_state() == raft_state::leader) {
+    printf("wait to commit index\n");
     cond.wait(lock);
   }
 
@@ -418,6 +419,7 @@ void raft_provider::add_server_rpc(const tl::request &req,
   }
   int index = logger->set_add_conf_log(new_server);
   while (get_commit_index() < index && get_state() == raft_state::leader) {
+    printf("wait to commit index\n");
     cond.wait(lock);
   }
 
