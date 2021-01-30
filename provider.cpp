@@ -518,19 +518,19 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
   }
 
   for (int i = 0; i < (int)req.size(); i++) {
+    request_vote_response resp;
     try {
-      request_vote_response resp = req[i].wait();
-      mu.lock();
-      if (get_state() == raft_state::follower) { return; }
-      if (resp.term > current_term) {
-        become_follower();
-        return;
-      }
-      if (resp.vote_granted) { vote++; }
+      resp = req[i].wait();
     } catch (const tl::exception &e) {
-      mu.lock();
       printf("error occured at receive response\n");
     } catch (const tl::timeout &e) { printf("timeout response \n"); }
+    mu.lock();
+    if (get_state() == raft_state::follower) { return; }
+    if (resp.term > current_term) {
+      become_follower();
+      return;
+    }
+    if (resp.vote_granted) { vote++; }
     mu.unlock();
   }
 
@@ -605,25 +605,27 @@ void raft_provider::run_leader() {
   for (int i = 0; i < (int)req.size(); i++) {
     std::string node(peers[i]);
     int last_index = last_indexs[i];
+    append_entries_response resp;
     try {
-      append_entries_response resp = req[i].wait();
-      if (resp.term > term) {
-        mu.lock();
-        become_follower();
-        return;
-      }
-      if (resp.success) {
-        set_match_index(node, last_index);
-        set_next_index(node, last_index + 1);
-      } else {
-        set_next_index(node, get_next_index(node) - 1);
-        assert(get_next_index(node) > 0);
-      }
-      printf("node %s match: %d, next: %d\n", node.c_str(),
-             get_match_index(node), get_next_index(node));
+      resp = req[i].wait();
     } catch (const tl::exception &e) {
       printf("error occured at receive response\n");
     } catch (const tl::timeout &e) { printf("timeout response \n"); }
+    mu.lock();
+    if (resp.term > term) {
+      become_follower();
+      return;
+    }
+    if (resp.success) {
+      set_match_index(node, last_index);
+      set_next_index(node, last_index + 1);
+    } else {
+      set_next_index(node, get_next_index(node) - 1);
+      assert(get_next_index(node) > 0);
+    }
+    printf("node %s match: %d, next: %d\n", node.c_str(), get_match_index(node),
+           get_next_index(node));
+    mu.unlock();
   }
   mu.lock();
 

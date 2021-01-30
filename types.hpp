@@ -51,7 +51,7 @@ struct append_entries_response {
   int term;
   bool success;
 
-  append_entries_response(int _term = 1, bool _success = false)
+  append_entries_response(int _term = 0, bool _success = false)
     : term(_term), success(_success) {
     assert(0 <= term);
   }
@@ -67,7 +67,7 @@ struct request_vote_response {
   int term;
   bool vote_granted;
 
-  request_vote_response(int _term = 1, bool _vote_granted = false)
+  request_vote_response(int _term = 0, bool _vote_granted = false)
     : term(_term), vote_granted(_vote_granted) {
     assert(0 <= term);
   }
