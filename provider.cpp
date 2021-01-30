@@ -738,6 +738,7 @@ void raft_provider::transfer_leadership() {
 
 void raft_provider::wait_add_self_into_cluster(std::string target_hint) {
   while (1) {
+    printf("lookup %s\n", target_hint.c_str());
     tl::provider_handle ph(get_engine().lookup(PROTOCOL_PREFIX + target_hint),
                            RAFT_PROVIDER_ID);
     add_server_response resp = m_add_server_rpc.on(ph)(logger->get_id());
