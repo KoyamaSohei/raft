@@ -754,6 +754,7 @@ void raft_provider::wait_add_self_into_cluster(std::string target_hint) {
     tl::thread::sleep(get_engine(), INTERVAL);
   }
   while (1) {
+    printf("check cluster contains self nodes\n");
     mu.lock();
     if (logger->contains_self_in_nodes()) {
       mu.unlock();
