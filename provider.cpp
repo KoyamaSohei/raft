@@ -518,10 +518,8 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
   }
 
   for (int i = 0; i < (int)req.size(); i++) {
-    std::vector<tl::async_response>::iterator itr;
     try {
-      request_vote_response resp =
-        tl::async_response::wait_any(req.begin(), req.end(), itr);
+      request_vote_response resp = req[i].wait();
       mu.lock();
       if (get_state() == raft_state::follower) { return; }
       if (resp.term > current_term) {
@@ -605,17 +603,15 @@ void raft_provider::run_leader() {
   mu.unlock();
 
   for (int i = 0; i < (int)req.size(); i++) {
-    std::vector<tl::async_response>::iterator itr;
+    std::string node(peers[i]);
+    int last_index = last_indexs[i];
     try {
-      append_entries_response resp =
-        tl::async_response::wait_any(req.begin(), req.end(), itr);
+      append_entries_response resp = req[i].wait();
       if (resp.term > term) {
         mu.lock();
         become_follower();
         return;
       }
-      std::string node(peers[itr - req.begin()]);
-      int last_index = last_indexs[itr - req.begin()];
       if (resp.success) {
         set_match_index(node, last_index);
         set_next_index(node, last_index + 1);
