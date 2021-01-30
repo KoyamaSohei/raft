@@ -421,6 +421,7 @@ void raft_provider::add_server_rpc(const tl::request &req,
   while (get_commit_index() < index && get_state() == raft_state::leader) {
     printf("wait to commit index\n");
     cond.wait(lock);
+    printf("check if condition is satisfied\n");
   }
 
   if (get_state() != raft_state::leader) {
@@ -459,7 +460,9 @@ void raft_provider::remove_server_rpc(const tl::request &req,
   int index = logger->set_remove_conf_log(old_server);
 
   while (get_commit_index() < index && get_state() == raft_state::leader) {
+    printf("wait to commit index\n");
     cond.wait(lock);
+    printf("check if condition is satisfied\n");
   }
   if (get_state() != raft_state::leader) {
     req.respond<remove_server_response>({RAFT_NODE_IS_NOT_LEADER, leader_hint});
