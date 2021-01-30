@@ -3,7 +3,6 @@
 #include <unistd.h>
 
 #include <cassert>
-#include <thread>
 
 #include "builder.hpp"
 
@@ -47,7 +46,7 @@ raft_provider::~raft_provider() {
       break;
     }
     mu.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(get_engine(), INTERVAL);
     ABT_thread_get_state(tick_thread, &tick_state);
     assert(tick_state == ABT_THREAD_STATE_TERMINATED);
     ABT_thread_free(&tick_thread);
@@ -752,7 +751,7 @@ void raft_provider::wait_add_self_into_cluster(std::string target_hint) {
         return;
     }
     if (resp.status == RAFT_SUCCESS) { break; }
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(get_engine(), INTERVAL);
   }
   while (1) {
     mu.lock();
@@ -761,7 +760,7 @@ void raft_provider::wait_add_self_into_cluster(std::string target_hint) {
       return;
     }
     mu.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(get_engine(), INTERVAL);
   }
 }
 

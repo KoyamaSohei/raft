@@ -5,7 +5,6 @@
 
 #include <random>
 #include <thallium.hpp>
-#include <thread>
 
 #include "fsm.hpp"
 #include "logger.hpp"
@@ -242,11 +241,11 @@ protected:
     tl::async_response req =
       m_client_request_rpc.on(server_addr).async(uuid, command);
     printf("sleep\n");
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(server_engine, INTERVAL);
     printf("run 1\n");
     provider.run();
     printf("run 2\n");
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(server_engine, INTERVAL);
     provider.run();
     printf("wait response\n ");
     client_request_response resp = req.wait();
@@ -255,8 +254,7 @@ protected:
 
   void add_dummy_server() {
     printf("add_dummy_server start");
-    std::this_thread::sleep_for(
-      std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+    tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
     provider.run();
     ASSERT_EQ(fetch_state(), raft_state::leader);
     provider.run();
@@ -264,12 +262,11 @@ protected:
 
     tl::async_response req = m_add_server_rpc.on(server_addr).async(caddr);
     printf("sleep\n");
-    std::this_thread::sleep_for(
-      std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+    tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
     printf("run 1\n");
     provider.run();
     printf("run 2\n");
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(server_engine, INTERVAL);
     provider.run();
     printf("wait response\n ");
     add_server_response resp = req.wait();
@@ -293,11 +290,11 @@ protected:
     printf("add server start\n");
     tl::async_response req = m_add_server_rpc.on(server_addr).async(new_server);
     printf("sleep\n");
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(server_engine, INTERVAL);
     printf("run 1\n");
     provider.run();
     printf("run 2\n");
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(server_engine, INTERVAL);
     add_server_response resp = req.wait();
     return resp;
   }
@@ -307,11 +304,11 @@ protected:
     tl::async_response req =
       m_remove_server_rpc.on(server_addr).async(old_server);
     printf("sleep\n");
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(server_engine, INTERVAL);
     printf("run 1\n");
     provider.run();
     printf("run 2\n");
-    std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+    tl::thread::sleep(server_engine, INTERVAL);
     remove_server_response resp = req.wait();
     return resp;
   }
@@ -322,8 +319,7 @@ TEST_F(provider_test, BECOME_FOLLOWER) {
 }
 
 TEST_F(provider_test, BECOME_LEADER) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -331,8 +327,7 @@ TEST_F(provider_test, BECOME_LEADER) {
 }
 
 TEST_F(provider_test, QUERY_RPC) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -343,8 +338,7 @@ TEST_F(provider_test, QUERY_RPC) {
 }
 
 TEST_F(provider_test, REQUEST_RPC) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -372,8 +366,7 @@ TEST_F(provider_test, REQUEST_RPC_LEADER_NOT_FOUND) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -387,8 +380,7 @@ TEST_F(provider_test, GET_HIGHER_TERM) {
 }
 
 TEST_F(provider_test, GET_HIGHER_TERM_2) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -402,8 +394,7 @@ TEST_F(provider_test, GET_HIGHER_TERM_2) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -418,8 +409,7 @@ TEST_F(provider_test, GET_LOWER_TERM) {
 }
 
 TEST_F(provider_test, GET_LOWER_TERM_2) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -443,8 +433,7 @@ TEST_F(provider_test, NOT_FOUND_PREV_LOG) {
 }
 
 TEST_F(provider_test, CONFLICT_PREV_LOG) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -466,8 +455,7 @@ TEST_F(provider_test, CONFLICT_PREV_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -488,8 +476,7 @@ TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_LATE_LOG_2) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -519,8 +506,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   EXPECT_CALL(logger, append_log(_, ""));
@@ -544,8 +530,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_2) {
 }
 
 TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   EXPECT_CALL(logger, append_log(_, ""));
@@ -568,8 +553,7 @@ TEST_F(provider_test, GRANTED_VOTE_WITH_LATEST_LOG_3) {
 }
 
 TEST_F(provider_test, NOT_GRANTED_VOTE_WITH_ALREADY_VOTED) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -589,8 +573,7 @@ TEST_F(provider_test, APPLY_ENTRIES) {
   append_entries_response r = append_entries(1, 1, 0, ent, 1, caddr);
   ASSERT_EQ(r.term, 1);
   ASSERT_TRUE(r.success);
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(2));
   provider.run();
@@ -604,8 +587,7 @@ TEST_F(provider_test, APPLY_ENTRIES) {
 
 TEST_F(provider_test, NOT_DETERMINED_LEADER) {
   add_dummy_server();
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   provider.run();
   ASSERT_NE(fetch_state(), raft_state::leader);
   remove_dummy_server();
@@ -654,22 +636,20 @@ TEST_F(provider_test, CLIENT_PUT_NODE_IS_NOT_LEADER) {
 TEST_F(provider_test, CANDIDATE_PERMANENTLY) {
   add_dummy_server();
   ASSERT_EQ(fetch_state(), raft_state::follower);
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
-  std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+  tl::thread::sleep(server_engine, INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
-  std::this_thread::sleep_for(std::chrono::microseconds(INTERVAL));
+  tl::thread::sleep(server_engine, INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   remove_dummy_server();
 }
 
 TEST_F(provider_test, NODE_IS_NOT_LEADER) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -687,8 +667,7 @@ TEST_F(provider_test, NODE_IS_NOT_LEADER) {
 }
 
 TEST_F(provider_test, PUT_INVALID_UUID) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -708,8 +687,7 @@ TEST_F(provider_test, TIMEOUT_NOW) {
 }
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   EXPECT_CALL(logger, set_voted_for_self());
   EXPECT_CALL(logger, set_current_term(1));
   provider.run();
@@ -720,8 +698,7 @@ TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER) {
 
 TEST_F(provider_test, TIMEOUT_NOW_NOT_FOLLOWER_2) {
   add_dummy_server();
-  std::this_thread::sleep_for(
-    std::chrono::microseconds(TIMEOUT_SPAN * INTERVAL));
+  tl::thread::sleep(server_engine, TIMEOUT_SPAN * INTERVAL);
   provider.run();
   ASSERT_EQ(fetch_state(), raft_state::candidate);
   int err = timeout_now(3, 0, 0);
