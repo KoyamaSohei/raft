@@ -137,7 +137,7 @@ void raft_provider::update_timeout_limit() {
       abort();
   }
   timeout_limit =
-    system_clock::now() + std::chrono::microseconds(span * INTERVAL);
+    system_clock::now() + std::chrono::milliseconds(span * INTERVAL);
 }
 
 void raft_provider::set_force_current_term(int term) {
