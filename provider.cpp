@@ -197,6 +197,7 @@ void raft_provider::append_entries_rpc(
   const tl::request &req, int req_term, int req_prev_index, int req_prev_term,
   const std::vector<raft_entry> &req_entries, int req_leader_commit,
   const std::string &req_leader_id) {
+  printf("received append entries rpc\n");
   mu.lock();
 
   int current_term = logger->get_current_term();
