@@ -79,6 +79,7 @@ lmdb_raft_logger::lmdb_raft_logger(std::string _id, raft_logger_mode mode)
 lmdb_raft_logger::~lmdb_raft_logger() {}
 
 void lmdb_raft_logger::init() {
+  printf("init logger\n");
   MDB_txn *txn;
   MDB_dbi log_dbi, state_dbi;
   MDB_stat log_stat;
@@ -185,6 +186,7 @@ void lmdb_raft_logger::init() {
 }
 
 void lmdb_raft_logger::join() {
+  printf("join logger\n");
   MDB_txn *txn;
   MDB_dbi log_dbi, state_dbi;
   MDB_stat log_stat;
@@ -281,6 +283,7 @@ void lmdb_raft_logger::join() {
 }
 
 void lmdb_raft_logger::bootstrap() {
+  printf("bootstrap logger\n");
   MDB_txn *txn;
   MDB_dbi log_dbi, state_dbi;
   MDB_stat log_stat;
