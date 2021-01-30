@@ -514,15 +514,18 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
     try {
       request_vote_response resp =
         tl::async_response::wait_any(req.begin(), req.end(), itr);
+      mu.lock();
+      if (get_state() == raft_state::follower) { return; }
       if (resp.term > current_term) {
-        mu.lock();
         become_follower();
         return;
       }
       if (resp.vote_granted) { vote++; }
     } catch (const tl::exception &e) {
+      mu.lock();
       printf("error occured at receive response\n");
     } catch (const tl::timeout &e) { printf("timeout response \n"); }
+    mu.unlock();
   }
 
   mu.lock();
