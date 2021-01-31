@@ -111,8 +111,17 @@ private:
    */
   tl::mutex mu;
 
+  /**
+   * cond is condition_variable.
+   * this is used for waiting the log is commited.
+   * provider calls cond.notify_all() at the end of run()
+   */
   tl::condition_variable cond;
 
+  /**
+   * set_force_current_term set term
+   * @param term
+   */
   void set_force_current_term(int term);
 
   // logger
