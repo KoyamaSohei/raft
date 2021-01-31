@@ -510,8 +510,9 @@ void raft_provider::become_candidate(bool has_disrupt_permission) {
   for (std::string node : logger->get_peers()) {
     try {
       req.push_back(m_request_vote_rpc.on(get_handle(node))
-                      .async(current_term, id, last_log_index, last_log_term,
-                             has_disrupt_permission));
+                      .timed_async(std::chrono::milliseconds(RPC_TIMEOUT),
+                                   current_term, id, last_log_index,
+                                   last_log_term, has_disrupt_permission));
     } catch (const tl::exception &e) {
       printf("error occured at node %s\n", node.c_str());
     } catch (const tl::timeout &e) { printf("timeout request \n"); }
@@ -589,9 +590,10 @@ void raft_provider::run_leader() {
     }
     mu.unlock();
     try {
-      req.emplace_back(
-        m_append_entries_rpc.on(get_handle(node))
-          .async(term, prev_index, prev_term, entries, commit_index, id));
+      req.emplace_back(m_append_entries_rpc.on(get_handle(node))
+                         .timed_async(std::chrono::milliseconds(RPC_TIMEOUT),
+                                      term, prev_index, prev_term, entries,
+                                      commit_index, id));
       peers.emplace_back(node);
       last_indexs.emplace_back(last_index);
     } catch (const tl::exception &e) {
