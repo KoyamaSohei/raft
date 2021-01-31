@@ -619,7 +619,7 @@ void raft_provider::run_leader() {
     if (resp.success) {
       set_match_index(node, last_index);
       set_next_index(node, last_index + 1);
-    } else {
+    } else if (resp.term > 0) { // if resp.term == 0,then rpc failed
       set_next_index(node, get_next_index(node) - 1);
       assert(get_next_index(node) > 0);
     }
