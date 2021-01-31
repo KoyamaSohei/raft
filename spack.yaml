@@ -3,7 +3,7 @@ spack:
     - mochi-thallium
     - lmdb
     - googletest
-    - lconv
+    - lcov
     - libuuid
 
   packages:
