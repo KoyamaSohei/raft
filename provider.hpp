@@ -124,9 +124,18 @@ private:
    */
   void set_force_current_term(int term);
 
-  // logger
+  /**
+   * logger manages Persistent State.
+   * this is injected during provider initialization.
+   * for detail, please refer logger.hpp
+   */
   raft_logger *logger;
-  // fsm
+
+  /**
+   * fsm manages Finite State Machine.
+   * this is injected during provider initialization.
+   * for detail, please refer fsm.hpp
+   */
   raft_fsm *fsm;
 
   // index of highest log entry known to be committed
