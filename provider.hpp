@@ -138,9 +138,29 @@ private:
    */
   raft_fsm *fsm;
 
-  // index of highest log entry known to be committed
+  /**
+   * By Section5.4 Safety,
+   * commit_index is index of highest log entry
+   * known to be committed.
+   * initialized to 0, increases monotonically.
+   * if a log entry is committed in a
+   * given term, then that entry will be present in the logs
+   * of the leaders for all higher-numbered terms.
+   * please DO NOT use this except for
+   * get_commit_index() or set_commit_index()
+   */
   int _commit_index;
+
+  /**
+   * get_commit_index get commit index.
+   * @return commit index
+   */
   int get_commit_index();
+
+  /**
+   * set_commit_index set commit index.
+   * @param index
+   */
   void set_commit_index(int index);
 
   // last applied
