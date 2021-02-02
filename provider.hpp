@@ -163,9 +163,25 @@ private:
    */
   void set_commit_index(int index);
 
-  // last applied
+  /**
+   * By Raft Basis,
+   * > last_applied is index of highest log entry applied to state
+   * machine (initialized to 0, increases monotonically)
+   * please DO NOT use this except for
+   * get_last_applied() or set_last_applied()
+   */
   int _last_applied;
+
+  /**
+   * get_last_applied get last applied index.
+   * @return last applied index
+   */
   int get_last_applied();
+
+  /**
+   * set_last_applied set last applied index.
+   * @param index
+   */
   void set_last_applied(int index);
 
   // for each server, index of the next log entryto send to that server
