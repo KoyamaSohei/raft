@@ -180,6 +180,10 @@ void raft_provider::set_match_index(const std::string &node, int index) {
   _match_index[node] = index;
 }
 
+void raft_provider::reset_match_index() {
+  _match_index.clear();
+}
+
 // next_index initialized to leader last log index + 1
 int raft_provider::get_next_index(const std::string &node) {
   if (_next_index.count(node)) { return _next_index[node]; }
@@ -191,6 +195,10 @@ int raft_provider::get_next_index(const std::string &node) {
 
 void raft_provider::set_next_index(const std::string &node, int index) {
   _next_index[node] = index;
+}
+
+void raft_provider::reset_next_index() {
+  _next_index.clear();
 }
 
 void raft_provider::append_entries_rpc(
@@ -559,8 +567,8 @@ void raft_provider::become_leader() {
   std::string uuid;
   generate_uuid(uuid);
   logger->append_log(uuid, "");
-  _next_index.clear();
-  _match_index.clear();
+  reset_next_index();
+  reset_match_index();
 }
 
 void raft_provider::run_leader() {

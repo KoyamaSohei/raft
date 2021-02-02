@@ -184,15 +184,61 @@ private:
    */
   void set_last_applied(int index);
 
-  // for each server, index of the next log entryto send to that server
+  /**
+   * for each server (in this case, that server is called "node")
+   * _next_index is index of the next log entry to send to node
+   * please DO NOT use this except for
+   * get_next_index() or set_next_index()
+   */
   std::map<std::string, int> _next_index;
+
+  /**
+   * get_next_index get next index of node.
+   * @param node
+   * @return next index of node
+   */
   int get_next_index(const std::string &node);
+
+  /**
+   * set_next_index set next index of node
+   * @param node
+   * @param index
+   */
   void set_next_index(const std::string &node, int index);
 
-  // for each server, index of highest log entryknown to be replicated on server
+  /**
+   * reset_next_index reset all next index.
+   * this is called after election finished.
+   */
+  void reset_next_index();
+
+  /**
+   * for each server (in this case, that server is called "node")
+   * _match_index is index of highest log entryknown to be replicated on node.
+   * please DO NOT use this except for
+   * get_match_index() or set_match_index()
+   */
   std::map<std::string, int> _match_index;
+
+  /**
+   * get_match_index get match index of node
+   * @param node
+   * @return match index of node
+   */
   int get_match_index(const std::string &node);
+
+  /**
+   * set_match_index set match index of node
+   * @param node
+   * @param index
+   */
   void set_match_index(const std::string &node, int index);
+
+  /**
+   * reset_match_index reset all match index.
+   * this is called after election finished.
+   */
+  void reset_match_index();
 
   // use this to tell client
   std::string leader_hint;
