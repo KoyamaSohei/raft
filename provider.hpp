@@ -240,7 +240,11 @@ private:
    */
   void reset_match_index();
 
-  // use this to tell client
+  /**
+   * leader_hint is setted when receriving append_entries_rpc
+   * this is used for tell client now leader.
+   * by this, client can find leader more efficiently.
+   */
   std::string leader_hint;
 
   // cache to resolve host
